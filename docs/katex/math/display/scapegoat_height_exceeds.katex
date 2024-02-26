@@ -1,0 +1,6 @@
+\begin{aligned}
+\text{Exceeds}(h, n)
+\  &\equiv h \gt 2\log_{2}(n)
+\\ &\equiv n \lt 2^{(h + 1)/2}
+\\ &\equiv n \lt 1 \ll ((h + 1) \gg 1)
+\end{aligned}

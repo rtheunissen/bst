@@ -1,0 +1,9 @@
+\begin{align*}
+\text{Median}(x, y) &&=&& &(x+1) &\geq& && y
+\\
+\text{Height}(x,y)  &&=&& \lfloor\log_{2} &(x+1)\rfloor &\geq& &&\lfloor\log_{2}(y)\rfloor
+\\
+\text{Weight}(x, y) &&=&& &(x+1) &\geq& &&(y+1)/2
+\\
+\text{Log}(x, y)    &&=&& \lfloor\log_{2}&(x+1)\rfloor &\geq& &&\lfloor\log_{2}((y+1)/2) \rfloor
+\end{align*}

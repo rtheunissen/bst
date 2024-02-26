@@ -1,0 +1,263 @@
+/**
+ * DARK THEME
+ */
+/*
+@media screen and (prefers-color-scheme: dark) {
+    html {
+        background-color: #000 !important;
+    }
+    article {
+        filter: invert(100%) !important;
+    }
+}
+*/
+
+@media print {
+    .noprint {
+        display: none;
+    }
+}
+
+* {
+    padding: 0;
+    margin: 0;
+}
+
+html {
+    background-color: white; /*#fdf6e3*/;
+    font-size: 1em;
+}
+
+article {
+    font-family: "Charter", "Bitstream Charter", "Cambria", "Noto Serif", serif;
+    display: block;
+    margin: auto;
+    padding: 0 1rem;
+    box-sizing: border-box;
+    max-width: 74ch;
+    line-height: 1.4;
+}
+
+p {
+    hyphens: manual;
+}
+
+section {
+    margin: 1rem 0 2rem 0;
+}
+
+h1  { font-size: 1.4rem }
+h2  { font-size: 2.0rem }
+h3  { font-size: 1.2rem }
+h4  { font-size: 1.0rem }
+p   { font-size: 1.0rem }
+a   { font-size: 1.0rem }
+pre { font-size: 0.8rem }
+
+h2 span {
+    display: block !important;
+    font-size: 1.0rem;
+    text-transform: uppercase;
+    font-weight: normal;
+    margin-bottom: 0.5rem;
+}
+
+h2 {
+    text-align: center;
+}
+
+h3 {
+    text-align: center;
+    text-transform: uppercase;
+}
+
+p  { margin:   0    0 1.0rem 0 }
+h1 { margin: 2.0rem 0 0.5rem 0 }
+h2 { margin: 4.0rem 0 3.0rem 0 }
+h3 { margin: 3.0rem 0 1.0rem 0 }
+h4 { margin: 2.0rem 0 0.5rem 0 }
+
+@media print {
+    h1 { margin: 0 0 0.5rem 0 }
+    h2 { margin: 0 0 3.0rem 0 /* always a page break before */ }
+    h3 { margin: 0 0 1.0rem 0 /* always a page break before */ }
+}
+
+a {
+    color: #000;
+}
+@media print {
+    a {
+        text-decoration: none;
+    }
+}
+
+:target {
+    background: #eee;
+}
+
+a, .underline {
+    display: inline-block;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+}
+
+article p > span {
+    white-space: nowrap;
+}
+
+a.citation {
+    color: #3366cc;
+    line-height: 1;
+    font-style: normal;
+    display: inline;
+    font-size: 0.6rem;
+    padding-left: 1px;
+    text-decoration: none;
+    position: relative;
+    top: -0.4rem;
+    white-space: nowrap;
+}
+
+#references cite, #references a {
+    font-size: 0.6rem;
+    font-style: normal;
+    text-decoration: none;
+}
+
+#references cite {
+    display: block;
+    position: relative;
+    margin: 0;
+    padding-left: 2.5rem;
+}
+
+#references cite a {
+    color: #3366cc;
+    display: inline;
+    word-break: break-word;
+}
+
+#references cite span {
+    text-align: right;
+    position: absolute;
+    left: 0;
+    display: block;
+    width: 2rem;
+}
+
+ul {
+    margin-left: 2rem;
+    margin-bottom: 1rem;
+}
+
+.math {
+    font-family: "KaTeX_Math", serif;
+    font-style: italic;
+}
+
+.numeric {
+    font-family: "KaTeX_Main", serif;
+    font-style: normal;
+}
+
+pre {
+    margin: 2rem 0 1rem 1rem;
+    font-family: "KaTeX_Typewriter", monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+mark {
+    border-radius: 3px;
+    background-color: rgba(255, 255, 0, 0.15);
+    padding: 2px 0;
+}
+mark.red     { background-color: rgba(255, 20, 150, 0.10) }
+mark.yellow  { background-color: rgba(255, 255, 0, 0.15) }
+mark.green   { background-color: rgba(0, 255, 0, 0.10) }
+mark.blue    { background-color: rgba(0, 0, 255, 0.05) }
+
+.katex {
+    font-size: 1rem !important;
+    line-height: 1.4;
+    display: inline-block;
+    vertical-align: baseline;
+}
+
+.katex-display {
+    font-size: 1rem !important;
+    display: block;
+    padding: 0;
+    margin: 2rem 0 2rem 0;
+}
+
+html.justified .katex-display {
+    margin-bottom: -1rem;
+}
+
+span.quote {
+    font-style: italic;
+}
+
+.definition {
+    margin: 2rem 0 2rem 0;
+}
+
+.definition .underline {
+    margin-bottom: 0.4rem;
+    text-align: center;
+    width: 100%;
+}
+.definition .indent {
+    margin-left: 20%;
+    margin-right: 20%;
+    text-align: center;
+}
+
+figure {
+    display: block;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+section i {
+    display: inline-block;
+    vertical-align: top;
+    font-style: normal;
+    margin-left: -0.1rem;
+    margin-right: -0.1rem;
+}
+
+section i svg {
+    font-family: "KaTeX_Typewriter", monospace;
+    display: block;
+    width: 1.4rem;
+    height: 1.4rem;
+}
+
+.caption i svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.caption {
+    box-sizing: border-box;
+    border-top: 1px solid #000;
+    display: block;
+    font-size: 0.8rem !important;
+    line-height: 1.1rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    padding-top: 0.25rem;
+    page-break-inside: avoid;
+}
+
+.caption .katex {
+    font-size: inherit !important;
+}
+
+.page-break {
+    page-break-before: always;
+}

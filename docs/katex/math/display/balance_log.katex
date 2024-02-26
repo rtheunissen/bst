@@ -1,0 +1,6 @@
+\begin{aligned}
+\text{Log}(x,y) = &\lfloor\log_{2}(y+1)\rfloor - \lfloor\log_{2}(x+1)\rfloor \leq 1
+\\              = &\lfloor\log_{2}(x+1)\rfloor \geq \lfloor\log_{2}(y+1)\rfloor - 1
+\\              = &\lfloor\log_{2}(x+1)\rfloor \geq \lfloor\log_{2}(y+1)\rfloor - \lfloor\log_{2}(2)\rfloor
+\\              = &\lfloor\log_{2}(x+1)\rfloor \geq \lfloor \log_{2}((y+1)/2) \rfloor
+\end{aligned}

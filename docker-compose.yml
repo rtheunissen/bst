@@ -1,0 +1,9 @@
+services:
+  sh:
+    network_mode: 'host'
+    build:
+      context: .
+    working_dir: /bst
+    command: /bin/sh
+    volumes:
+      - ./:/bst

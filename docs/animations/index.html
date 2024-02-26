@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=0.01, user-scalable=yes">
+
+    <title>BST Shape Animations</title>
+
+    <link rel="stylesheet" href="/bst/docs/katex/katex.min.css">
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        html {
+            color: #000000;
+            border-color: #000000;
+            background-color: #FFFFFF;
+        }
+        #nav select {
+            color: #FFFFFF;
+            border-color: #FFFFFF;
+            background-color: #000000;
+        }
+        @media (prefers-color-scheme: dark) {
+            html {
+                border-color: #FFFFFF;
+                color: #FFFFFF;
+                background-color: #000000;
+            }
+            #nav select {
+                border-color: #000000;
+                color: #000000;
+                background-color: #FFFFFF;
+            }
+        }
+
+        #nav {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            font-size: 0;
+        }
+
+        #nav select {
+            width: 25%;
+            line-height: 30px;
+            height: 30px;
+            display: inline-block;
+        }
+
+        #introduction {
+            line-height: 1.4;
+            font-family: "Charter", serif;
+        }
+
+        #introduction h1 {
+            font-size: 1.5em;
+            margin-bottom: 1em;
+        }
+
+        #introduction p {
+            font-size: 1em;
+            margin-bottom: 1em;
+        }
+
+        #introduction li {
+            margin-left: 2em;
+            margin-bottom: 1em;
+        }
+
+        #introduction {
+            padding: 40px 10% 20px 10%;
+            max-width: 720px;
+            margin: auto;
+        }
+
+        #terminal {
+            padding-right: 20px;
+            box-sizing: border-box;
+            width: 100%;
+            height: 100vh;
+            white-space: pre;
+            font-size: 16px;
+            line-height: 16px;
+            user-select: none;
+        }
+
+        #terminal, #nav select {
+            font-size: 16px;
+            font-family: KaTeX_Typewriter, "Menlo", monospace;
+        }
+
+        #nav select {
+            width: 25%;
+        }
+        #terminal {
+            padding-top: 30px;
+        }
+        @media only screen and (max-width: 1000px) {
+            #nav select {
+                width: 50%;
+            }
+            #terminal {
+                padding-top: 60px;
+            }
+        }
+        @media only screen and (max-width: 600px) {
+            #nav select {
+                width: 100%;
+            }
+            #terminal {
+                padding-top: 120px;
+            }
+        }
+
+        .button {
+            border-radius: 3px;
+            margin: 0 2px;
+            padding: 6px;
+            font-size: 0.7em;
+            font-weight: bold;
+            text-transform: uppercase;
+            border: 1px solid;
+            border-bottom: 3px solid;
+        }
+    </style>
+
+</head>
+<body>
+    <div id="introduction">
+        <h1>Binary search tree shape animations</h1>
+        <p>
+            There are 3 animation types:
+        </p>
+        <ul>
+            <li>
+                <strong>ExteriorHeights</strong>
+                measures the heights of the nodes along the left-most and right-most paths from the root.
+                This illustrates the balance of the tree.
+            </li>
+            <li>
+                <strong>InteriorHeights</strong>
+                measures the heights of the interior subtrees along the left-most and right-most paths from the root.
+                That is, the right subtrees along the left-most path, and the left subtrees of the right-most path.
+            </li>
+            <li>
+                <strong>NodesPerLevel</strong> counts the number of nodes per level on either side of the root.
+            </li>
+        </ul>
+        <p>
+            There are 2 operation types:
+        </p>
+        <ul>
+            <li>
+                <strong>Insert</strong> inserts a new value using the current access pattern.
+            </li>
+            <li>
+                <strong>InsertDelete</strong> alternates between insertion and deletion when size > 10k.
+            </li>
+        </ul>
+        <p>
+            <br>
+            Use <span class="button">spacebar</span> or the mouse or touch to advance.
+        </p>
+    </div>
+
+    <div id="nav">
+        <select id="animation">
+            <option value="InteriorHeights">InteriorHeights</option>
+            <option value="ExteriorHeights">ExteriorHeights</option>
+            <option value="NodesPerLevel">NodesPerLevel</option>
+        </select>
+        <select id="operation">
+            <option value="Insert">Insert</option>
+            <option value="InsertDelete">InsertDelete</option>
+        </select>
+        <select id="strategy">
+            <option value="AVLBottomUp">AVLBottomUp</option>
+            <option value="AVLTopDown">AVLTopDown</option>
+            <option value="AVLWeakTopDown">AVLWeakTopDown</option>
+            <option value="AVLWeakBottomUp">AVLWeakBottomUp</option>
+            <option value="AVLRelaxedTopDown">AVLRelaxedTopDown</option>
+            <option value="AVLRelaxedBottomUp">AVLRelaxedBottomUp</option>
+            <option value="RedBlackBottomUp">RedBlackBottomUp</option>
+            <option value="RedBlackTopDown">RedBlackTopDown</option>
+            <option value="RedBlackRelaxedBottomUp">RedBlackRelaxedBottomUp</option>
+            <option value="RedBlackRelaxedTopDown">RedBlackRelaxedTopDown</option>
+            <option value="WBSTBottomUp">WBSTBottomUp</option>
+            <option value="WBSTTopDown">WBSTTopDown</option>
+            <option value="WBSTRelaxed">WBSTRelaxed</option>
+            <option value="LBSTBottomUp">LBSTBottomUp</option>
+            <option value="LBSTTopDown">LBSTTopDown</option>
+            <option value="LBSTRelaxed">LBSTRelaxed</option>
+            <option value="TreapTopDown">TreapTopDown</option>
+            <option value="TreapTopDown">TreapTopDown</option>
+            <option value="TreapFingerTree">TreapFingerTree</option>
+            <option value="Randomized">Randomized</option>
+            <option value="Zip">Zip</option>
+            <option value="Splay">Splay</option>
+            <option value="Conc">Conc</option>
+        </select>
+        <select id="distribution">
+            <option value="Uniform">Uniform</option>
+            <option value="Normal">Normal</option>
+            <option value="Skewed">Skewed</option>
+            <option value="Zipf">Zipf</option>
+            <option value="Minimum">Minimum</option>
+            <option value="Maximum">Maximum</option>
+            <option value="Queue">Queue</option>
+            <option value="Median">Median</option>
+            <option value="Ascending">Ascending</option>
+            <option value="Descending">Descending</option>
+        </select>
+    </div>
+    <div id="terminal"></div>
+</body>
+
+<script src="/bst/docs/wasm_exec.js"></script>
+<script>
+    let terminal     = document.getElementById('terminal');
+    let topbar       = document.getElementById('nav');
+    let intro        = document.getElementById('introduction');
+    let animation    = document.getElementById("animation")
+    let operation    = document.getElementById("operation")
+    let strategy     = document.getElementById("strategy")
+    let distribution = document.getElementById("distribution")
+
+    function setParam(key, val) {
+        const url = new URL(window.location.href);
+        url.searchParams.set(key, val);
+        window.history.replaceState({}, '', url.toString());
+    }
+
+    function getParam(key, fallback) {
+        const url = new URL(window.location.href);
+        return url.searchParams.get(key) || fallback;
+    }
+
+    function getValue(id) {
+        return document.getElementById(id).value
+    }
+
+    function setValue(id, value) {
+        document.getElementById(id).value = value
+    }
+
+    animation.addEventListener("change", function (event) {
+        SetAnimation(event.target.value)
+        setParam("animation", event.target.value)
+        render()
+    });
+
+    operation.addEventListener("change", function (event) {
+        SetOperation(event.target.value)
+        setParam("operation", event.target.value)
+        render()
+    });
+
+    strategy.addEventListener("change", function (event) {
+        SetStrategy(event.target.value)
+        setParam("strategy", event.target.value)
+        update()
+        render()
+    });
+
+    distribution.addEventListener("change", function (event) {
+        SetDistribution(event.target.value)
+        setParam("distribution", event.target.value)
+        render()
+    });
+
+    function focus() {
+        terminal.focus()
+    }
+
+    function clear() {
+        SetStrategy(getValue("strategy"))
+    }
+
+    function render() {
+        terminal.innerText = Render();
+    }
+
+    function hideIntro() {
+        topbar.style.display = "block";
+        intro.style.display = "none";
+        intro = null;
+    }
+
+    let updating;
+    function update() {
+        if (updating) {
+            return;
+        }
+        updating = true;
+        if (intro) {
+            hideIntro();
+            setHeight();
+            render();
+        } else {
+            if (Valid()) {
+                Update();
+                render();
+            } else {
+                clear();
+                render();
+            }
+        }
+        setTimeout(function() {
+            updating = false;
+        }, 0);
+    }
+
+    function moveUp() {
+        MoveUp();
+        render();
+    }
+
+    function moveDown() {
+        MoveDown();
+        render();
+    }
+
+    function setHeight() {
+        const style = getComputedStyle(terminal);
+        const height = terminal.clientHeight - parseFloat(style.paddingTop);
+        const lineHeight = parseFloat(style.lineHeight);
+        const numRows = Math.floor(height / lineHeight);
+        SetHeight(numRows - 16);
+    }
+
+    //
+    //
+    //
+    window.addEventListener('resize', function () {
+        setHeight()
+        render()
+        terminal.focus()
+    });
+
+    const keyMap = {
+        "ArrowUp":      moveUp,
+        "ArrowDown":    moveDown,
+        "ArrowLeft":    moveUp,
+        "ArrowRight":   moveDown,
+        "Enter":        update,
+        "Spacebar":     update,
+        " ":            update,
+    }
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key in keyMap) {
+            event.stopPropagation();
+            event.preventDefault();
+            keyMap[event.key]()
+        } else {
+            console.log("Space or enter for next frame, arrow keys to adjust.")
+        }
+    });
+
+
+
+
+    let touchTimer;
+    terminal.addEventListener('touchstart', function (event) {
+        if (touchTimer || event.touches.length > 1) {
+            return
+        }
+        touchTimer = setInterval(function () {
+            update();
+        }, 0)
+    });
+    terminal.addEventListener('touchend', function (event) {
+        if (touchTimer || event.touches.length > 1) {
+            clearInterval(touchTimer);
+            touchTimer = 0;
+        }
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+    function isLeftClick(event) {
+        return event.which === 1;
+    }
+
+    let mouseTimer;
+    terminal.addEventListener('mousedown', function (event) {
+        if (!isLeftClick(event)) {
+            return
+        }
+        if (mouseTimer) {
+            return
+        }
+        mouseTimer = setInterval(function () {
+            update();
+        }, 0)
+    });
+    terminal.addEventListener('mouseup', function (event) {
+        if (!isLeftClick(event)) {
+            return
+        }
+        if (mouseTimer) {
+            clearInterval(mouseTimer);
+            mouseTimer = 0;
+        }
+    });
+
+    terminal.addEventListener("wheel", function (event) {
+        if (intro) {
+            return
+        }
+        if (event.deltaY < 0) {
+            MoveUp();
+            render();
+        } else {
+            MoveDown();
+            render();
+        }
+    })
+
+    intro.addEventListener('click', function () {
+        update();
+    })
+
+    setValue("animation",    getParam("animation")    || "InteriorHeights")
+    setValue("operation",    getParam("operation")    || "Insert")
+    setValue("strategy",     getParam("strategy")     || "AVLBottomUp")
+    setValue("distribution", getParam("distribution") || "Uniform")
+
+
+    const go = new Go(); // Defined in wasm_exec.js
+
+    const WASM_URL = "/bst/main/animate/wasm/animate.wasm";
+
+    function start() {
+        SetStrategy(getValue("strategy"));
+        SetOperation(getValue("operation"));
+        SetDistribution(getValue("distribution"));
+        SetAnimation(getValue("animation"));
+
+        setHeight();
+        focus();
+    }
+
+    if ('instantiateStreaming' in WebAssembly) {
+        WebAssembly.instantiateStreaming(fetch(WASM_URL), go.importObject).then(function (obj) {
+            go.run(obj.instance);
+            start()
+        })
+    } else {
+        fetch(WASM_URL).then(function(resp) {
+            resp.arrayBuffer()
+        }).then(bytes =>
+            WebAssembly.instantiate(bytes, go.importObject).then(function (obj) {
+                go.run(obj.instance);
+                start()
+            })
+        )
+    }
+</script>
+</html>

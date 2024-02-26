@@ -1,0 +1,12 @@
+GRAY       = "#CCCCCC"
+RED        = "#F44336"
+YELLOW     = "#FFAB00"
+GREEN      = "#00C853"
+CYAN       = "#29C3F6"
+BLUE       = "#2962FF"
+PURPLE     = "#D336C8"
+BLACK      = "#000000"
+PINK       = "#EE82EE"
+BROWN      = "#9F650D"
+ORANGE     = "#EC6F1A"
+

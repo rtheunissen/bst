@@ -1,0 +1,1 @@
+\lceil\log_{2}(s+1)\rceil\equiv\lfloor\log_{2}(s)\rfloor+1

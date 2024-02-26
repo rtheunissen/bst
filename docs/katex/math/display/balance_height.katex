@@ -1,0 +1,1 @@
+\text{Height}(x,y) = \lceil \log_2(\max(x,y)+1) \rceil - \lfloor \log_2(\min(x,y)+1) \rfloor \leq 1

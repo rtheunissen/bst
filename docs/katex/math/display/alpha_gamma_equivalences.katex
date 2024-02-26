@@ -1,0 +1,12 @@
+\begin{align*}
+\Delta = \frac{1-\alpha}{\alpha}
+\qquad
+\qquad
+\alpha = \frac{1}{\Delta+1}
+\\
+\\
+\Gamma = \frac{1}{1-\alpha}
+\qquad
+\qquad
+\Gamma = \frac{\Delta+1}{\Delta}
+\end{align*}

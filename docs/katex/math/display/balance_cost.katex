@@ -1,0 +1,4 @@
+\begin{align*}
+\text{Cost(p)} = & \text{ size}(l) \geq \text{size}(rl), \text{size}(l) \geq \text{size}(rr), \\
+                 & \text{ size}(r) \geq \text{size}(lr), \text{size}(r) \geq \text{size}(ll)
+\end{align*}

@@ -1,0 +1,9 @@
+\begin{align*}
+\text{Median}(x, y) &= (x+1) \geq (y)
+\\
+\text{Height}(x,y)  &= (x+1) \geq (y)\mathbin{\&}\lnot{(x+1)}
+\\
+\text{Weight}(x, y) &= (x+1) \geq ((y+1)\gg1)
+\\
+\text{Log}(x, y)    &= (x+1) \geq ((y+1)\gg1)\mathbin{\&}\lnot{(x+1)}
+\end{align*}

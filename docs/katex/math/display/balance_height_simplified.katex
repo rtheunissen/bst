@@ -1,0 +1,1 @@
+\text{Height}(x,y) = \lfloor \log_{2}(x+1) \rfloor \geq \lfloor \log_{2}(y) \rfloor

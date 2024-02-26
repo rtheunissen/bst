@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet" href="/bst/docs/katex/katex.min.css">
+
+    <title>docs/benchmarks/svg/operations/BestOf/Insert/Zipf</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+        }
+        .graphs {
+
+        }
+        .graphs div {
+            display: inline-block;
+            width: 100%;
+            max-width: 800px;
+        }
+        .graphs svg {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            flex-grow: 0;
+            padding: 40px;
+        }
+        body > a {
+            padding: 10px;
+        }
+        .control {
+            padding: 10px;
+        }
+        .control label {
+            width: 100px;
+            display: inline-block;
+            padding-right: 10px;
+        }
+        .control select {
+            display: inline-block;
+        }
+    </style>
+
+    <script>
+        function redirect() {
+            window.location.href = ""
+                + "/bst/docs/benchmarks/svg/operations/"
+                + document.getElementById("group").value + "/"
+                + document.getElementById("operation").value + "/"
+                + document.getElementById("distribution").value;
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            let path = window.location.href.split("/");
+            document.getElementById("group").value = path[8] || "AVLRedBlack";
+            document.getElementById("operation").value = path[9] || "Insert";
+            document.getElementById("distribution").value = path[10] || "";
+            if (!path[8]) { // no group yet, must be root index
+                redirect()
+            }
+        });
+    </script>
+</head>
+<body>
+
+<a href="/bst">Go back</a>
+
+<div class="control">
+    <div>
+        <label for="group">Group:</label>
+        <select id="group" onchange="redirect()">
+            <option value="AVLRedBlack">AVLRedBlack</option>
+            <option value="AVLWeak">AVLWeak</option>
+            <option value="AVLRelaxed">AVLRelaxed</option>
+            <option value="RedBlackRelaxed">RedBlackRelaxed</option>
+            <option value="RankBalanced">RankBalanced</option>
+            <option value="WeightBalanced">WeightBalanced</option>
+            <option value="WeightBalancedRelaxed">WeightBalancedRelaxed</option>
+            <option value="Probabilistic">Probabilistic</option>
+            <option value="SelfAdjusting">SelfAdjusting</option>
+            <option value="Relaxed">Relaxed</option>
+            <option value="Conclusions">Conclusions</option>
+        </select>
+    </div>
+    <div>
+        <label for="operation">Operation:</label>
+        <select id="operation" onchange="redirect()">
+            <option value="Insert">Insert</option>
+            <option value="InsertPersistent">InsertPersistent</option>
+            <option value="InsertDelete">InsertDelete</option>
+            <option value="InsertDeletePersistent">InsertDeletePersistent</option>
+        </select>
+    </div>
+    <div>
+        <label for="distribution">Distribution:</label>
+        <select id="distribution" onchange="redirect()">
+            <option value="">Overall</option>
+            <option value="Uniform">Uniform</option>
+            <option value="Zipf">Zipf</option>
+            <option value="Maximum">Maximum</option>
+            <option value="Skewed">Skewed</option>
+            <option value="Normal">Normal</option>
+        </select>
+    </div>
+</div>
+<div class="graphs">
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+    <div>
+        
+    </div>
+    
+</div>
+</body>
+</html>

@@ -1,0 +1,5 @@
+\begin{align*}
+\lfloor\log_{2}(x)\rfloor \geq \lfloor\log_{2}(y)\rfloor &\equiv x \geq y \text{ || } y \leq (x \mathbin{\&} y) \ll 1
+\\                                                      &\equiv x \geq y \text{ || } x \geq (x \oplus y)
+\\                                                      &\equiv x \geq (\lnot{x} \mathbin{\&} y)
+\end{align*}
