@@ -281,10 +281,7 @@
     visit(p)
     inorder(p.r, visit)
 }
-
-(tree *Tree) inorder (visit func(*Node)) {
-    inorder(tree.root, visit)
-}</pre>
+</pre>
             <p class="caption">
                 <!--                This algorithm visits every node in the tree in sequential order: starting at the root, perform a traversal of the left subtree, then visit the root, then perform a traversal of the right subtree.-->
                 <!--                The first node visited by this algorithm is therefore the left-most node of the tree and the last node is the right-most node.-->
@@ -431,7 +428,7 @@
 
                 <pre>
 <strong>search</strong> (p *Node, i Position) *Node {
-   for {
+   loop {
       if i == p.s {
          return p
       }
@@ -1079,7 +1076,7 @@
                 {{ inline "docs/katex/math/display/balance_summary.katex.html" }}
             </p>
             <p>
-                Using the bitwise function of Warren to compare the binary log and left shifts for division yields the following expanded solutions:
+                Using the bitwise function of Warren to compare the binary logarithm, and bit-shifts for division yields the following expanded solutions:
             </p>
             <p>
                 {{ inline "docs/katex/math/display/balance_expanded.katex.html" }}
@@ -1169,7 +1166,7 @@
                     The average path length of each resulting tree measures how well-balanced they are, where lower is better.
                     Dividing this average by the log of the size of the tree at each increment gives the results as a factor of the binary log.
                 <figure>
-                {{ inline "docs/benchmarks/svg/balancers/Partition/AveragePathLength__sbezier.svg" }}
+                {{ inline "docs/benchmarks/svg/balancers/All/AveragePathLength__sbezier.svg" }}
                 </figure>
                 <p>
                     The average path length of all strategies appears to approach {{ inline "docs/katex/math/inline/log_2n.katex.html" }}, which for the final tree of size 10,000,000 translates to an average path length of <span class="numeric">∼23</span>.
@@ -1352,7 +1349,7 @@
                 <p class="caption">
                     The bottom-up red-black tree is clearly the slowest of this group.
                     The performance of the top-down AVL tree and the top-down red-black tree is practically equivalent, and only slightly faster than the bottom-up AVL tree.
-                    Currently, the both red-black tree variants implement deletion bottom-up, so there is a decent chance that the top-down red-black tree can see further improvement when deletion is implemented top-down.
+                    Currently, both red-black tree variants implement deletion bottom-up, so there is a decent chance that the top-down red-black tree can see further improvement when deletion is implemented top-down.
                 </p>
             </figure>
 
@@ -1666,9 +1663,9 @@
             <pre>
 <strong>split</strong> (p *Node, i Position) (*Node, *Node) {
    n := Node{}
-   l := &n
-   r := &n
-   for p ≠ empty {
+   l = &n
+   r = &n
+   while p ≠ null {
       if i ≤ p.s {
          p.s = p.s - i
          r.l = p
@@ -1689,8 +1686,8 @@
 
             <pre>
 <strong>join</strong> (l, r *Node, sl Size) (root *Node) {
-   p := &root
-   for {
+   p = &root
+   loop {
       if l == nil { *p = r; return }
       if r == nil { *p = l; return }
 
