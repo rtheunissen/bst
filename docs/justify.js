@@ -9,6 +9,19 @@ function justify() {
     kp.justifyContent(Array.from(document.querySelectorAll('p')));
     document.querySelector('html').classList.add('justified');
 }
-document.addEventListener("DOMContentLoaded", justify);
-window.addEventListener('resize', justify);
+
+(function() {
+    var beforePrint = function() {
+        justify();
+    };
+    if (window.matchMedia) {
+        var mediaQueryList = window.matchMedia('print');
+        mediaQueryList.addEventListener('change', function(mql) {
+            if (mql.matches) {
+                beforePrint();
+            }
+        });
+    }
+    window.onbeforeprint = beforePrint;
+})();
 
