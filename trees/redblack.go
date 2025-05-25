@@ -24,12 +24,12 @@ func (tree RedBlack) isBlack(parent, child *Node) bool {
 
 func (tree RedBlack) verifyHeight(p *Node, s list.Size) int {
    if p == nil {
-      return 0
+      return -1
    }
    l := tree.verifyHeight(p.l, p.sizeL())
    r := tree.verifyHeight(p.r, p.sizeR(s))
    h := max(l, r) + 1
-
+   
    invariant(h <= 2 * tree.rank(p) + 1)
    invariant(h <= 2 * int(math.Log2(float64(s))))
    return h

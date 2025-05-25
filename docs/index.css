@@ -121,7 +121,7 @@ a.citation {
 }
 
 #references cite, #references a {
-    font-size: 0.6rem;
+    font-size: 1vw;
     font-style: normal;
     text-decoration: none;
 }
