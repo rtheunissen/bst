@@ -6,3 +6,4 @@ _*
 *.prof
 *.test
 coverage.html
+.vscode

@@ -1,13 +1,13 @@
 package trees
 
 import (
-   "github.com/rtheunissen/bst/types/list"
+	"github.com/rtheunissen/bst/types/list"
 )
 
 type BinaryTreeNode interface {
-   Height() int
-   TotalInternalPathLength(list.Size) list.Size
-   TotalReferenceCount() list.Size
+	Height() int
+	TotalInternalPathLength(list.Size) list.Size
+	TotalReferenceCount() list.Size
 }
 
 // Node
@@ -66,296 +66,296 @@ type Size = uint64
 type Data = uint64
 
 type Node struct {
-   ReferenceCounter
+	ReferenceCounter
 
-   l *Node // Pointers to the left and right subtrees.
-   r *Node
+	l *Node // Pointers to the left and right subtrees.
+	r *Node
 
-   s Size // Size, usually of the left subtree and therefore also position.
-   x Data // Data
-   y Rank // Rank
+	s Size // Size, usually of the left subtree and therefore also position.
+	x Data // Data
+	y Rank // Rank
 }
 
 func averagePathLength(p *Node, depth uint64, totalDepth *uint64, totalNodes *uint64) {
-   if p == nil {
-      return
-   }
-   *totalNodes = *totalNodes + 1
-   *totalDepth = *totalDepth + depth
+	if p == nil {
+		return
+	}
+	*totalNodes = *totalNodes + 1
+	*totalDepth = *totalDepth + depth
 
-   averagePathLength(p.l, depth + 1, totalDepth, totalNodes)
-   averagePathLength(p.r, depth + 1, totalDepth, totalNodes)
+	averagePathLength(p.l, depth+1, totalDepth, totalNodes)
+	averagePathLength(p.r, depth+1, totalDepth, totalNodes)
 }
 
 func (p *Node) AveragePathLength() float64 {
-   if p == nil {
-      return 0
-   }
-   var totalDepth uint64
-   var totalNodes uint64
-   averagePathLength(p, 0, &totalDepth, &totalNodes)
-   return float64(totalDepth) / float64(totalNodes)
+	if p == nil {
+		return 0
+	}
+	var totalDepth uint64
+	var totalNodes uint64
+	averagePathLength(p, 0, &totalDepth, &totalNodes)
+	return float64(totalDepth) / float64(totalNodes)
 }
 
 func (p Node) isLeaf() bool { // TODO conc can have its own that doesn't check p.r for nil
-   return p.l == nil && p.r == nil
+	return p.l == nil && p.r == nil
 }
 
 func (p *Node) MaximumPathLength() int {
-   return p.height()
+	return p.height()
 }
 
 // make global function?
 func (p *Node) height() int {
-   if p == nil {
-      return -1
-   }
-   return 1 + max(p.l.height(), p.r.height())
+	if p == nil {
+		return -1
+	}
+	return 1 + max(p.l.height(), p.r.height())
 }
 
 // Counts the number of nodes reachable from p*, including itself.
 func (p *Node) size() list.Size {
-   if p == nil {
-      return 0
-   } else {
-      return 1 + p.l.size() + p.r.size()
-   }
+	if p == nil {
+		return 0
+	} else {
+		return 1 + p.l.size() + p.r.size()
+	}
 }
 
 // Returns the number of nodes in the left subtree of p*.
 // TODO: This is not the case for all tree implementations - should this be up to the tree? Maybe mix it in?
 func (p *Node) sizeL() list.Size {
-   return p.s
+	return p.s
 }
 
 // Returns the number of nodes in the right subtree of p*, given the s of p*.
 func (p *Node) sizeR(s list.Size) list.Size {
-   return s - p.s - 1
+	return s - p.s - 1
 }
 
 func (p *Node) inorder(visit func(list.Data)) {
-   if p == nil {
-      return
-   }
-   p.l.inorder(visit)
-   visit(p.x)
-   p.r.inorder(visit)
+	if p == nil {
+		return
+	}
+	p.l.inorder(visit)
+	visit(p.x)
+	p.r.inorder(visit)
 }
 
 func (p *Node) rotateL() (r *Node) {
-   // measurement(&rotations, 1)
-   r = p.r
-   p.r = r.l
-   r.l = p
-   r.s = r.s + p.s + 1
-   return r
+	// measurement(&rotations, 1)
+	r = p.r
+	p.r = r.l
+	r.l = p
+	r.s = r.s + p.s + 1
+	return r
 }
 
 func (p *Node) rotateR() (l *Node) {
-   // measurement(&rotations, 1)
-   l = p.l
-   p.l = l.r
-   l.r = p
-   p.s = p.s - l.s - 1
-   return l
+	// measurement(&rotations, 1)
+	l = p.l
+	p.l = l.r
+	l.r = p
+	p.s = p.s - l.s - 1
+	return l
 }
 
 // Rotates the LEFT subtree LEFT, then rotates the root RIGHT.
 func (p *Node) rotateLR() *Node {
-   p.l = p.l.rotateL()
-   return p.rotateR()
+	p.l = p.l.rotateL()
+	return p.rotateR()
 }
 
 // Rotates the RIGHT subtree RIGHT, then rotates the root LEFT.
 func (p *Node) rotateRL() *Node {
-   p.r = p.r.rotateR()
-   return p.rotateL()
+	p.r = p.r.rotateR()
+	return p.rotateL()
 }
 
 func (tree Tree) verifySize(p *Node, s list.Size) list.Size {
-   if p == nil {
-      return 0
-   }
-   sl := tree.verifySize(p.l, p.sizeL())
-   sr := tree.verifySize(p.r, p.sizeR(s))
+	if p == nil {
+		return 0
+	}
+	sl := tree.verifySize(p.l, p.sizeL())
+	sr := tree.verifySize(p.r, p.sizeR(s))
 
-   invariant(s == sl + sr + 1)
-   return s
+	invariant(s == sl+sr+1)
+	return s
 }
 
 func (tree *Tree) replacedByRightSubtree(p **Node) *Node {
-   tree.persist(p)
-   r := *p
-   *p = (*p).r
-   return r
+	tree.persist(p)
+	r := *p
+	*p = (*p).r
+	return r
 }
 
 func (tree *Tree) replacedByLeftSubtree(p **Node) *Node {
-   tree.persist(p)
-   l := *p
-   *p = (*p).l
-   return l
+	tree.persist(p)
+	l := *p
+	*p = (*p).l
+	return l
 }
 
 func (tree *Tree) deleteMin2(r *Node) (root, min *Node) {
-   n := Node{}
-   l := &n
-   for {
-      tree.persist(&r)
-      if r.l == nil {
-         l.l = r.r
-         return n.l, r
-      }
-      r.s = r.s - 1
-      l.l = r
-      l = l.l
-      r = r.l
-   }
+	n := Node{}
+	l := &n
+	for {
+		tree.persist(&r)
+		if r.l == nil {
+			l.l = r.r
+			return n.l, r
+		}
+		r.s = r.s - 1
+		l.l = r
+		l = l.l
+		r = r.l
+	}
 }
 
 func (tree *Tree) deleteMin(p **Node) (min *Node) {
-   *p, min = tree.deleteMin2(*p)
-   return
+	*p, min = tree.deleteMin2(*p)
+	return
 }
 func (tree *Tree) deleteMax2(p *Node) (root, min *Node) {
-   n := Node{}
-   r := &n
-   for {
-      tree.persist(&p)
-      if p.r == nil {
-         r.r = p.l
-         return n.r, p
-      }
-      r.r = p
-      r = r.r
-      p = p.r
-   }
+	n := Node{}
+	r := &n
+	for {
+		tree.persist(&p)
+		if p.r == nil {
+			r.r = p.l
+			return n.r, p
+		}
+		r.r = p
+		r = r.r
+		p = p.r
+	}
 }
 func (tree *Tree) deleteMax(p **Node) (max *Node) {
-   *p, max = tree.deleteMax2(*p)
-   return
+	*p, max = tree.deleteMax2(*p)
+	return
 }
 
 func (tree *Tree) update(p *Node, i list.Position, x list.Data) {
-   for {
-      if i == p.s {
-         p.x = x
-         return
-      }
-      if i < p.s {
-         tree.persist(&p.l)
-         p = p.l
-      } else {
-         tree.persist(&p.r)
-         i = i - p.s - 1
-         p = p.r
-      }
-   }
+	for {
+		if i == p.s {
+			p.x = x
+			return
+		}
+		if i < p.s {
+			tree.persist(&p.l)
+			p = p.l
+		} else {
+			tree.persist(&p.r)
+			i = i - p.s - 1
+			p = p.r
+		}
+	}
 }
 
 func insertL(p *Node) **Node {
-   p.s++
-   return &p.l
+	p.s++
+	return &p.l
 }
 
 func insertR(p *Node, i *list.Position) **Node {
-   *i = *i - p.s - 1
-   return &p.r
+	*i = *i - p.s - 1
+	return &p.r
 }
 
 func deleteL(p *Node) **Node {
-   p.s--
-   return &p.l
+	p.s--
+	return &p.l
 }
 
 func deleteR(p *Node, i *list.Position) **Node {
-   *i = *i - p.s - 1
-   return &p.r
+	*i = *i - p.s - 1
+	return &p.r
 }
 
 // TODO: these are nuts
 func (tree *Tree) pathLeft(p ***Node) {
-   assert((**p).l != nil)
-   tree.persist(&(**p).l)
-   *p = insertL(**p)
+	assert((**p).l != nil)
+	tree.persist(&(**p).l)
+	*p = insertL(**p)
 }
 func (tree *Tree) pathRight(p ***Node, i *list.Position) {
-   assert((**p).r != nil)
-   tree.persist(&(**p).r)
-   *p = insertR(**p, i)
+	assert((**p).r != nil)
+	tree.persist(&(**p).r)
+	*p = insertR(**p, i)
 }
 func (tree *Tree) attach(p **Node, x list.Data) {
-   *p = tree.allocate(Node{x: x})
+	*p = tree.allocate(Node{x: x})
 }
 func (tree *Tree) attachL(p *Node, x list.Data) {
-   p.s++
-   p.l = tree.allocate(Node{x: x})
+	p.s++
+	p.l = tree.allocate(Node{x: x})
 }
 
 func (tree *Tree) attachLL(p *Node, x list.Data) {
-   tree.persist(&p.l)
-   p.s++
-   p.l.s++
-   p.l.l = tree.allocate(Node{x: x})
+	tree.persist(&p.l)
+	p.s++
+	p.l.s++
+	p.l.l = tree.allocate(Node{x: x})
 }
 func (tree *Tree) attachRR(p *Node, x list.Data) {
-   tree.persist(&p.r)
-   p.r.r = tree.allocate(Node{x: x})
+	tree.persist(&p.r)
+	p.r.r = tree.allocate(Node{x: x})
 }
 func (tree *Tree) attachLR(p *Node, x list.Data) {
-   tree.persist(&p.l)
-   p.s++
-   p.l.r = tree.allocate(Node{x: x})
+	tree.persist(&p.l)
+	p.s++
+	p.l.r = tree.allocate(Node{x: x})
 }
 
 func (tree *Tree) attachRL(p *Node, x list.Data) {
-   tree.persist(&p.r)
-   p.r.s++
-   p.r.l = tree.allocate(Node{x: x})
+	tree.persist(&p.r)
+	p.r.s++
+	p.r.l = tree.allocate(Node{x: x})
 }
 
 func (tree *Tree) attachR(p *Node, x list.Data) {
-   p.r = tree.allocate(Node{x: x})
+	p.r = tree.allocate(Node{x: x})
 }
 
 func pathDeletingRightIgnoringIndex(p *Node) **Node {
-   return &p.r
+	return &p.r
 }
 
 func (tree Tree) rotateL(p **Node) {
-   tree.persist(&(*p).r)
-   *p = (*p).rotateL()
+	tree.persist(&(*p).r)
+	*p = (*p).rotateL()
 }
 
 func (tree Tree) rotateR(p **Node) {
-   tree.persist(&(*p).l)
-   *p = (*p).rotateR()
+	tree.persist(&(*p).l)
+	*p = (*p).rotateR()
 }
 
 func (tree Tree) rotateRL(p **Node) {
-   tree.persist(&(*p).r)
-   tree.persist(&(*p).r.l)
-   *p = (*p).rotateRL()
+	tree.persist(&(*p).r)
+	tree.persist(&(*p).r.l)
+	*p = (*p).rotateRL()
 }
 
 func (tree Tree) rotateLR(p **Node) {
-   tree.persist(&(*p).l)
-   tree.persist(&(*p).l.r)
-   *p = (*p).rotateLR()
+	tree.persist(&(*p).l)
+	tree.persist(&(*p).l.r)
+	*p = (*p).rotateLR()
 }
 
 func (tree *Tree) appendR(p **Node, n *Node) {
-   for *p != nil {
-      tree.persist(p)
-      p = &(*p).r
-   }
-   *p = n
+	for *p != nil {
+		tree.persist(p)
+		p = &(*p).r
+	}
+	*p = n
 }
 
 func (tree *Tree) appendL(p **Node, n *Node) {
-   for *p != nil {
-      tree.persist(p)
-      p = &(*p).l
-   }
-   *p = n
+	for *p != nil {
+		tree.persist(p)
+		p = &(*p).l
+	}
+	*p = n
 }

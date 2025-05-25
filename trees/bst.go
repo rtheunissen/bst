@@ -1,8 +1,8 @@
 package trees
 
 import (
-   "github.com/rtheunissen/bst/types/list"
-   "github.com/rtheunissen/bst/utility/random"
+	"github.com/rtheunissen/bst/types/list"
+	"github.com/rtheunissen/bst/utility/random"
 )
 
 type BinaryTree interface {

@@ -1,10 +1,11 @@
 package trees
 
 import (
-   "github.com/rtheunissen/bst/types/list"
-   "github.com/rtheunissen/bst/utility/number"
-   "github.com/rtheunissen/bst/utility/number/distribution"
-   "testing"
+	"testing"
+
+	"github.com/rtheunissen/bst/types/list"
+	"github.com/rtheunissen/bst/utility/number"
+	"github.com/rtheunissen/bst/utility/number/distribution"
 )
 
 func TestBST(t *testing.T) {

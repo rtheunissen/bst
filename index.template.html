@@ -49,15 +49,14 @@
             Speaking from experience, some students might not realize how interesting this space can be because they are too distracted by seemingly arbitrary rules and acronyms.
         </p>
         <p>
-            Over the years, some binary search tree algorithms have come along that are both more intuitive and more efficient than the ones we usually learn about, but good implementations are often difficult to find and therefore difficult to teach.
+            Over the years, some binary search tree algorithms have come along that are both more intuitive and more efficient than the ones we usually learn about, but good implementations are often difficult to find, and therefore difficult to teach.
             This project attempts to explore as many of these algorithms as possible to produce a reference that is easy to teach and learn from.
             Being mostly light on theory, we focus instead on experimentation and measurement.
-            A few of the algorithms appear to be implemented for the first time, and some original ideas are also considered.
         </p>
         <p>
             <a href="#introduction">Part 1</a> briefly covers foundational ideas like memory allocation, linear lists, position, recursion, traversal, balance, persistence, and concurrency.
-            This introduction explores a pedagogical approach to binary search trees as a natural extension of linked lists.
-            Since linked lists are usually covered before binary search trees, the idea to implement the same interface as before but now with a different structure is a nice segue, cohesive and consistent.
+            This introduction explores an approach to binary search trees as a natural extension of linked lists.
+            Since linked lists are often covered before binary search trees, the idea to implement the same interface as before but now with a different structure is a nice segue.
         </p>
         <p>
             <a href="#restoring-balance">Part 2</a> covers definitions of balance and explores various algorithms to globally balance a binary search tree.
@@ -90,19 +89,19 @@
                 Some problems can not avoid frequent interaction with memory, but an inefficient algorithm wastes energy by interacting with memory more often than it needs to.
             </p>
             <p>
-                This field of research relates to the organization of information in memory, focusing on the <em>organization</em> of the information rather than the information itself.
                 The goal is to design structures in memory to organize information in useful ways, such as to be ordered, searchable, or countable.
-                The information and the structures that organize it usually exist together in memory, and programs can use these structures to organize information as needed, rather than interacting with memory directly.
+                This field of research relates to the <em>organization</em> of information in memory, focusing on structures around the information rather than the information itself.
+                The information and the organizational structures usually exist together in memory, so programs can use these structures as tools to organize their information as needed.
             </p>
             <p>
                 There are structures that organize information all around us, like filing cabinets and books and vinyl records.
-                Consider that an empty notebook contains no information, but the structure is there for information to exist.
-                A step-by-step cooking recipe might be written as a numbered list to suggest to the reader to follow the steps in order, one at a time.
-                The paper on which the recipe is written is the memory, the recipe is the information, the numbered list is the structure.
+                Consider that an empty notebook contains no information, but the structure is there for information to exist, sequentially by page.
+                A step-by-step cooking recipe might be written as a numbered list to suggest that a reader should follow the steps in that order.
+                The paper on which the recipe is written is the memory, the numbered list is the structure, and the recipe is the information.
             </p>
             <p>
-                Using computer memory as a design material might seem intangible, but every bit of information exists physically on hardware no differently.
-                The computer, however, does not know anything about semantics and relationships — there is only one large pool of memory to interact with, and our task is to provide structures as a layer of abstraction between the program and the memory.
+                The computer, however, does not know anything about structure or semantics or relationships between things — there is only one large block of abstract, addressable memory.
+                The problem to solve here is to design structures in memory that manage the organization of information as needed by the program.
             </p>
         </section>
 
@@ -111,13 +110,14 @@
         <section id="linear-lists">
             <h3>Linear lists</h3>
             <p>
-                This project explores specifically the implementation of a <em>linear list</em>, which is a one-dimensional ordered sequence of a known length, indexed by position.
-                Lists are fundamental and are often introduced as the first abstract data type when learning about data structures.
-                So many things are lists... search results, queues, events or transactions occurring over time, even the text of this article is an ordered sequence of characters arranged in a specific order — the same characters in different positions would be gibberish, so the position of each character in the sequence is important.
+                This project explores specifically the implementation of a <em>linear list</em> structure, which is an ordered sequence of known length, indexed by position starting at zero.
+                Lists are fundamental and are often introduced as the first example when learning about data structures in school.
+                So many things are lists: search results, queues, a log of events or transactions, etc. 
+                Even the text of this writing is an ordered sequence of characters arranged in a specific order — the same characters in different positions would be gibberish, so the position of each character in the sequence is important.
             </p>
             <p>
-                For a data structure to qualify as a list, it must support the operations that describe the list data type.
-                A program using a given list implementation might not know exactly how the structure works internally, only that it behaves like a list.
+                For a data structure to qualify as a list, it must support the operations that describe the <em>list data type</em>.
+                A program using a specific list implementation might not know exactly how the structure works internally, only that it behaves like a list.
             </p>
             <p>
                 The following operations describe a reasonable list data type:
@@ -1945,7 +1945,7 @@
             Most current red-black tree or skip list implementations can be replaced by a logarithmic weight-balanced tree to achieve better balance, better performance, and get positional access as a bonus, all with a simpler algorithm.
         </p>
     </section>
-
+<!-- 
     <section id="todo">
         <h2>Work in Progress</h2>
         <ul>
@@ -1968,7 +1968,7 @@
             <li>A lot of editing.</li>
             <li>More tests.</li>
         </ul>
-    </section>
+    </section> -->
 
     <section id="references">
         <h2>References</h2>

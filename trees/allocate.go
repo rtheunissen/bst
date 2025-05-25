@@ -1,6 +1,6 @@
 package trees
 
-// ReferenceCounter is used to implemented copy-on-write persistence.
+// ReferenceCounter is used to implement copy-on-write persistence.
 //
 //   "Copy-on-write, sometimes referred to as implicit sharing or shadowing,
 //    is a resource-management technique used in computer programming to
@@ -34,70 +34,70 @@ package trees
 // then none of its nodes will ever need to be copied.
 //
 type ReferenceCounter struct {
-   refs uint64
+	refs uint64
 }
 
 // AddReference increments the reference count.
-func (rc *ReferenceCounter) AddReference()  {
-   rc.refs++
+func (rc *ReferenceCounter) AddReference() {
+	rc.refs++
 }
 
 // RemoveReference decrements the reference count.
-func (rc *ReferenceCounter) RemoveReference()  {
-   if rc.refs > 0 {
-      rc.refs--
-   }
+func (rc *ReferenceCounter) RemoveReference() {
+	if rc.refs > 0 {
+		rc.refs--
+	}
 }
 
 // Removes one reference from the given node.
-func (tree Tree) release(p *Node)  {
-   if p != nil {
-      p.RemoveReference()
-   }
+func (tree Tree) release(p *Node) {
+	if p != nil {
+		p.RemoveReference()
+	}
 }
 
 // Adds a reference to the node to share it with another tree.
-func (tree Tree) share(p *Node)  {
-   if p != nil {
-      p.AddReference()
-   }
+func (tree Tree) share(p *Node) {
+	if p != nil {
+		p.AddReference()
+	}
 }
 
 // Determines whether a node is shared with at least one other tree.
 func (tree Tree) shared(p *Node) bool {
-   return (*p).refs > 0
+	return (*p).refs > 0
 }
 
 // Replaces the given node with a copy only if the node shared with other trees.
 func (tree *Tree) persist(p **Node) {
-   assert(*p != nil)
-   //
-   // There is no need to copy the node if it is NOT shared with other trees.
-   //
-   if !tree.shared(*p) {
-      return
-   }
-   // A copy is required to modify the node stored at the given reference.
-   //
-   // Only the pointers to the left and right subtrees are copied, increasing
-   // their reference counts by one and thereby sharing them with another tree.
-   //
-   tree.share((*p).l)
-   tree.share((*p).r)
+	assert(*p != nil)
+	//
+	// There is no need to copy the node if it is NOT shared with other trees.
+	//
+	if !tree.shared(*p) {
+		return
+	}
+	// A copy is required to modify the node stored at the given reference.
+	//
+	// Only the pointers to the left and right subtrees are copied, increasing
+	// their reference counts by one and thereby sharing them with another tree.
+	//
+	tree.share((*p).l)
+	tree.share((*p).r)
 
-   // The resulting copy is a new allocation that has no other references to it,
-   // so we decrease the reference count of the original node by one.
-   //
-   // Allocate memory for a new node and copy the original values into it.
-   //
-   // Notice that this allocation uses the same arena as the original tree,
-   // so all versions of a tree use the same arena and will be freed together.
-   //
-   *p = tree.allocate(Node{
-      l: (*p).l,
-      r: (*p).r,
-      s: (*p).s,
-      x: (*p).x,
-      y: (*p).y,
-   })
+	// The resulting copy is a new allocation that has no other references to it,
+	// so we decrease the reference count of the original node by one.
+	//
+	// Allocate memory for a new node and copy the original values into it.
+	//
+	// Notice that this allocation uses the same arena as the original tree,
+	// so all versions of a tree use the same arena and will be freed together.
+	//
+	*p = tree.allocate(Node{
+		l: (*p).l,
+		r: (*p).r,
+		s: (*p).s,
+		x: (*p).x,
+		y: (*p).y,
+	})
 }

@@ -1,8 +1,9 @@
 package trees
 
 import (
-   "github.com/rtheunissen/bst/types/list"
-   "math"
+	"math"
+
+	"github.com/rtheunissen/bst/types/list"
 )
 
 type RedBlack struct {
@@ -21,11 +22,17 @@ func (tree RedBlack) isBlack(parent, child *Node) bool {
    return tree.isOneChild(parent, child)
 }
 
-func (tree RedBlack) verifyHeight(p *Node, s list.Size) {
-   // TODO return height, check for every node
-   h := p.height()
+func (tree RedBlack) verifyHeight(p *Node, s list.Size) int {
+   if p == nil {
+      return 0
+   }
+   l := tree.verifyHeight(p.l, p.sizeL())
+   r := tree.verifyHeight(p.r, p.sizeR(s))
+   h := max(l, r) + 1
+
    invariant(h <= 2 * tree.rank(p) + 1)
    invariant(h <= 2 * int(math.Log2(float64(s))))
+   return h
 }
 
 func (tree RedBlack) verifyRanks(p *Node) {
