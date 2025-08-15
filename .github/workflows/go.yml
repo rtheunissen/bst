@@ -1,21 +1,22 @@
-name: Go
+name: Build and Deploy
 
 on:
   push:
     branches:
-    - main
-  pull_request:
-    branches:
-    - main
-
+      - main
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Check for bot commit
+        if: github.actor == 'github-actions[bot]'
+        run: |
+          echo "Skipping build commit from previous action."
+          exit 0
+          
       - uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - uses: actions/setup-go@v4
         with:
           go-version: 1.21
 
@@ -24,3 +25,11 @@ jobs:
 
       - name: Build
         run: make index
+        
+      - name: Commit and push changes with Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Build by github action"
+          git push
