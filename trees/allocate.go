@@ -69,6 +69,13 @@ func (tree Tree) shared(p *Node) bool {
 }
 
 // Replaces the given node with a copy only if the node shared with other trees.
+//
+// Note: the old node's reference count is not decremented here. Reference counts
+// are only decremented by `release` in delete paths. This means once a node gets
+// refs > 0 from a Clone, its refcount never returns to 0 except through deletion.
+// This is overly conservative but safe: it may cause unnecessary copies for nodes
+// that are no longer actually shared, but it never allows in-place modification of
+// a node that IS shared.
 func (tree *Tree) persist(p **Node) {
 	assert(*p != nil)
 	//
@@ -85,9 +92,6 @@ func (tree *Tree) persist(p **Node) {
 	tree.share((*p).l)
 	tree.share((*p).r)
 
-	// The resulting copy is a new allocation that has no other references to it,
-	// so we decrease the reference count of the original node by one.
-	//
 	// Allocate memory for a new node and copy the original values into it.
 	//
 	// Notice that this allocation uses the same arena as the original tree,

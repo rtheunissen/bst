@@ -25,7 +25,7 @@ func (tree *AVLWeakTopDown) dissolve(p **Node, x *list.Data) {
    tree.share((*p).l)
    tree.share((*p).r)
    *x = (*p).x
-   *p = tree.join((*p).l, (*p).r, (*p).s)
+   *p = tree.join((*p).l, (*p).r, (*p).s, (*p).s)
 }
 
 func (tree *AVLWeakTopDown) Update(i list.Size, x list.Data) {
@@ -266,10 +266,10 @@ func (tree *AVLWeakTopDown) Delete(i list.Position) (x list.Data) {
    return
 }
 
-func (tree AVLWeakTopDown) join(l, r *Node, sl list.Size) (p *Node) {
+func (tree AVLWeakTopDown) join(l, r *Node, sl, sr list.Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) <= tree.rank(r) {
+   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
       return tree.build(l, tree.deleteMin(&r), r, sl)
    } else {
       return tree.build(l, tree.deleteMax(&l, sl), r, sl-1)
@@ -286,7 +286,7 @@ func (tree AVLWeakTopDown) Join(other list.List) list.List {
          AVLBottomUp: AVLBottomUp{
             Tree: Tree{
                pool: tree.pool,
-               root: tree.join(l.root, r.root, l.size),
+               root: tree.join(l.root, r.root, l.size, r.size),
                size: l.size + r.size,
             },
          },

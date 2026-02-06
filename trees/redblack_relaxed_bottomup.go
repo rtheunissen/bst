@@ -39,10 +39,10 @@ func (tree *RedBlackRelaxedBottomUp) Update(i list.Size, x list.Data) {
    tree.Tree.Update(i, x)
 }
 
-func (tree RedBlackRelaxedBottomUp) join(l, r *Node, sl list.Size) (p *Node) {
+func (tree RedBlackRelaxedBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) < tree.rank(r) {
+   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
       return tree.build(l, tree.Tree.deleteMin(&r), r, sl)
    } else {
       return tree.build(l, tree.Tree.deleteMax(&l), r, sl-1)

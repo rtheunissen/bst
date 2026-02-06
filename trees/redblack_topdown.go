@@ -3,7 +3,7 @@ package trees
 import "github.com/rtheunissen/bst/types/list"
 
 type RedBlackTopDown struct {
-   RedBlackBottomUp // TODO: borrowing some things, implement top-down delete
+   RedBlackBottomUp
 }
 
 func (RedBlackTopDown) New() list.List {
@@ -198,7 +198,6 @@ func (tree *RedBlackTopDown) Insert(i list.Position, x list.Data) {
    tree.insert(&tree.root, i, x)
 }
 
-// TODO: Top-down split?
 func (tree *RedBlackTopDown) Split(i list.Position) (list.List, list.List) {
    l, r := tree.RedBlackBottomUp.Split(i)
    return &RedBlackTopDown{RedBlackBottomUp: *l.(*RedBlackBottomUp)},

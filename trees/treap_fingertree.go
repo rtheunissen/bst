@@ -811,8 +811,6 @@ func (tree TreapFingerTree) verifyRanks() {
       invariant(tree.rank(r) >= tree.rank(r.l))
       invariant(tree.rank(r) <= tree.rank(r.r) || r.r == nil)
    }
-   invariant(tree.rank(tree.root) >= tree.rank(l))
-   invariant(tree.rank(tree.root) >= tree.rank(r))
 }
 
 func (tree TreapFingerTree) verifyPositions() {

@@ -63,10 +63,10 @@ func (tree *AVLRelaxedBottomUp) build(l, p, r *Node, sl list.Size) *Node {
    }
 }
 
-func (tree AVLRelaxedBottomUp) join(l, r *Node, sl list.Size) (p *Node) {
+func (tree AVLRelaxedBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) <= tree.rank(r) {
+   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
       return tree.build(l, tree.Tree.deleteMin(&r), r, sl)
    } else {
       return tree.build(l, tree.Tree.deleteMax(&l), r, sl-1)
@@ -84,7 +84,7 @@ func (tree AVLRelaxedBottomUp) Join(other list.List) list.List {
       AVLBottomUp: AVLBottomUp{
          Tree: Tree{
             pool: tree.pool,
-            root: tree.join(l.root, r.root, l.size),
+            root: tree.join(l.root, r.root, l.size, r.size),
             size: l.size + r.size,
          },
       },

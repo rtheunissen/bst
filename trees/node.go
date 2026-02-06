@@ -13,7 +13,7 @@ type BinaryTreeNode interface {
 // Node
 //
 // A node is a simple structure that can be linked to other nodes. Each node has
-// a left and right outgoing link to other nodes. TODO: parent, binary tree
+// a left and right outgoing link to other nodes.
 // The node at the top of the tree with no parent is called the _root_ node.
 //
 //
@@ -97,7 +97,7 @@ func (p *Node) AveragePathLength() float64 {
 	return float64(totalDepth) / float64(totalNodes)
 }
 
-func (p Node) isLeaf() bool { // TODO conc can have its own that doesn't check p.r for nil
+func (p *Node) isLeaf() bool {
 	return p.l == nil && p.r == nil
 }
 
@@ -105,7 +105,6 @@ func (p *Node) MaximumPathLength() int {
 	return p.height()
 }
 
-// make global function?
 func (p *Node) height() int {
 	if p == nil {
 		return -1
@@ -123,7 +122,6 @@ func (p *Node) size() list.Size {
 }
 
 // Returns the number of nodes in the left subtree of p*.
-// TODO: This is not the case for all tree implementations - should this be up to the tree? Maybe mix it in?
 func (p *Node) sizeL() list.Size {
 	return p.s
 }
@@ -273,7 +271,6 @@ func deleteR(p *Node, i *list.Position) **Node {
 	return &p.r
 }
 
-// TODO: these are nuts
 func (tree *Tree) pathLeft(p ***Node) {
 	assert((**p).l != nil)
 	tree.persist(&(**p).l)

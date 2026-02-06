@@ -331,7 +331,7 @@ func (tree *Tree) Split(i list.Size) (Tree, Tree) {
    assert(i <= tree.size)
    tree.share(tree.root)
    l, r := tree.split(tree.root, i)
-   return Tree{pool: tree.pool, root: l, size: i}, // TODO: new arenas?
+   return Tree{pool: tree.pool, root: l, size: i},
           Tree{pool: tree.pool, root: r, size: tree.size - i}
 }
 
@@ -345,13 +345,13 @@ func (tree *Tree) Join(other Tree) Tree {
    }
 }
 
-func (tree Tree) joinWith(other Tree, join func(l, r *Node, sl list.Size) *Node) Tree {
+func (tree Tree) joinWith(other Tree, join func(l, r *Node, sl, sr list.Size) *Node) Tree {
    tree.share(tree.root)
    tree.share(other.root)
    return Tree{
-      pool: tree.pool, // TODO: remove?
+      pool: tree.pool,
       size: tree.size + other.size,
-      root: join(tree.root, other.root, tree.size),
+      root: join(tree.root, other.root, tree.size, other.size),
    }
 }
 

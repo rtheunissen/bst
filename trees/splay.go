@@ -207,15 +207,14 @@ func (tree Splay) split(p *Node, s, i list.Position) (l, r *Node) {
    return l, r
 }
 
-func (tree *Splay) Join(that list.List) list.List { // TODO check if benchmarks are affected by poointer receivers here
+func (tree *Splay) Join(that list.List) list.List {
    tree.share(tree.root)
    tree.share(that.(*Splay).root)
    return &Splay{Tree{pool: tree.pool, root: tree.join(tree.root, that.(*Splay).root), size: tree.Size() + that.Size()}}
 }
 
-// TODO: why always the max?
 func (tree *Splay) splayMax(l *Node) *Node {
-   if l == nil { // TODO is this ever nil?
+   if l == nil {
       return nil
    }
    tree.persist(&l)

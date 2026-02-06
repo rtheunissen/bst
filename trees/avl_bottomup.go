@@ -233,26 +233,29 @@ func (tree *AVLBottomUp) balanceInsertR(p *Node) *Node {
 
 func (tree *AVLBottomUp) Delete(i list.Position) (x list.Data) {
    assert(i < tree.size)
-   tree.root = tree.delete(tree.root, i, &x)
+   tree.root = tree.delete(tree.root, tree.size, i, &x)
    tree.size = tree.size - 1
    return x
 }
 
-func (tree *AVLBottomUp) delete(p *Node, i list.Position, x *list.Data) *Node {
-   if i == p.sizeL() {
+func (tree *AVLBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.Data) *Node {
+   sl := p.sizeL()
+   sr := p.sizeR(s)
+
+   if i == sl {
       *x = p.x
       defer tree.release(p)
       tree.share(p.l)
       tree.share(p.r)
-      return tree.join(p.l, p.r, p.s)
+      return tree.join(p.l, p.r, sl, sr)
    }
    tree.persist(&p)
-   if i < p.sizeL() {
-      p.s = p.sizeL() - 1
-      p.l = tree.delete(p.l, i, x)
+   if i < sl {
+      p.s = sl - 1
+      p.l = tree.delete(p.l, sl, i, x)
       return tree.balanceDeleteL(p)
    } else {
-      p.r = tree.delete(p.r, i - (p.sizeL() + 1), x)
+      p.r = tree.delete(p.r, sr, i - (sl + 1), x)
       return tree.balanceDeleteR(p)
    }
 }
@@ -635,10 +638,10 @@ func (tree *AVLBottomUp) joinR(l, r *Node, sl list.Size) (p *Node) {
 
 // Constructs a balanced tree with root `p` where all nodes in `l` are to the
 // left of `p` and all nodes in `r` to the right of `p`.
-func (tree *AVLBottomUp) join(l, r *Node, sl list.Size) (p *Node) {
+func (tree *AVLBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) < tree.rank(r) {
+   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
       return tree.joinL(l, r, sl)
    } else {
       return tree.joinR(l, r, sl)
@@ -651,7 +654,7 @@ func (tree *AVLBottomUp) Join(other list.List) list.List {
    return &AVLBottomUp{
       Tree: Tree{
          pool: tree.pool,
-         root: tree.join(tree.root, other.(*AVLBottomUp).root, tree.size),
+         root: tree.join(tree.root, other.(*AVLBottomUp).root, tree.size, other.(*AVLBottomUp).size),
          size: tree.size + other.(*AVLBottomUp).size,
       },
    }

@@ -25,27 +25,30 @@ func (tree *AVLWeakBottomUp) Clone() list.List {
    }
 }
 
-func (tree AVLWeakBottomUp) delete(p *Node, i list.Position, x *list.Data) *Node {
+func (tree AVLWeakBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.Data) *Node {
+   sl := p.sizeL()
+   sr := p.sizeR(s)
+
    if i == p.s {
       *x = p.x
       defer tree.release(p)
       tree.share(p.l)
       tree.share(p.r)
-      return tree.join(p.l, p.r, p.s)
+      return tree.join(p.l, p.r, sl, sr)
    }
    tree.persist(&p)
    if i < p.s {
       p.s = p.s - 1
-      p.l = tree.delete(p.l, i, x)
+      p.l = tree.delete(p.l, sl, i, x)
    } else {
-      p.r = tree.delete(p.r, i-p.s-1, x)
+      p.r = tree.delete(p.r, sr, i-p.s-1, x)
    }
    return tree.rebalanceOnDelete(p)
 }
 
 func (tree *AVLWeakBottomUp) Delete(i list.Position) (x list.Data) {
    assert(i < tree.size)
-   tree.root = tree.delete(tree.root, i, &x)
+   tree.root = tree.delete(tree.root, tree.size, i, &x)
    tree.size = tree.size - 1
    return
 }
@@ -54,7 +57,6 @@ func (tree *AVLWeakBottomUp) Insert(i list.Position, x list.Data) {
    tree.AVLBottomUp.Insert(i, x)
 }
 
-// TODO split into L and R?
 func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
    if p.isLeaf() && tree.isTwoTwo(p) {
       tree.demote(p)
@@ -137,7 +139,6 @@ func (tree AVLWeakBottomUp) extractMin(p *Node, min **Node) *Node {
    return tree.rebalanceOnDelete(p)
 }
 
-// TODO: rename to deleteMin and sort out conflicts with relaxed which embeds it
 func (tree AVLWeakBottomUp) extractMax(p *Node, max **Node) *Node {
    if p.r == nil {
       *max = tree.replacedByLeftSubtree(&p)
@@ -210,10 +211,10 @@ func (tree *AVLWeakBottomUp) build(l, p, r *Node, sl list.Size) *Node {
    }
 }
 
-func (tree AVLWeakBottomUp) join(l, r *Node, sl list.Size) (p *Node) {
+func (tree AVLWeakBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
   if l == nil { return r }
   if r == nil { return l }
-  if tree.rank(l) <= tree.rank(r) {
+  if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
      return tree.build(l, p, tree.extractMin(r, &p), sl)
   } else {
      return tree.build(tree.extractMax(l, &p), p, r, sl-1)
@@ -227,7 +228,7 @@ func (tree AVLWeakBottomUp) Join(that list.List) list.List {
       AVLBottomUp: AVLBottomUp{
          Tree: Tree{
             pool: tree.pool,
-            root: tree.join(tree.root, that.(*AVLWeakBottomUp).root, tree.size),
+            root: tree.join(tree.root, that.(*AVLWeakBottomUp).root, tree.size, that.(*AVLWeakBottomUp).size),
             size: tree.size + that.(*AVLWeakBottomUp).size,
          },
       },

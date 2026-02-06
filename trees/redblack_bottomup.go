@@ -26,25 +26,28 @@ func (tree RedBlackBottomUp) Verify() {
 func (tree *RedBlackBottomUp) Delete(i list.Position) (x list.Data) {
    assert(i < tree.size)
    tree.size = tree.size - 1
-   tree.root = tree.delete(tree.root, i, &x)
+   tree.root = tree.delete(tree.root, tree.size + 1, i, &x)
    return x
 }
 
-func (tree *RedBlackBottomUp) delete(p *Node, i list.Position, x *list.Data) *Node {
-   if i == p.sizeL() {
+func (tree *RedBlackBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.Data) *Node {
+   sl := p.sizeL()
+   sr := p.sizeR(s)
+
+   if i == sl {
       defer tree.release(p)
       tree.share(p.l)
       tree.share(p.r)
       *x = p.x
-      return tree.join(p.l, p.r, p.s)
+      return tree.join(p.l, p.r, sl, sr)
    }
    tree.persist(&p)
-   if i < p.sizeL() {
-      p.s = p.sizeL() - 1
-      p.l = tree.delete(p.l, i, x)
+   if i < sl {
+      p.s = sl - 1
+      p.l = tree.delete(p.l, sl, i, x)
       return tree.balanceDeleteL(p)
    } else {
-      p.r = tree.delete(p.r, i-p.s-1, x)
+      p.r = tree.delete(p.r, sr, i-p.s-1, x)
       return tree.balanceDeleteR(p)
    }
 }
@@ -277,10 +280,10 @@ func (tree *RedBlackBottomUp) build(l, p, r *Node, sl list.Size) *Node {
   }
 }
 
-func (tree *RedBlackBottomUp) join(l, r *Node, sl list.Size) (p *Node) {
+func (tree *RedBlackBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
   if l == nil { return r }
   if r == nil { return l }
-  if tree.rank(l) < tree.rank(r) {
+  if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
      return tree.build(l, p, tree.deleteMin(r, &p), sl)
   } else {
      return tree.build(tree.deleteMax(l, &p), p, r, sl-1)

@@ -19,7 +19,7 @@ func (Randomized) New() list.List {
 func (tree *Randomized) Clone() list.List {
    return &Randomized{
       Tree:   tree.Tree.Clone(),
-      Source: tree.Source, // TODO: a copy method? or clone?
+      Source: tree.Source,
    }
 }
 
@@ -119,7 +119,7 @@ func (tree *Randomized) Split(i list.Position) (list.List, list.List) {
           &Randomized{r, tree.Source}
 }
 
-func (tree *Randomized) Join(that list.List) list.List { // TODO check if benchmarks are affected by poointer receivers here
+func (tree *Randomized) Join(that list.List) list.List {
    l := tree
    r := that.(*Randomized)
    tree.share(l.root)

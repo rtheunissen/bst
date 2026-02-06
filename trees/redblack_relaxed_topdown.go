@@ -17,7 +17,6 @@ func (RedBlackRelaxedTopDown) New() list.List {
    return &RedBlackRelaxedTopDown{}
 }
 
-// TODO: make all clone syntax the exact same to avoid inconsistency in results
 func (tree *RedBlackRelaxedTopDown) Clone() list.List {
    return &RedBlackRelaxedTopDown{
       RedBlackTopDown: *tree.RedBlackTopDown.Clone().(*RedBlackTopDown),
@@ -40,10 +39,10 @@ func (tree *RedBlackRelaxedTopDown) Update(i list.Size, x list.Data) {
    tree.Tree.Update(i, x)
 }
 
-func (tree RedBlackRelaxedTopDown) join(l, r *Node, sl list.Size) (p *Node) {
+func (tree RedBlackRelaxedTopDown) join(l, r *Node, sl, sr list.Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) < tree.rank(r) {
+   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
       return tree.build(l, tree.RedBlackTopDown.Tree.deleteMin(&r), r, sl)
    } else {
       return tree.build(l, tree.RedBlackTopDown.Tree.deleteMax(&l), r, sl-1)

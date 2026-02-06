@@ -238,7 +238,6 @@ drawing:
    }
 }
 
-//TODO: is Draw ever _not_ stdout?
 func (tree Tree) Draw(writer io.Writer) {
    tree.root.Draw(writer)
 }

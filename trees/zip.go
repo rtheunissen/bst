@@ -20,7 +20,7 @@ func (Zip) New() list.List {
 func (tree *Zip) Clone() list.List {
    return &Zip{
       Tree:   tree.Tree.Clone(),
-      Source: tree.Source, // TODO: copy?
+      Source: tree.Source,
    }
 }
 

@@ -22,12 +22,15 @@ LBSTRelaxed                = 13
 WBSTBottomUp               = 14
 WBSTTopDown                = 15
 WBSTRelaxed                = 16
-TreapTopDown               = 17
-TreapFingerTree            = 18
-Randomized                 = 19
-Zip                        = 20
-Splay                      = 21
-Conc                       = 22
+TreapBottomUp              = 17
+TreapTopDown               = 18
+TreapFingerTree            = 19
+Randomized                 = 20
+Zip                        = 21
+Splay                      = 22
+Conc                       = 23
+LLRB                       = 24
+AA                         = 25
 
 
 RED       = "#F44336"
@@ -79,6 +82,7 @@ set style line WBSTBottomUp                 dashtype DASH_TYPE_NORMAL ps 1 lw 1 
 set style line WBSTTopDown                  dashtype DASH_TYPE_MIXED1 ps 1 lw 1   pt POINT_TRIANGLE_FILLED_NORTH pn 2 lc rgb CYAN
 set style line WBSTRelaxed                  dashtype DASH_TYPE_MIXED2 ps 1 lw 1   pt POINT_TRIANGLE_HOLLOW_SOUTH pn 2 lc rgb PINK
 
+set style line TreapBottomUp                dashtype DASH_TYPE_NORMAL ps 1 lw 1   pt POINT_PENTAGON_HOLLOW pn 2 lc rgb PURPLE
 set style line TreapTopDown                 dashtype DASH_TYPE_MIXED2 ps 1 lw 1   pt POINT_PENTAGON_HOLLOW pn 2 lc rgb GREEN
 set style line TreapFingerTree              dashtype DASH_TYPE_NORMAL ps 1 lw 1   pt POINT_LINE_VERTICAL   pn 2 lc rgb BLUE
 set style line Randomized                   dashtype DASH_TYPE_NORMAL ps 1 lw 1   pt POINT_CROSS           pn 2 lc rgb YELLOW
@@ -86,6 +90,9 @@ set style line Zip                          dashtype DASH_TYPE_NORMAL ps 1 lw 1 
 
 set style line Splay                        dashtype DASH_TYPE_NORMAL ps 1 lw 1   pt POINT_SQUARE_HOLLOW pn 2 lc rgb CYAN
 set style line Conc                         dashtype DASH_TYPE_DOTTED ps 1 lw 1   pt 20 pn 2 lc rgb BROWN
+
+set style line LLRB                         dashtype DASH_TYPE_DASHED ps 1 lw 1   pt POINT_DIAMOND_FILLED       pn 2 lc rgb RED
+set style line AA                           dashtype DASH_TYPE_DOTTED ps 1 lw 1   pt POINT_TRIANGLE_FILLED_NORTH pn 2 lc rgb ORANGE
 
 
 ##################################################################
@@ -102,10 +109,11 @@ RedBlackRelaxed        = "RedBlackBottomUp RedBlackTopDown RedBlackRelaxedBottom
 RankBalanced           = "AVLBottomUp AVLWeakTopDown AVLRelaxedBottomUp RedBlackRelaxedTopDown"
 WeightBalanced         = "LBSTBottomUp LBSTTopDown WBSTBottomUp WBSTTopDown"
 WeightBalancedRelaxed  = "LBSTBottomUp LBSTRelaxed WBSTBottomUp WBSTRelaxed"
-Probabilistic          = "TreapTopDown TreapFingerTree Randomized Zip"
+Probabilistic          = "TreapBottomUp TreapTopDown TreapFingerTree Randomized Zip"
 SelfAdjusting          = "Splay AVLBottomUp LBSTRelaxed TreapTopDown"
 Relaxed                = "AVLRelaxedBottomUp RedBlackRelaxedTopDown LBSTRelaxed WBSTRelaxed"
 Persistent             = "Conc Splay AVLBottomUp AVLRelaxedBottomUp RedBlackBottomUp LBSTBottomUp LBSTRelaxed TreapTopDown"
+Simplified             = "RedBlackBottomUp RedBlackTopDown LLRB AA"
 Conclusions            = "AVLTopDown AVLRelaxedBottomUp RedBlackBottomUp RedBlackRelaxedTopDown LBSTBottomUp LBSTRelaxed TreapTopDown Splay"
 
 GROUPS = "\
@@ -121,6 +129,7 @@ GROUPS = "\
     SelfAdjusting \
     Relaxed \
     Persistent \
+    Simplified \
     Conclusions \
     "
 

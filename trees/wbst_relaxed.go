@@ -44,7 +44,7 @@ func (tree *WBSTRelaxed) insert(p **Node, s list.Size, i list.Position, x list.D
          *p = tree.allocate(Node{x: x})
 
          // Check if a rebuild is required.
-         if height > tree.WeightBalance.maxHeight(tree.size) {
+         if height > tree.WeightBalance.maxHeight(tree.size + 1) {
             tree.rebuild(unbalancedNode, unbalancedSize)
          }
          return
@@ -73,11 +73,10 @@ func (tree *WBSTRelaxed) insert(p **Node, s list.Size, i list.Position, x list.D
    }
 }
 
-// Inserts a value `s` at position `i` in the tree.
 func (tree *WBSTRelaxed) Insert(i list.Position, x list.Data) {
    assert(i <= tree.size)
-   tree.size = tree.size + 1
    tree.insert(&tree.root, tree.size, i, x)
+   tree.size = tree.size + 1
 }
 
 func (tree *WBSTRelaxed) balance(p *Node, s list.Size) *Node {
@@ -111,7 +110,7 @@ func (tree *WBSTRelaxed) joinLr(l, r *Node, sl, sr list.Size) *Node {
    if r == nil {
       return l
    }
-   if tree.isBalanced(sr, sl) { // TODO: wrong way around?
+   if tree.isBalanced(sr, sl) {
       p := tree.deleteMax(&l)
       p.l = l
       p.r = r
@@ -127,7 +126,7 @@ func (tree *WBSTRelaxed) joinlR(l, r *Node, sl, sr list.Size) *Node {
    if l == nil {
       return r
    }
-   if tree.isBalanced(sl, sr) { // TODO: wrong way around?
+   if tree.isBalanced(sl, sr) {
       p := tree.deleteMin(&r)
       p.l = l
       p.r = r

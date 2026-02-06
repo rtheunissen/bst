@@ -57,13 +57,15 @@ func TestBST(t *testing.T) {
          &LBSTBottomUp{},
          &LBSTTopDown{},
          &LBSTRelaxed{},
-         &TreapTopDown{},
+         &TreapBottomUp{},
          &TreapTopDown{},
          &TreapFingerTree{},
          &Randomized{},
          &Zip{},
          &Splay{},
          &Conc{},
+         &LLRB{},
+         &AA{},
       },
    }.Run(t)
 }
