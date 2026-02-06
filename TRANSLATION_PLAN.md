@@ -207,16 +207,55 @@ Usage of x/text:
 ### Go-specific patterns to eliminate
 
 ```
-defer               → 14 call sites in tree delete paths (defer tree.release(...))
-generics            → 8 generic functions in utility/, 1 in trees/measurements.go
-interfaces          → list.List, list.Operation, BinaryTree, Balancer, Measurement,
-                      WeightBalance, Joiner, Distribution, Structure[T]
-struct embedding    → deep hierarchies (see above)
-struct methods      → 497 methods across trees/*.go
-type aliases        → list.Size, list.Position, list.Data all = uint64;
-                      trees.Size, trees.Data, trees.Rank all = uint64
-reflect             → utility/reflect.go: NameOf(), FuncName()
-build tags          → allocator_arena.go vs allocator_heap.go
+defer               → DONE: all 17 sites replaced with explicit calls
+generics            → DONE: monomorphized in core code (Must/Resolve remain in non-core)
+interfaces          → list.List (~100 uses), WeightBalance, Joiner, BinaryTree, Measurement
+struct embedding    → Tree is embedded in all 26 tree types; some types embed other types
+struct methods      → Node and RankBalanced methods converted to free functions;
+                      Tree methods (~65) remain as methods (convert during C translation)
+type aliases        → DONE: list.Size/Position/Data replaced with local aliases
+reflect             → utility/reflect.go: NameOf(), FuncName() (non-core, benchmark only)
+build tags          → allocator_arena.go vs allocator_heap.go (use #ifdef in C)
+random.Source       → DONE: replaced with concrete *xoshiro256
+```
+
+### Remaining Go patterns the C translator must handle
+
+```
+list.List interface   → 100 uses across 26 tree files (New, Clone, Join, Split signatures)
+                        In C: use a vtable struct of function pointers, or direct calls
+                        with a switch on tree type.
+
+Type assertions       → ~50 uses like `other.(*AVLBottomUp)` in Join/Split methods.
+                        In C: the tree type is known at compile time, cast directly.
+
+WeightBalance iface   → Embedded in WBST/LBST types. 3 methods (isBalanced, singleRotation,
+                        maxHeight). In C: inline as direct function calls per concrete type
+                        (ThreeTwo, LogSize, LogWeight). Skip Rational (uses math/big + map).
+
+Joiner interface      → Used by JoinBased. 2 methods. In C: inline into each concrete type.
+
+Named return values   → ~20 functions use `(p *Node)` or `(l, r *Node)` named returns.
+                        In C: use local variables.
+
+max/min builtins      → ~8 uses. In C: use a macro or inline function.
+
+Closures              → `inorder(p, visit func(Data))` passes a closure. In C: use a
+                        function pointer with context: `void (*visit)(uint64, void*)`.
+
+append/slices         → Used only in verification (InteriorHeights, ExteriorHeights,
+                        NodesPerLevel) and balancers (DSW). In C: use dynamic arrays.
+
+Persistence toggle    → The Makefile uses find-replace to comment/uncomment persist/share/
+                        release calls. In C: use `#ifdef PERSISTENT` guards.
+
+Build tags            → allocator_arena.go vs allocator_heap.go. In C: use `#ifdef ARENA`.
+
+math package          → Used in avl.go, redblack.go, balancers.go, wbst.go for Log2, Log.
+                        In C: use <math.h> equivalents.
+
+math/big + map        → Only in Rational (wbst.go). Skip entirely for C translation.
+                        Benchmarks use ThreeTwo, LogSize, LogWeight only.
 ```
 
 ### What does NOT need to change
