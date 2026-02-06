@@ -35,11 +35,12 @@ func (tree *RedBlackBottomUp) delete(p *Node, s list.Size, i list.Position, x *l
    sr := p.sizeR(s)
 
    if i == sl {
-      defer tree.release(p)
       tree.share(p.l)
       tree.share(p.r)
       *x = p.x
-      return tree.join(p.l, p.r, sl, sr)
+      result := tree.join(p.l, p.r, sl, sr)
+      tree.release(p)
+      return result
    }
    tree.persist(&p)
    if i < sl {

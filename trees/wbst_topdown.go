@@ -174,11 +174,12 @@ func (tree *WBSTTopDown) delete(p **Node, s list.Size, i list.Position, x **Node
       assert(tree.isBalanced(sr, sl))
 
       if i == (*p).s {
-         defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
-         *x = *p
-         *p = tree.join((*p).l, (*p).r, sl, sr)
+         old := *p
+         tree.share(old.l)
+         tree.share(old.r)
+         *x = old
+         *p = tree.join(old.l, old.r, sl, sr)
+         tree.release(old)
          return
       }
       tree.persist(p)

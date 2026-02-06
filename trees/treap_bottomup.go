@@ -60,10 +60,11 @@ func (tree *TreapBottomUp) Insert(i list.Position, x list.Data) {
 func (tree *TreapBottomUp) delete(p *Node, i list.Position, x *list.Data) *Node {
    if i == p.s {
       *x = p.x
-      defer tree.release(p)
       tree.share(p.l)
       tree.share(p.r)
-      return tree.join(p.l, p.r, p.s)
+      result := tree.join(p.l, p.r, p.s)
+      tree.release(p)
+      return result
    }
    tree.persist(&p)
    if i < p.s {

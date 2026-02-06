@@ -101,11 +101,12 @@ func (tree *TreapTopDown) build(l, p, r *Node, sl, sr list.Size) (root *Node) {
 func (tree TreapTopDown) delete(p **Node, i list.Position, x *list.Data) {
    for {
       if i == (*p).s {
-         defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
-         *x = (*p).x
-         *p = tree.join((*p).l, (*p).r, (*p).s)
+         old := *p
+         tree.share(old.l)
+         tree.share(old.r)
+         *x = old.x
+         *p = tree.join(old.l, old.r, old.s)
+         tree.release(old)
          return
       }
       tree.persist(p)

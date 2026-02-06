@@ -255,10 +255,9 @@ func (tree *WBSTBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.
    assert(tree.isBalanced(sr, sl))
 
    if i == p.s {
-      defer tree.release(p)
       *x = p.x
-      if p.l == nil { return p.r }
-      if p.r == nil { return p.l }
+      if p.l == nil { tree.release(p); return p.r }
+      if p.r == nil { tree.release(p); return p.l }
 
       tree.persist(&p)
       if sl > sr {

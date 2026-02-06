@@ -171,9 +171,10 @@ func (tree *Splay) Insert(i list.Position, x list.Data) {
 func (tree *Splay) Delete(i list.Position) (x list.Data) {
    assert(i < tree.size)
    tree.Splay(i)
-   defer tree.release(tree.root)
-   x = tree.root.x
-   tree.root = tree.join(tree.root.l, tree.root.r)
+   old := tree.root
+   x = old.x
+   tree.root = tree.join(old.l, old.r)
+   tree.release(old)
    tree.size--
    return
 }

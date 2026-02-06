@@ -525,30 +525,33 @@ func (tree *TreapFingerTree) Insert(i list.Position, x list.Data) {
 }
 
 func (tree *TreapFingerTree) deleteFirst(x *list.Data) {
-   defer tree.release(tree.root.l)
-   *x = tree.root.l.x
+   old := tree.root.l
+   *x = old.x
    tree.persist(&tree.root)
-   tree.share(tree.root.l.r)
-   tree.root.l = tree.reverseL(tree.root.l.r, tree.root.l.l, tree.root.l.s)
+   tree.share(old.r)
+   tree.root.l = tree.reverseL(old.r, old.l, old.s)
    tree.root.s--
+   tree.release(old)
 }
 
 func (tree *TreapFingerTree) deleteLast(x *list.Data) {
-   defer tree.release(tree.root.r)
-   *x = tree.root.r.x
+   old := tree.root.r
+   *x = old.x
    tree.persist(&tree.root)
-   tree.share(tree.root.r.l)
-   tree.root.r = tree.reverseR(tree.root.r.l, tree.root.r.r)
+   tree.share(old.l)
+   tree.root.r = tree.reverseR(old.l, old.r)
+   tree.release(old)
 }
 
 func (tree TreapFingerTree) delete(p **Node, i list.Position, x *list.Data) {
    for {
       if i == (*p).s {
-         defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
-         *x = (*p).x
-         *p = tree.join((*p).l, (*p).r, (*p).s)
+         old := *p
+         tree.share(old.l)
+         tree.share(old.r)
+         *x = old.x
+         *p = tree.join(old.l, old.r, old.s)
+         tree.release(old)
          return
       }
       tree.persist(p)
@@ -579,7 +582,6 @@ func (tree *TreapFingerTree) deleteFromHead(i list.Position, x *list.Data) {
       return
    }
    g := p.l
-   defer tree.release(g)
    tree.share(p.r)
    tree.share(g.r)
    *x = g.x
@@ -587,6 +589,7 @@ func (tree *TreapFingerTree) deleteFromHead(i list.Position, x *list.Data) {
    p.l = g.l
    p.s = p.s + g.s
    tree.rotateDownL(p)
+   tree.release(g)
 }
 
 func (tree *TreapFingerTree) join(l, r *Node, sl list.Size) (root *Node) {
@@ -637,7 +640,6 @@ func (tree *TreapFingerTree) deleteFromTail(i list.Position, x *list.Data) {
       return
    }
    g := p.r
-   defer tree.release(g)
    tree.share(g.l)
    tree.share(p.l)
    *x = g.x
@@ -645,6 +647,7 @@ func (tree *TreapFingerTree) deleteFromTail(i list.Position, x *list.Data) {
    p.r = g.r
    p.s = p.s + g.s
    tree.rotateDownR(p)
+   tree.release(g)
 }
 
 func (tree *TreapFingerTree) reverseL2(p *Node, g *Node) *Node {

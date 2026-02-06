@@ -21,11 +21,12 @@ func (tree *AVLWeakTopDown) Clone() list.List {
 }
 
 func (tree *AVLWeakTopDown) dissolve(p **Node, x *list.Data) {
-   defer tree.release(*p)
-   tree.share((*p).l)
-   tree.share((*p).r)
-   *x = (*p).x
-   *p = tree.join((*p).l, (*p).r, (*p).s, (*p).s)
+   old := *p
+   tree.share(old.l)
+   tree.share(old.r)
+   *x = old.x
+   *p = tree.join(old.l, old.r, old.s, old.s)
+   tree.release(old)
 }
 
 func (tree *AVLWeakTopDown) Update(i list.Size, x list.Data) {

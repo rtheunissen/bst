@@ -31,10 +31,11 @@ func (tree AVLWeakBottomUp) delete(p *Node, s list.Size, i list.Position, x *lis
 
    if i == p.s {
       *x = p.x
-      defer tree.release(p)
       tree.share(p.l)
       tree.share(p.r)
-      return tree.join(p.l, p.r, sl, sr)
+      result := tree.join(p.l, p.r, sl, sr)
+      tree.release(p)
+      return result
    }
    tree.persist(&p)
    if i < p.s {

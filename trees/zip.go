@@ -128,11 +128,12 @@ func (tree *Zip) zip(l, r *Node, sl list.Size) (root *Node) {
 func (tree *Zip) delete(p **Node, i list.Position, x *list.Data) {
    for {
       if i == (*p).s {
-         defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
-         *x = (*p).x
-         *p = tree.zip((*p).l, (*p).r, (*p).s)
+         old := *p
+         tree.share(old.l)
+         tree.share(old.r)
+         *x = old.x
+         *p = tree.zip(old.l, old.r, old.s)
+         tree.release(old)
          return
       }
       tree.persist(p)

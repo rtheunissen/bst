@@ -52,11 +52,12 @@ func (tree *Randomized) insert(p **Node, s list.Size, i list.Position, x list.Da
 func (tree Randomized) delete(p **Node, s list.Size, i list.Position, x *list.Data) {
    for {
       if i == (*p).s {
-         defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
-         *x = (*p).x
-         *p = tree.join((*p).l, (*p).r, (*p).s, s - (*p).s - 1)
+         old := *p
+         tree.share(old.l)
+         tree.share(old.r)
+         *x = old.x
+         *p = tree.join(old.l, old.r, old.s, s - old.s - 1)
+         tree.release(old)
          return
       }
       tree.persist(p)

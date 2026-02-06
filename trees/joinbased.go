@@ -36,10 +36,11 @@ func (tree JoinBased) delete(p *Node, i list.Position, s Size, x *Data) *Node {
    sr := s - p.s - 1
    if i == p.s {
       *x = p.x
-      defer tree.release(p)
       tree.share(p.l)
       tree.share(p.r)
-      return tree.Tree.join(p.l, p.r, sl, sr)
+      result := tree.Tree.join(p.l, p.r, sl, sr)
+      tree.release(p)
+      return result
    }
    tree.persist(&p)
    if i < p.s {
