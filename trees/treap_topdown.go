@@ -52,7 +52,7 @@ func (tree *TreapTopDown) Clone() list.List {
 //                                 ○         (x)
 //
 //
-func (tree *TreapTopDown) join(l, r *Node, sl list.Size) (root *Node) {
+func (tree *TreapTopDown) join(l, r *Node, sl Size) (root *Node) {
    p := &root
    for {
       if l == nil { *p = r; return }
@@ -81,7 +81,7 @@ func (tree *TreapTopDown) rank(p *Node) uint64 {
       return p.y
    }
 }
-func (tree *TreapTopDown) build(l, p, r *Node, sl, sr list.Size) (root *Node) {
+func (tree *TreapTopDown) build(l, p, r *Node, sl, sr Size) (root *Node) {
    if tree.rank(p) >= tree.rank(l) && tree.rank(p) >= tree.rank(r) {
       p.l = l
       p.r = r
@@ -98,7 +98,7 @@ func (tree *TreapTopDown) build(l, p, r *Node, sl, sr list.Size) (root *Node) {
    }
 }
 
-func (tree TreapTopDown) delete(p **Node, i list.Position, x *list.Data) {
+func (tree TreapTopDown) delete(p **Node, i Position, x *Data) {
    for {
       if i == (*p).s {
          old := *p
@@ -120,7 +120,7 @@ func (tree TreapTopDown) delete(p **Node, i list.Position, x *list.Data) {
    }
 }
 
-func (tree *TreapTopDown) insert(p **Node, i list.Position, x list.Data) {
+func (tree *TreapTopDown) insert(p **Node, i Position, x Data) {
    y := tree.Source.Uint64()
    for {
       if tree.rank(*p) <= y {
@@ -137,32 +137,32 @@ func (tree *TreapTopDown) insert(p **Node, i list.Position, x list.Data) {
    }
 }
 
-func (tree *TreapTopDown) Insert(i list.Position, x list.Data) {
+func (tree *TreapTopDown) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.insert(&tree.root, i, x)
    tree.size++
 }
 
-func (tree *TreapTopDown) Delete(i list.Position) (x list.Data) {
+func (tree *TreapTopDown) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.delete(&tree.root, i, &x)
    tree.size--
    return
 }
 
-func (tree TreapTopDown) Split(i list.Position) (list.List, list.List) {
+func (tree TreapTopDown) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    l, r := tree.Tree.Split(i)
    return &TreapTopDown{Tree: l, Source: tree.Source},
           &TreapTopDown{Tree: r, Source: tree.Source}
 }
 
-func (tree *TreapTopDown) Select(i list.Size) list.Data {
+func (tree *TreapTopDown) Select(i Size) Data {
    assert(i < tree.size)
    return tree.lookup(tree.root, i)
 }
 
-func (tree *TreapTopDown) Update(i list.Size, x list.Data) {
+func (tree *TreapTopDown) Update(i Size, x Data) {
    assert(i < tree.size)
    tree.persist(&tree.root)
    tree.update(tree.root, i, x)

@@ -1,7 +1,6 @@
 package trees
 
 import (
-   "github.com/rtheunissen/bst/types/list"
    "github.com/rtheunissen/bst/utility"
 )
 
@@ -9,7 +8,7 @@ type AVLWeak struct {
    RankBalanced
 }
 
-func (tree AVLWeak) verifyHeight(root *Node, size list.Size) {
+func (tree AVLWeak) verifyHeight(root *Node, size Size) {
    if root == nil {
       return
    }

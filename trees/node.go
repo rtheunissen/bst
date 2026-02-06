@@ -1,13 +1,10 @@
 package trees
 
-import (
-	"github.com/rtheunissen/bst/types/list"
-)
 
 type BinaryTreeNode interface {
 	Height() int
-	TotalInternalPathLength(list.Size) list.Size
-	TotalReferenceCount() list.Size
+	TotalInternalPathLength(Size) Size
+	TotalReferenceCount() Size
 }
 
 // Node
@@ -63,6 +60,8 @@ type Rank = uint64
 
 type Size = uint64
 
+type Position = uint64
+
 type Data = uint64
 
 type Node struct {
@@ -113,7 +112,7 @@ func (p *Node) height() int {
 }
 
 // Counts the number of nodes reachable from p*, including itself.
-func (p *Node) size() list.Size {
+func (p *Node) size() Size {
 	if p == nil {
 		return 0
 	} else {
@@ -122,16 +121,16 @@ func (p *Node) size() list.Size {
 }
 
 // Returns the number of nodes in the left subtree of p*.
-func (p *Node) sizeL() list.Size {
+func (p *Node) sizeL() Size {
 	return p.s
 }
 
 // Returns the number of nodes in the right subtree of p*, given the s of p*.
-func (p *Node) sizeR(s list.Size) list.Size {
+func (p *Node) sizeR(s Size) Size {
 	return s - p.s - 1
 }
 
-func (p *Node) inorder(visit func(list.Data)) {
+func (p *Node) inorder(visit func(Data)) {
 	if p == nil {
 		return
 	}
@@ -170,7 +169,7 @@ func (p *Node) rotateRL() *Node {
 	return p.rotateL()
 }
 
-func (tree Tree) verifySize(p *Node, s list.Size) list.Size {
+func (tree Tree) verifySize(p *Node, s Size) Size {
 	if p == nil {
 		return 0
 	}
@@ -234,7 +233,7 @@ func (tree *Tree) deleteMax(p **Node) (max *Node) {
 	return
 }
 
-func (tree *Tree) update(p *Node, i list.Position, x list.Data) {
+func (tree *Tree) update(p *Node, i Position, x Data) {
 	for {
 		if i == p.s {
 			p.x = x
@@ -256,7 +255,7 @@ func insertL(p *Node) **Node {
 	return &p.l
 }
 
-func insertR(p *Node, i *list.Position) **Node {
+func insertR(p *Node, i *Position) **Node {
 	*i = *i - p.s - 1
 	return &p.r
 }
@@ -266,7 +265,7 @@ func deleteL(p *Node) **Node {
 	return &p.l
 }
 
-func deleteR(p *Node, i *list.Position) **Node {
+func deleteR(p *Node, i *Position) **Node {
 	*i = *i - p.s - 1
 	return &p.r
 }
@@ -276,42 +275,42 @@ func (tree *Tree) pathLeft(p ***Node) {
 	tree.persist(&(**p).l)
 	*p = insertL(**p)
 }
-func (tree *Tree) pathRight(p ***Node, i *list.Position) {
+func (tree *Tree) pathRight(p ***Node, i *Position) {
 	assert((**p).r != nil)
 	tree.persist(&(**p).r)
 	*p = insertR(**p, i)
 }
-func (tree *Tree) attach(p **Node, x list.Data) {
+func (tree *Tree) attach(p **Node, x Data) {
 	*p = tree.allocate(Node{x: x})
 }
-func (tree *Tree) attachL(p *Node, x list.Data) {
+func (tree *Tree) attachL(p *Node, x Data) {
 	p.s++
 	p.l = tree.allocate(Node{x: x})
 }
 
-func (tree *Tree) attachLL(p *Node, x list.Data) {
+func (tree *Tree) attachLL(p *Node, x Data) {
 	tree.persist(&p.l)
 	p.s++
 	p.l.s++
 	p.l.l = tree.allocate(Node{x: x})
 }
-func (tree *Tree) attachRR(p *Node, x list.Data) {
+func (tree *Tree) attachRR(p *Node, x Data) {
 	tree.persist(&p.r)
 	p.r.r = tree.allocate(Node{x: x})
 }
-func (tree *Tree) attachLR(p *Node, x list.Data) {
+func (tree *Tree) attachLR(p *Node, x Data) {
 	tree.persist(&p.l)
 	p.s++
 	p.l.r = tree.allocate(Node{x: x})
 }
 
-func (tree *Tree) attachRL(p *Node, x list.Data) {
+func (tree *Tree) attachRL(p *Node, x Data) {
 	tree.persist(&p.r)
 	p.r.s++
 	p.r.l = tree.allocate(Node{x: x})
 }
 
-func (tree *Tree) attachR(p *Node, x list.Data) {
+func (tree *Tree) attachR(p *Node, x Data) {
 	p.r = tree.allocate(Node{x: x})
 }
 

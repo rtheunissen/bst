@@ -19,7 +19,7 @@ func (tree *LBSTRelaxed) Clone() list.List {
       *tree.WBSTRelaxed.Clone().(*WBSTRelaxed),
    }
 }
-func (tree LBSTRelaxed) Split(i list.Position) (list.List, list.List) {
+func (tree LBSTRelaxed) Split(i Position) (list.List, list.List) {
    l, r := tree.WBSTRelaxed.Split(i)
    return &LBSTRelaxed{*l.(*WBSTRelaxed)},
           &LBSTRelaxed{*r.(*WBSTRelaxed)}

@@ -24,11 +24,11 @@ func (tree *AVLRelaxedBottomUp) Clone() list.List {
    }
 }
 
-func (tree *AVLRelaxedBottomUp) Delete(i list.Position) list.Data {
+func (tree *AVLRelaxedBottomUp) Delete(i Position) Data {
  return tree.Tree.Delete(i)
 }
 
-func (tree AVLRelaxedBottomUp) buildL(l *Node, p *Node, r *Node, sl list.Size) (root *Node) {
+func (tree AVLRelaxedBottomUp) buildL(l *Node, p *Node, r *Node, sl Size) (root *Node) {
    if tree.rank(l) - tree.rank(r) <= 1 {
       p.l = l
       p.r = r
@@ -41,7 +41,7 @@ func (tree AVLRelaxedBottomUp) buildL(l *Node, p *Node, r *Node, sl list.Size) (
    return tree.balanceInsertR(l)
 }
 
-func (tree AVLRelaxedBottomUp) buildR(l *Node, p *Node, r *Node, sl list.Size) (root *Node) {
+func (tree AVLRelaxedBottomUp) buildR(l *Node, p *Node, r *Node, sl Size) (root *Node) {
    if tree.rank(r) - tree.rank(l) <= 1 {
       p.l = l
       p.r = r
@@ -55,7 +55,7 @@ func (tree AVLRelaxedBottomUp) buildR(l *Node, p *Node, r *Node, sl list.Size) (
    return tree.balanceInsertL(r)
 }
 
-func (tree *AVLRelaxedBottomUp) build(l, p, r *Node, sl list.Size) *Node {
+func (tree *AVLRelaxedBottomUp) build(l, p, r *Node, sl Size) *Node {
    if tree.rank(l) <= tree.rank(r) {
       return tree.buildR(l, p, r, sl)
    } else {
@@ -63,7 +63,7 @@ func (tree *AVLRelaxedBottomUp) build(l, p, r *Node, sl list.Size) *Node {
    }
 }
 
-func (tree AVLRelaxedBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
+func (tree AVLRelaxedBottomUp) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
    if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
@@ -91,7 +91,7 @@ func (tree AVLRelaxedBottomUp) Join(other list.List) list.List {
    }
 }
 
-func (tree AVLRelaxedBottomUp) split(p *Node, i, s list.Size) (l, r *Node) {
+func (tree AVLRelaxedBottomUp) split(p *Node, i, s Size) (l, r *Node) {
    if p == nil {
       return
    }
@@ -110,7 +110,7 @@ func (tree AVLRelaxedBottomUp) split(p *Node, i, s list.Size) (l, r *Node) {
    return l, r
 }
 
-func (tree AVLRelaxedBottomUp) Split(i list.Position) (list.List, list.List) {
+func (tree AVLRelaxedBottomUp) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    tree.share(tree.root)
    l, r := tree.split(tree.root, i, tree.size)

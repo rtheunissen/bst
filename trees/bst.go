@@ -1,51 +1,50 @@
 package trees
 
 import (
-	"github.com/rtheunissen/bst/types/list"
 	"github.com/rtheunissen/bst/utility/random"
 )
 
 type BinaryTree interface {
    Root() *Node
-   Size() list.Size
+   Size() Size
 
    InteriorHeightsAlongTheSpines() [2][]int
    ExteriorHeightsAlongTheSpines() [2][]int
-   NodesPerLevel() [2][]list.Size
+   NodesPerLevel() [2][]Size
 }
 
 type Tree struct {
    pool Allocator
    root *Node
-   size list.Size
+   size Size
 }
 
 // Deletes the node at position `i` from the tree.
 // Returns the data that was in the deleted value.
-func (tree *Tree) Delete(i list.Position) list.Data {
+func (tree *Tree) Delete(i Position) Data {
    assert(i < tree.size)
    x := tree.delete(&tree.root, tree.size, i)
    tree.size--
    return x
 }
-func (tree *Tree) DeleteRoot() list.Data {
+func (tree *Tree) DeleteRoot() Data {
    x := tree.delete(&tree.root, tree.size, tree.root.s)
    tree.size--
    return x
 }
 
-func (tree *Tree) Select(i list.Size) list.Data {
+func (tree *Tree) Select(i Size) Data {
    assert(i < tree.size)
    return tree.lookup(tree.root, i)
 }
 
-func (tree *Tree) Update(i list.Size, x list.Data) {
+func (tree *Tree) Update(i Size, x Data) {
    assert(i < tree.size)
    tree.persist(&tree.root)
    tree.update(tree.root, i, x)
 }
 
-func (tree *Tree) insert(p **Node, s list.Size, i list.Position, x list.Data) {
+func (tree *Tree) insert(p **Node, s Size, i Position, x Data) {
    for {
       if *p == nil {
          *p = tree.allocate(Node{x: x})
@@ -64,12 +63,12 @@ func (tree *Tree) insert(p **Node, s list.Size, i list.Position, x list.Data) {
    }
 }
 
-func (tree *Tree) Insert(i list.Size, x list.Data) {
+func (tree *Tree) Insert(i Size, x Data) {
    tree.insert(&tree.root, tree.size, i, x)
    tree.size++
 }
 
-func (tree Tree) Size() list.Size {
+func (tree Tree) Size() Size {
    return tree.size
 }
 
@@ -77,7 +76,7 @@ func (tree Tree) Root() *Node {
    return tree.root
 }
 
-func (tree Tree) lookup(p *Node, i list.Size) list.Data {
+func (tree Tree) lookup(p *Node, i Size) Data {
    for {
       if i == p.s {
          return p.x
@@ -91,11 +90,11 @@ func (tree Tree) lookup(p *Node, i list.Size) list.Data {
    }
 }
 
-func (tree Tree) Each(visit func(list.Data)) {
+func (tree Tree) Each(visit func(Data)) {
    tree.root.inorder(visit)
 }
 
-func (tree *Tree) join(l, r *Node, sl, sr list.Size) *Node {
+func (tree *Tree) join(l, r *Node, sl, sr Size) *Node {
   if l == nil {
      return r
   }
@@ -152,7 +151,7 @@ func (tree *Tree) partition(p *Node, i uint64) *Node {
    return p
 }
 
-func (tree *Tree) dissolveHibbard(p *Node, s list.Size) *Node {
+func (tree *Tree) dissolveHibbard(p *Node, s Size) *Node {
    if p.r == nil {
       return p.l
    }
@@ -164,7 +163,7 @@ func (tree *Tree) dissolveHibbard(p *Node, s list.Size) *Node {
    return r
 }
 
-func (tree *Tree) dissolveRandom(p *Node, s list.Size) *Node {
+func (tree *Tree) dissolveRandom(p *Node, s Size) *Node {
    if p.l == nil {
       return p.r
    }
@@ -188,7 +187,7 @@ func (tree *Tree) dissolveRandom(p *Node, s list.Size) *Node {
    }
 }
 
-func (tree *Tree) dissolveSymmetric(p *Node, s list.Size) *Node {
+func (tree *Tree) dissolveSymmetric(p *Node, s Size) *Node {
    if p.l == nil {
       return p.r
    }
@@ -212,7 +211,7 @@ func (tree *Tree) dissolveSymmetric(p *Node, s list.Size) *Node {
    }
 }
 
-func (tree *Tree) dissolveKnuth(p *Node, s list.Size) *Node {
+func (tree *Tree) dissolveKnuth(p *Node, s Size) *Node {
    if p.l == nil {
       return p.r
    }
@@ -227,7 +226,7 @@ func (tree *Tree) dissolveKnuth(p *Node, s list.Size) *Node {
    return l
 }
 
-func (tree *Tree) dissolvePreferSmallerSubtree(p *Node, s list.Size) *Node {
+func (tree *Tree) dissolvePreferSmallerSubtree(p *Node, s Size) *Node {
    if p.l == nil {
       return p.r
    }
@@ -251,7 +250,7 @@ func (tree *Tree) dissolvePreferSmallerSubtree(p *Node, s list.Size) *Node {
    }
 }
 
-func (tree *Tree) dissolvePreferLargerSubtree(p *Node, s list.Size) *Node {
+func (tree *Tree) dissolvePreferLargerSubtree(p *Node, s Size) *Node {
    if p.l == nil {
       return p.r
    }
@@ -275,7 +274,7 @@ func (tree *Tree) dissolvePreferLargerSubtree(p *Node, s list.Size) *Node {
    }
 }
 
-func (tree *Tree) dissolve(p *Node, s list.Size) *Node {
+func (tree *Tree) dissolve(p *Node, s Size) *Node {
    //return tree.dissolveHibbard(p, s)
    //return tree.dissolveKnuth(p, s)
    //return tree.dissolveSymmetric(p, s)
@@ -284,7 +283,7 @@ func (tree *Tree) dissolve(p *Node, s list.Size) *Node {
    return tree.dissolvePreferLargerSubtree(p, s)
 }
 
-func (tree *Tree) delete(p **Node, s list.Size, i list.Size) (x list.Data) {
+func (tree *Tree) delete(p **Node, s Size, i Size) (x Data) {
    for {
       tree.persist(p)
       if i == (*p).s {
@@ -327,7 +326,7 @@ func (tree *Tree) split(p *Node, i uint64) (*Node, *Node) {
    return n.r, n.l
 }
 
-func (tree *Tree) Split(i list.Size) (Tree, Tree) {
+func (tree *Tree) Split(i Size) (Tree, Tree) {
    assert(i <= tree.size)
    tree.share(tree.root)
    l, r := tree.split(tree.root, i)
@@ -345,7 +344,7 @@ func (tree *Tree) Join(other Tree) Tree {
    }
 }
 
-func (tree Tree) joinWith(other Tree, join func(l, r *Node, sl, sr list.Size) *Node) Tree {
+func (tree Tree) joinWith(other Tree, join func(l, r *Node, sl, sr Size) *Node) Tree {
    tree.share(tree.root)
    tree.share(other.root)
    return Tree{
@@ -405,7 +404,7 @@ func (tree Tree) ExteriorHeightsAlongTheSpines() (h [2][]int) {
    return
 }
 
-func (tree Tree) countNodesPerLevel(p *Node, counter *[]list.Size, level int) {
+func (tree Tree) countNodesPerLevel(p *Node, counter *[]Size, level int) {
    if p == nil {
       return
    }
@@ -418,7 +417,7 @@ func (tree Tree) countNodesPerLevel(p *Node, counter *[]list.Size, level int) {
    tree.countNodesPerLevel(p.r, counter, level+1)
 }
 
-func (tree Tree) NodesPerLevel() (weights [2][]list.Size) {
+func (tree Tree) NodesPerLevel() (weights [2][]Size) {
    if tree.root == nil {
       return
    }

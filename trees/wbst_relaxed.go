@@ -25,13 +25,13 @@ func (tree *WBSTRelaxed) Verify() {
    tree.verifySizes()
 }
 
-func (tree *WBSTRelaxed) Delete(i list.Position) list.Data {
+func (tree *WBSTRelaxed) Delete(i Position) Data {
    return tree.Tree.Delete(i)
 }
 
-func (tree *WBSTRelaxed) insert(p **Node, s list.Size, i list.Position, x list.Data) {
+func (tree *WBSTRelaxed) insert(p **Node, s Size, i Position, x Data) {
    var unbalancedNode **Node    // An unbalanced node along the insertion path.
-   var unbalancedSize list.Size // The size of the unbalanced node.
+   var unbalancedSize Size // The size of the unbalanced node.
    var height int               // The height of the insertion so far.
    //
    // Search with increasing height until the end of the path is reached.
@@ -73,13 +73,13 @@ func (tree *WBSTRelaxed) insert(p **Node, s list.Size, i list.Position, x list.D
    }
 }
 
-func (tree *WBSTRelaxed) Insert(i list.Position, x list.Data) {
+func (tree *WBSTRelaxed) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.insert(&tree.root, tree.size, i, x)
    tree.size = tree.size + 1
 }
 
-func (tree *WBSTRelaxed) balance(p *Node, s list.Size) *Node {
+func (tree *WBSTRelaxed) balance(p *Node, s Size) *Node {
    if s < 4 {
       return p
    }
@@ -92,11 +92,11 @@ func (tree *WBSTRelaxed) balance(p *Node, s list.Size) *Node {
    return p
 }
 
-func (tree *WBSTRelaxed) rebuild(p **Node, s list.Size) {
+func (tree *WBSTRelaxed) rebuild(p **Node, s Size) {
    *p = tree.balance(*p, s)
 }
 
-func (tree *WBSTRelaxed) Split(i list.Size) (list.List, list.List) {
+func (tree *WBSTRelaxed) Split(i Size) (list.List, list.List) {
    assert(i <= tree.size)
 
    tree.share(tree.root)
@@ -106,7 +106,7 @@ func (tree *WBSTRelaxed) Split(i list.Size) (list.List, list.List) {
           &WBSTRelaxed{WeightBalance: tree.WeightBalance, Tree: Tree{pool: tree.pool, root: r, size: tree.size - i}}
 }
 
-func (tree *WBSTRelaxed) joinLr(l, r *Node, sl, sr list.Size) *Node {
+func (tree *WBSTRelaxed) joinLr(l, r *Node, sl, sr Size) *Node {
    if r == nil {
       return l
    }
@@ -122,7 +122,7 @@ func (tree *WBSTRelaxed) joinLr(l, r *Node, sl, sr list.Size) *Node {
    return l
 }
 
-func (tree *WBSTRelaxed) joinlR(l, r *Node, sl, sr list.Size) *Node {
+func (tree *WBSTRelaxed) joinlR(l, r *Node, sl, sr Size) *Node {
    if l == nil {
       return r
    }
@@ -139,7 +139,7 @@ func (tree *WBSTRelaxed) joinlR(l, r *Node, sl, sr list.Size) *Node {
    return r
 }
 
-func (tree *WBSTRelaxed) join(l, r *Node, sl, sr list.Size) *Node {
+func (tree *WBSTRelaxed) join(l, r *Node, sl, sr Size) *Node {
    if sl > sr {
       return tree.joinLr(l, r, sl, sr)
    } else {

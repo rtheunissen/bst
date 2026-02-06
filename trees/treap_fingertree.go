@@ -23,7 +23,7 @@ func (tree *TreapFingerTree) Clone() list.List {
    }
 }
 
-func (tree *TreapFingerTree) reverseL(p *Node, g *Node, s list.Size) *Node {
+func (tree *TreapFingerTree) reverseL(p *Node, g *Node, s Size) *Node {
    assert(s == p.size())
    for {
       if p == nil {
@@ -193,7 +193,7 @@ func (tree *TreapFingerTree) getTail() (p *Node) {
    return tree.root.r
 }
 
-func (tree *TreapFingerTree) insertAsLast(x list.Data) {
+func (tree *TreapFingerTree) insertAsLast(x Data) {
    tree.persist(&tree.root)
    p := tree.allocate(Node{x: x, y: tree.randomRank()})
    p.r = tree.getTail()
@@ -202,7 +202,7 @@ func (tree *TreapFingerTree) insertAsLast(x list.Data) {
    tree.size++
 }
 
-func (tree *TreapFingerTree) insertAsFirst(x list.Data) {
+func (tree *TreapFingerTree) insertAsFirst(x Data) {
    tree.persist(&tree.root)
    p := tree.allocate(Node{x: x, y: tree.randomRank()})
    p.l = tree.getHead()
@@ -212,7 +212,7 @@ func (tree *TreapFingerTree) insertAsFirst(x list.Data) {
    tree.size++
 }
 
-func (tree TreapFingerTree) Select(i list.Position) list.Data {
+func (tree TreapFingerTree) Select(i Position) Data {
    assert(i < tree.size)
    switch {
    case i < tree.root.s:
@@ -224,7 +224,7 @@ func (tree TreapFingerTree) Select(i list.Position) list.Data {
    }
 }
 
-func (tree *TreapFingerTree) Update(i list.Position, x list.Data) {
+func (tree *TreapFingerTree) Update(i Position, x Data) {
    assert(i < tree.size)
    switch {
    case i < tree.root.s:
@@ -237,7 +237,7 @@ func (tree *TreapFingerTree) Update(i list.Position, x list.Data) {
    }
 }
 
-func (tree TreapFingerTree) accessFromHead(i list.Position) list.Data {
+func (tree TreapFingerTree) accessFromHead(i Position) Data {
    p := tree.getHead()
    for {
       if i == 0 {
@@ -252,7 +252,7 @@ func (tree TreapFingerTree) accessFromHead(i list.Position) list.Data {
    }
 }
 
-func (tree *TreapFingerTree) updateFromTail(x list.Data, i list.Position) {
+func (tree *TreapFingerTree) updateFromTail(x Data, i Position) {
    tree.persist(&tree.root)
    tree.persist(&tree.root.r)
 
@@ -274,7 +274,7 @@ func (tree *TreapFingerTree) updateFromTail(x list.Data, i list.Position) {
    }
 }
 
-func (tree *TreapFingerTree) updateFromHead(x list.Data, i list.Position) {
+func (tree *TreapFingerTree) updateFromHead(x Data, i Position) {
    tree.persist(&tree.root)
    tree.persist(&tree.root.l)
 
@@ -296,7 +296,7 @@ func (tree *TreapFingerTree) updateFromHead(x list.Data, i list.Position) {
    }
 }
 
-func (tree TreapFingerTree) accessFromTail(i list.Position) list.Data {
+func (tree TreapFingerTree) accessFromTail(i Position) Data {
    p := tree.getTail()
    for {
       if i == 0 {
@@ -311,7 +311,7 @@ func (tree TreapFingerTree) accessFromTail(i list.Position) list.Data {
    }
 }
 
-func (tree *TreapFingerTree) insert(p **Node, i list.Position, n *Node) {
+func (tree *TreapFingerTree) insert(p **Node, i Position, n *Node) {
    for {
       if *p == nil {
          *p = n
@@ -332,7 +332,7 @@ func (tree *TreapFingerTree) insert(p **Node, i list.Position, n *Node) {
    }
 }
 
-func (tree *TreapFingerTree) insertFromHead(x list.Data, i list.Position) {
+func (tree *TreapFingerTree) insertFromHead(x Data, i Position) {
    tree.persist(&tree.root)
    tree.persist(&tree.root.l)
    tree.root.s++
@@ -364,7 +364,7 @@ func (tree *TreapFingerTree) insertFromHead(x list.Data, i list.Position) {
    }
 }
 
-func (tree TreapFingerTree) split(i list.Position) (Tree, Tree) {
+func (tree TreapFingerTree) split(i Position) (Tree, Tree) {
    assert(i <= tree.size)
    tree.share(tree.root)
    if i == 0 {
@@ -382,14 +382,14 @@ func (tree TreapFingerTree) split(i list.Position) (Tree, Tree) {
    }
 }
 
-func (tree TreapFingerTree) Split(i list.Position) (list.List, list.List) {
+func (tree TreapFingerTree) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    l, r := tree.split(i)
    return &TreapFingerTree{Tree: l, Source: tree.Source},
       &TreapFingerTree{Tree: r, Source: tree.Source}
 }
 
-func (tree TreapFingerTree) splitFromHead(i list.Position) (Tree, Tree) {
+func (tree TreapFingerTree) splitFromHead(i Position) (Tree, Tree) {
    assert(i <= tree.size)
    assert(i <= tree.root.s)
 
@@ -427,7 +427,7 @@ func (tree TreapFingerTree) splitFromHead(i list.Position) (Tree, Tree) {
    return L, R
 }
 
-func (tree TreapFingerTree) splitFromTail(i list.Position) (Tree, Tree) {
+func (tree TreapFingerTree) splitFromTail(i Position) (Tree, Tree) {
    assert(i < tree.size)
    assert(i > tree.root.s)
 
@@ -469,7 +469,7 @@ func (tree TreapFingerTree) splitFromTail(i list.Position) (Tree, Tree) {
    return L, R
 }
 
-func (tree *TreapFingerTree) insertFromTail(x list.Data, i list.Position) {
+func (tree *TreapFingerTree) insertFromTail(x Data, i Position) {
    tree.persist(&tree.root)
    tree.persist(&tree.root.r)
 
@@ -502,7 +502,7 @@ func (tree *TreapFingerTree) insertFromTail(x list.Data, i list.Position) {
    }
 }
 
-func (tree *TreapFingerTree) Insert(i list.Position, x list.Data) {
+func (tree *TreapFingerTree) Insert(i Position, x Data) {
    assert(i <= tree.size)
    if tree.root == nil {
       tree.root = tree.allocate(Node{x: x, y: tree.randomRank()})
@@ -524,7 +524,7 @@ func (tree *TreapFingerTree) Insert(i list.Position, x list.Data) {
    }
 }
 
-func (tree *TreapFingerTree) deleteFirst(x *list.Data) {
+func (tree *TreapFingerTree) deleteFirst(x *Data) {
    old := tree.root.l
    *x = old.x
    tree.persist(&tree.root)
@@ -534,7 +534,7 @@ func (tree *TreapFingerTree) deleteFirst(x *list.Data) {
    tree.release(old)
 }
 
-func (tree *TreapFingerTree) deleteLast(x *list.Data) {
+func (tree *TreapFingerTree) deleteLast(x *Data) {
    old := tree.root.r
    *x = old.x
    tree.persist(&tree.root)
@@ -543,7 +543,7 @@ func (tree *TreapFingerTree) deleteLast(x *list.Data) {
    tree.release(old)
 }
 
-func (tree TreapFingerTree) delete(p **Node, i list.Position, x *list.Data) {
+func (tree TreapFingerTree) delete(p **Node, i Position, x *Data) {
    for {
       if i == (*p).s {
          old := *p
@@ -562,7 +562,7 @@ func (tree TreapFingerTree) delete(p **Node, i list.Position, x *list.Data) {
       }
    }
 }
-func (tree *TreapFingerTree) deleteFromHead(i list.Position, x *list.Data) {
+func (tree *TreapFingerTree) deleteFromHead(i Position, x *Data) {
    if i == 0 {
       tree.deleteFirst(x)
       return
@@ -592,7 +592,7 @@ func (tree *TreapFingerTree) deleteFromHead(i list.Position, x *list.Data) {
    tree.release(g)
 }
 
-func (tree *TreapFingerTree) join(l, r *Node, sl list.Size) (root *Node) {
+func (tree *TreapFingerTree) join(l, r *Node, sl Size) (root *Node) {
    assert(sl == l.size())
    p := &root
    for {
@@ -620,7 +620,7 @@ func (tree *TreapFingerTree) join(l, r *Node, sl list.Size) (root *Node) {
    }
 }
 
-func (tree *TreapFingerTree) deleteFromTail(i list.Position, x *list.Data) {
+func (tree *TreapFingerTree) deleteFromTail(i Position, x *Data) {
    if i == tree.size-1 {
       tree.deleteLast(x)
       return
@@ -651,7 +651,7 @@ func (tree *TreapFingerTree) deleteFromTail(i list.Position, x *list.Data) {
 }
 
 func (tree *TreapFingerTree) reverseL2(p *Node, g *Node) *Node {
-   s := list.Size(0)
+   s := Size(0)
    for {
       if p == nil {
          return g
@@ -665,7 +665,7 @@ func (tree *TreapFingerTree) reverseL2(p *Node, g *Node) *Node {
       p = l
    }
 }
-func (tree *TreapFingerTree) deleteRoot(v *list.Data) {
+func (tree *TreapFingerTree) deleteRoot(v *Data) {
    tree.persist(&tree.root)
    *v = tree.root.x
 
@@ -683,7 +683,7 @@ func (tree *TreapFingerTree) deleteRoot(v *list.Data) {
    tree.root.r = tree.reverseR(tree.root.r, nil)
 }
 
-func (tree *TreapFingerTree) Delete(i list.Position) (v list.Data) {
+func (tree *TreapFingerTree) Delete(i Position) (v Data) {
    assert(i < tree.size)
    switch {
    case i < tree.root.s:
@@ -705,7 +705,7 @@ func (tree *TreapFingerTree) joinUp(o *TreapFingerTree) *Node {
 
    l := tree.root.r
    r := o.root.l
-   s := list.Size(0) // size of p
+   s := Size(0) // size of p
 
    var p *Node
    for {
@@ -767,7 +767,7 @@ func (tree *TreapFingerTree) Join(that list.List) list.List {
    }
 }
 
-func (tree TreapFingerTree) eachFromHead(p *Node, visit func(list.Data)) {
+func (tree TreapFingerTree) eachFromHead(p *Node, visit func(Data)) {
    if p == nil {
       return
    }
@@ -776,7 +776,7 @@ func (tree TreapFingerTree) eachFromHead(p *Node, visit func(list.Data)) {
    tree.eachFromHead(p.l, visit)
 }
 
-func (tree TreapFingerTree) eachFromTail(p *Node, visit func(list.Data)) {
+func (tree TreapFingerTree) eachFromTail(p *Node, visit func(Data)) {
    if p == nil {
       return
    }
@@ -785,7 +785,7 @@ func (tree TreapFingerTree) eachFromTail(p *Node, visit func(list.Data)) {
    visit(p.x)
 }
 
-func (tree TreapFingerTree) inorder(p *Node, visit func(list.Data)) {
+func (tree TreapFingerTree) inorder(p *Node, visit func(Data)) {
    if p == nil {
       return
    }
@@ -794,7 +794,7 @@ func (tree TreapFingerTree) inorder(p *Node, visit func(list.Data)) {
    tree.eachFromTail(p.r, visit)
 }
 
-func (tree TreapFingerTree) Each(visit func(list.Data)) {
+func (tree TreapFingerTree) Each(visit func(Data)) {
    tree.inorder(tree.root, visit)
 }
 

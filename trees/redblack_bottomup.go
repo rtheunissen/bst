@@ -23,14 +23,14 @@ func (tree RedBlackBottomUp) Verify() {
    tree.verifyHeight(tree.root, tree.size)
 }
 
-func (tree *RedBlackBottomUp) Delete(i list.Position) (x list.Data) {
+func (tree *RedBlackBottomUp) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.size = tree.size - 1
    tree.root = tree.delete(tree.root, tree.size + 1, i, &x)
    return x
 }
 
-func (tree *RedBlackBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.Data) *Node {
+func (tree *RedBlackBottomUp) delete(p *Node, s Size, i Position, x *Data) *Node {
    sl := p.sizeL()
    sr := p.sizeR(s)
 
@@ -171,14 +171,14 @@ func (tree RedBlackBottomUp) balanceDeleteR(p *Node) *Node {
    }
 }
 
-func (tree *RedBlackBottomUp) Insert(i list.Position, x list.Data) {
+func (tree *RedBlackBottomUp) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.size = tree.size + 1
    tree.root = tree.insert(tree.root, i, x)
    return
 }
 
-func (tree *RedBlackBottomUp) insert(p *Node, i list.Position, x list.Data) *Node {
+func (tree *RedBlackBottomUp) insert(p *Node, i Position, x Data) *Node {
    if p == nil {
       return tree.allocate(Node{x: x})
    }
@@ -258,7 +258,7 @@ func (tree *RedBlackBottomUp) deleteMax(p *Node, max **Node) *Node {
    return tree.balanceDeleteR(p)
 }
 
-func (tree *RedBlackBottomUp) build(l, p, r *Node, sl list.Size) *Node {
+func (tree *RedBlackBottomUp) build(l, p, r *Node, sl Size) *Node {
   if tree.rank(l) == tree.rank(r) {
      p.l = l
      p.r = r
@@ -281,7 +281,7 @@ func (tree *RedBlackBottomUp) build(l, p, r *Node, sl list.Size) *Node {
   }
 }
 
-func (tree *RedBlackBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
+func (tree *RedBlackBottomUp) join(l, r *Node, sl, sr Size) (p *Node) {
   if l == nil { return r }
   if r == nil { return l }
   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
@@ -297,7 +297,7 @@ func (tree *RedBlackBottomUp) Join(other list.List) list.List {
   }
 }
 
-func (tree RedBlackBottomUp) split(p *Node, s, i list.Size) (l, r *Node) {
+func (tree RedBlackBottomUp) split(p *Node, s, i Size) (l, r *Node) {
    if p == nil {
       return
    }
@@ -312,7 +312,7 @@ func (tree RedBlackBottomUp) split(p *Node, s, i list.Size) (l, r *Node) {
    return l, r
 }
 
-func (tree *RedBlackBottomUp) Split(i list.Position) (list.List, list.List) {
+func (tree *RedBlackBottomUp) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    tree.share(tree.root)
    l, r := tree.split(tree.root, tree.size, i)

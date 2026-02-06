@@ -20,12 +20,12 @@ func (tree *AVLTopDown) Clone() list.List {
    }
 }
 
-func (tree *AVLTopDown) Insert(i list.Position, x list.Data) {
+func (tree *AVLTopDown) Insert(i Position, x Data) {
    tree.insert(&tree.root, i, x)
    tree.size = tree.size + 1
 }
 
-func (tree *AVLTopDown) insert(p **Node, i list.Position, x list.Data) {
+func (tree *AVLTopDown) insert(p **Node, i Position, x Data) {
    if *p == nil {
       *p = tree.allocate(Node{x: x})
       return
@@ -106,7 +106,7 @@ func (tree *AVLTopDown) Join(other list.List) list.List {
    }
 }
 
-func (tree *AVLTopDown) Split(i list.Position) (list.List, list.List) {
+func (tree *AVLTopDown) Split(i Position) (list.List, list.List) {
    l, r := tree.AVLBottomUp.Split(i)
    return &AVLTopDown{*l.(*AVLBottomUp)},
           &AVLTopDown{*r.(*AVLBottomUp)}

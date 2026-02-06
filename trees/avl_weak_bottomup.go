@@ -25,7 +25,7 @@ func (tree *AVLWeakBottomUp) Clone() list.List {
    }
 }
 
-func (tree AVLWeakBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.Data) *Node {
+func (tree AVLWeakBottomUp) delete(p *Node, s Size, i Position, x *Data) *Node {
    sl := p.sizeL()
    sr := p.sizeR(s)
 
@@ -47,14 +47,14 @@ func (tree AVLWeakBottomUp) delete(p *Node, s list.Size, i list.Position, x *lis
    return tree.rebalanceOnDelete(p)
 }
 
-func (tree *AVLWeakBottomUp) Delete(i list.Position) (x list.Data) {
+func (tree *AVLWeakBottomUp) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.root = tree.delete(tree.root, tree.size, i, &x)
    tree.size = tree.size - 1
    return
 }
 
-func (tree *AVLWeakBottomUp) Insert(i list.Position, x list.Data) {
+func (tree *AVLWeakBottomUp) Insert(i Position, x Data) {
    tree.AVLBottomUp.Insert(i, x)
 }
 
@@ -172,7 +172,7 @@ func (tree AVLWeakBottomUp) extractMax(p *Node, max **Node) *Node {
 // consider that the left subtree of `r` will consist of all the nodes in `l`,
 // then `p`,all the nodes currently in that subtree.
 //
-func (tree *AVLWeakBottomUp) buildL(l, p, r *Node, sl list.Size) *Node {
+func (tree *AVLWeakBottomUp) buildL(l, p, r *Node, sl Size) *Node {
    assert(tree.rank(r) >= tree.rank(l))
    if tree.rankDifference(r, l) <= 1 {
       p.l = l
@@ -188,7 +188,7 @@ func (tree *AVLWeakBottomUp) buildL(l, p, r *Node, sl list.Size) *Node {
 }
 
 // Symmetric
-func (tree *AVLWeakBottomUp) buildR(l, p, r *Node, sl list.Size) *Node {
+func (tree *AVLWeakBottomUp) buildR(l, p, r *Node, sl Size) *Node {
    assert(tree.rank(l) >= tree.rank(r))
    if tree.rankDifference(l, r) <= 1 {
       p.l = l
@@ -204,7 +204,7 @@ func (tree *AVLWeakBottomUp) buildR(l, p, r *Node, sl list.Size) *Node {
 
 // Constructs a balanced tree with root p where all nodes of l are to the left
 // of p and all nodes in r are to the right of p.
-func (tree *AVLWeakBottomUp) build(l, p, r *Node, sl list.Size) *Node {
+func (tree *AVLWeakBottomUp) build(l, p, r *Node, sl Size) *Node {
    if tree.rank(l) < tree.rank(r) {
       return tree.buildL(l, p, r, sl)
    } else {
@@ -212,7 +212,7 @@ func (tree *AVLWeakBottomUp) build(l, p, r *Node, sl list.Size) *Node {
    }
 }
 
-func (tree AVLWeakBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
+func (tree AVLWeakBottomUp) join(l, r *Node, sl, sr Size) (p *Node) {
   if l == nil { return r }
   if r == nil { return l }
   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
@@ -236,7 +236,7 @@ func (tree AVLWeakBottomUp) Join(that list.List) list.List {
    }
 }
 
-func (tree AVLWeakBottomUp) split(p *Node, i, s list.Size) (l, r *Node) {
+func (tree AVLWeakBottomUp) split(p *Node, i, s Size) (l, r *Node) {
    if p == nil {
       return
    }
@@ -255,7 +255,7 @@ func (tree AVLWeakBottomUp) split(p *Node, i, s list.Size) (l, r *Node) {
    return l, r
 }
 
-func (tree AVLWeakBottomUp) Split(i list.Position) (list.List, list.List) {
+func (tree AVLWeakBottomUp) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    tree.share(tree.root)
    l, r := tree.split(tree.root, i, tree.size)

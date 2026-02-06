@@ -28,7 +28,7 @@ func (tree *Zip) randomRank() uint64 {
    return uint64(bits.LeadingZeros64(tree.Uint64()))
 }
 
-func (tree *Zip) unzip(p *Node, i list.Position, l, r **Node) {
+func (tree *Zip) unzip(p *Node, i Position, l, r **Node) {
    for p != nil {
       tree.persist(&p)
       if i <= p.s {
@@ -59,7 +59,7 @@ func (tree *Zip) unzip(p *Node, i list.Position, l, r **Node) {
 //   When branching RIGHT: if the ranks are equal, a split at the current
 //   node would make it the left child of the new node, where an equal
 //   rank would NOT be valid.
-func (tree *Zip) Insert(i list.Position, x list.Data) {
+func (tree *Zip) Insert(i Position, x Data) {
    tree.size++
 
    p := &tree.root                                      // parent, pointer
@@ -96,7 +96,7 @@ func (tree *Zip) rank(p *Node) uint64 {
    }
 }
 
-func (tree *Zip) zip(l, r *Node, sl list.Size) (root *Node) {
+func (tree *Zip) zip(l, r *Node, sl Size) (root *Node) {
    assert(sl == l.size())
    p := &root
    for {
@@ -125,7 +125,7 @@ func (tree *Zip) zip(l, r *Node, sl list.Size) (root *Node) {
    }
 }
 
-func (tree *Zip) delete(p **Node, i list.Position, x *list.Data) {
+func (tree *Zip) delete(p **Node, i Position, x *Data) {
    for {
       if i == (*p).s {
          old := *p
@@ -147,14 +147,14 @@ func (tree *Zip) delete(p **Node, i list.Position, x *list.Data) {
    }
 }
 
-func (tree *Zip) Delete(i list.Position) (x list.Data) {
+func (tree *Zip) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.delete(&tree.root, i, &x)
    tree.size--
    return
 }
 
-func (tree Zip) split(i list.Size) (Tree, Tree) {
+func (tree Zip) split(i Size) (Tree, Tree) {
    assert(i <= tree.size)
    tree.share(tree.root)
    l, r := tree.Tree.split(tree.root, i)
@@ -163,19 +163,19 @@ func (tree Zip) split(i list.Size) (Tree, Tree) {
           Tree{pool: tree.pool, root: r, size: tree.size - i}
 }
 
-func (tree *Zip) Split(i list.Position) (list.List, list.List) {
+func (tree *Zip) Split(i Position) (list.List, list.List) {
    l, r := tree.split(i)
 
    return &Zip{l, tree.Source},
       &Zip{r, tree.Source}
 }
 
-func (tree *Zip) Select(i list.Size) list.Data {
+func (tree *Zip) Select(i Size) Data {
    assert(i < tree.size)
    return tree.lookup(tree.root, i)
 }
 
-func (tree *Zip) Update(i list.Size, x list.Data) {
+func (tree *Zip) Update(i Size, x Data) {
    assert(i < tree.size)
    tree.persist(&tree.root)
    tree.update(tree.root, i, x)

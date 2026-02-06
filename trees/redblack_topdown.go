@@ -16,7 +16,7 @@ func (tree *RedBlackTopDown) Clone() list.List {
    }
 }
 
-func (tree *RedBlackTopDown) insert(p **Node, i list.Position, x list.Data) {
+func (tree *RedBlackTopDown) insert(p **Node, i Position, x Data) {
    //
    // "If the tree is empty, create a new node of rank zero containing the item
    //  to be inserted and make it the root, completing the insertion."
@@ -192,13 +192,13 @@ func (tree *RedBlackTopDown) insert(p **Node, i list.Position, x list.Data) {
    }
 }
 
-func (tree *RedBlackTopDown) Insert(i list.Position, x list.Data) {
+func (tree *RedBlackTopDown) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.size = tree.size + 1
    tree.insert(&tree.root, i, x)
 }
 
-func (tree *RedBlackTopDown) Split(i list.Position) (list.List, list.List) {
+func (tree *RedBlackTopDown) Split(i Position) (list.List, list.List) {
    l, r := tree.RedBlackBottomUp.Split(i)
    return &RedBlackTopDown{RedBlackBottomUp: *l.(*RedBlackBottomUp)},
           &RedBlackTopDown{RedBlackBottomUp: *r.(*RedBlackBottomUp)}

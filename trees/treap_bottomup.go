@@ -31,7 +31,7 @@ func (tree *TreapBottomUp) rank(p *Node) uint64 {
    }
 }
 
-func (tree *TreapBottomUp) insert(p *Node, i list.Position, x list.Data) *Node {
+func (tree *TreapBottomUp) insert(p *Node, i Position, x Data) *Node {
    if p == nil {
       return tree.allocate(Node{x: x, y: tree.Source.Uint64()})
    }
@@ -51,13 +51,13 @@ func (tree *TreapBottomUp) insert(p *Node, i list.Position, x list.Data) *Node {
    return p
 }
 
-func (tree *TreapBottomUp) Insert(i list.Position, x list.Data) {
+func (tree *TreapBottomUp) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.root = tree.insert(tree.root, i, x)
    tree.size++
 }
 
-func (tree *TreapBottomUp) delete(p *Node, i list.Position, x *list.Data) *Node {
+func (tree *TreapBottomUp) delete(p *Node, i Position, x *Data) *Node {
    if i == p.s {
       *x = p.x
       tree.share(p.l)
@@ -76,14 +76,14 @@ func (tree *TreapBottomUp) delete(p *Node, i list.Position, x *list.Data) *Node 
    return p
 }
 
-func (tree *TreapBottomUp) Delete(i list.Position) (x list.Data) {
+func (tree *TreapBottomUp) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.root = tree.delete(tree.root, i, &x)
    tree.size--
    return
 }
 
-func (tree *TreapBottomUp) join(l, r *Node, sl list.Size) (root *Node) {
+func (tree *TreapBottomUp) join(l, r *Node, sl Size) (root *Node) {
    p := &root
    for {
       if l == nil { *p = r; return }
@@ -105,18 +105,18 @@ func (tree *TreapBottomUp) join(l, r *Node, sl list.Size) (root *Node) {
    }
 }
 
-func (tree *TreapBottomUp) Select(i list.Size) list.Data {
+func (tree *TreapBottomUp) Select(i Size) Data {
    assert(i < tree.size)
    return tree.lookup(tree.root, i)
 }
 
-func (tree *TreapBottomUp) Update(i list.Size, x list.Data) {
+func (tree *TreapBottomUp) Update(i Size, x Data) {
    assert(i < tree.size)
    tree.persist(&tree.root)
    tree.update(tree.root, i, x)
 }
 
-func (tree TreapBottomUp) Split(i list.Position) (list.List, list.List) {
+func (tree TreapBottomUp) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    l, r := tree.Tree.Split(i)
    return &TreapBottomUp{Tree: l, Source: tree.Source},

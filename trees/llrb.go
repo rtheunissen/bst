@@ -56,7 +56,7 @@ func (tree LLRB) fixUp(p *Node) *Node {
    return p
 }
 
-func (tree *LLRB) insert(p *Node, i list.Position, x list.Data) *Node {
+func (tree *LLRB) insert(p *Node, i Position, x Data) *Node {
    if p == nil {
       return tree.allocate(Node{x: x})
    }
@@ -70,7 +70,7 @@ func (tree *LLRB) insert(p *Node, i list.Position, x list.Data) *Node {
    return tree.fixUp(p)
 }
 
-func (tree *LLRB) Insert(i list.Position, x list.Data) {
+func (tree *LLRB) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.root = tree.insert(tree.root, i, x)
    tree.size++
@@ -114,7 +114,7 @@ func (tree *LLRB) deleteMin(p *Node, min **Node) *Node {
    return tree.fixUp(p)
 }
 
-func (tree *LLRB) delete(p *Node, i list.Position, x *list.Data) *Node {
+func (tree *LLRB) delete(p *Node, i Position, x *Data) *Node {
    tree.persist(&p)
    if i < p.s {
       if !tree.isRed(p, p.l) && (p.l == nil || !tree.isRed(p.l, p.l.l)) {
@@ -146,7 +146,7 @@ func (tree *LLRB) delete(p *Node, i list.Position, x *list.Data) *Node {
    return tree.fixUp(p)
 }
 
-func (tree *LLRB) Delete(i list.Position) (x list.Data) {
+func (tree *LLRB) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.root = tree.delete(tree.root, i, &x)
    tree.size--
@@ -187,7 +187,7 @@ func (tree LLRB) balanceInsertR(p *Node) *Node {
    return tree.fixUp(p)
 }
 
-func (tree *LLRB) build(l, p, r *Node, sl list.Size) *Node {
+func (tree *LLRB) build(l, p, r *Node, sl Size) *Node {
    if tree.rank(l) == tree.rank(r) {
       p.l = l
       p.r = r
@@ -226,7 +226,7 @@ func (tree *LLRB) deleteMax(p *Node, max **Node) *Node {
    return tree.fixUp(p)
 }
 
-func (tree *LLRB) join(l, r *Node, sl, sr list.Size) (p *Node) {
+func (tree *LLRB) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
    if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
@@ -248,7 +248,7 @@ func (tree *LLRB) Join(other list.List) list.List {
    }
 }
 
-func (tree *LLRB) split(p *Node, i, s list.Size) (l, r *Node) {
+func (tree *LLRB) split(p *Node, i, s Size) (l, r *Node) {
    if p == nil {
       return
    }
@@ -267,7 +267,7 @@ func (tree *LLRB) split(p *Node, i, s list.Size) (l, r *Node) {
    return l, r
 }
 
-func (tree *LLRB) Split(i list.Position) (list.List, list.List) {
+func (tree *LLRB) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    tree.share(tree.root)
    l, r := tree.split(tree.root, i, tree.size)

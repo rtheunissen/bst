@@ -1,8 +1,5 @@
 package trees
 
-import (
-   "github.com/rtheunissen/bst/types/list"
-)
 
 type Joiner interface {
    build(l, p, r *Node, sl, sr Size) *Node
@@ -14,7 +11,7 @@ type JoinBased struct {
    Joiner
 }
 
-func (tree JoinBased) insert(p *Node, i list.Position, s Size, x *Node) *Node {
+func (tree JoinBased) insert(p *Node, i Position, s Size, x *Node) *Node {
    if p == nil {
       return x
    }
@@ -31,7 +28,7 @@ func (tree JoinBased) insert(p *Node, i list.Position, s Size, x *Node) *Node {
    }
 }
 
-func (tree JoinBased) delete(p *Node, i list.Position, s Size, x *Data) *Node {
+func (tree JoinBased) delete(p *Node, i Position, s Size, x *Data) *Node {
    sl := p.s
    sr := s - p.s - 1
    if i == p.s {

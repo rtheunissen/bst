@@ -14,7 +14,7 @@ func (tree *Splay) Clone() list.List {
    return &Splay{Tree: tree.Tree.Clone()}
 }
 
-func (tree *Splay) linkL(p *Node, r *Node, i list.Position) (*Node, *Node, list.Size) {
+func (tree *Splay) linkL(p *Node, r *Node, i Position) (*Node, *Node, Size) {
    tree.persist(&p.l)
  p.s = p.s - i - 1
  r.l = p
@@ -23,7 +23,7 @@ func (tree *Splay) linkL(p *Node, r *Node, i list.Position) (*Node, *Node, list.
    return p, r, i
 }
 
-func (tree *Splay) linkR(p *Node, l *Node, i list.Position) (*Node, *Node, list.Size) {
+func (tree *Splay) linkR(p *Node, l *Node, i Position) (*Node, *Node, Size) {
    tree.persist(&p.r)
    i = i - p.s - 1
  l.r = p
@@ -32,7 +32,7 @@ func (tree *Splay) linkR(p *Node, l *Node, i list.Position) (*Node, *Node, list.
    return p, l, i
 }
 
-func (tree *Splay) splay(p *Node, i list.Position) *Node {
+func (tree *Splay) splay(p *Node, i Position) *Node {
    tree.persist(&p)
    n := Node{s: i}
    l := &n
@@ -122,17 +122,17 @@ func (tree *Splay) splay(p *Node, i list.Position) *Node {
    return p
 }
 
-func (tree *Splay) Splay(i list.Position) {
+func (tree *Splay) Splay(i Position) {
    tree.root = tree.splay(tree.root, i)
 }
 
-func (tree *Splay) Size() list.Size {
+func (tree *Splay) Size() Size {
    return tree.size
 }
 
 // 1. Splay the node at `i`
 // 2. Return the root.
-func (tree *Splay) Select(i list.Position) (x list.Data) {
+func (tree *Splay) Select(i Position) (x Data) {
    assert(i < tree.size)
    tree.Splay(i)
    return tree.root.x
@@ -141,7 +141,7 @@ func (tree *Splay) Select(i list.Position) (x list.Data) {
 // 1. Splay the node to be updated, at position `i`.
 // 2. Update the root's data.
 // 3. Return the root.
-func (tree *Splay) Update(i list.Position, x list.Data) {
+func (tree *Splay) Update(i Position, x Data) {
    assert(i < tree.size)
    tree.Splay(i)
    tree.root.x = x
@@ -151,7 +151,7 @@ func (tree *Splay) Update(i list.Position, x list.Data) {
 //  2. Split the root into the left and right subtrees of the new node, such
 //     that the first `i` nodes are on the left and the rest on the right.
 //  3. Replace the previous root with the new node.
-func (tree *Splay) Insert(i list.Position, x list.Data) {
+func (tree *Splay) Insert(i Position, x Data) {
    assert(i <= tree.size)
    //
    //
@@ -168,7 +168,7 @@ func (tree *Splay) Insert(i list.Position, x list.Data) {
 // 1. Splay the node to be deleted, making it the root.
 // 2. Replace the root by a join of its left and right subtrees.
 // 3. Return the deleted node.
-func (tree *Splay) Delete(i list.Position) (x list.Data) {
+func (tree *Splay) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.Splay(i)
    old := tree.root
@@ -179,7 +179,7 @@ func (tree *Splay) Delete(i list.Position) (x list.Data) {
    return
 }
 
-func (tree *Splay) Split(i list.Position) (list.List, list.List) {
+func (tree *Splay) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    tree.share(tree.root)
 
@@ -198,7 +198,7 @@ func (tree *Splay) Split(i list.Position) (list.List, list.List) {
 // 1. Splay the node at `i`.
 // 2. Cut the left subtree of the root as l**, leaving a nil in its place.
 // 3. The remaining root and right subtree is r**.
-func (tree Splay) split(p *Node, s, i list.Position) (l, r *Node) {
+func (tree Splay) split(p *Node, s, i Position) (l, r *Node) {
    assert(i < s)
    p = tree.splay(p, i)
    l = p.l

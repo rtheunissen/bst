@@ -20,7 +20,7 @@ type Conc struct {
    Tree
 }
 
-func (tree Conc) Count(p *Node) list.Size {
+func (tree Conc) Count(p *Node) Size {
    if p.isLeaf() {
       return 1
    } else {
@@ -39,7 +39,7 @@ func (tree *Conc) Clone() list.List {
 }
 
 // Creates a leaf node containing the data `s`.
-func (tree *Conc) asLeaf(x list.Data) *Node {
+func (tree *Conc) asLeaf(x Data) *Node {
    return tree.allocate(Node{
       x: x,
       s: 1,
@@ -98,12 +98,12 @@ func (tree *Conc) concat(l, r *Node) *Node {
    return tree.link(l, r)
 }
 
-func (tree Conc) Select(i list.Position) (x list.Data) {
+func (tree Conc) Select(i Position) (x Data) {
    assert(i < tree.size)
    return tree.lookup(tree.root, i).x
 }
 
-func (tree Conc) lookup(p *Node, i list.Position) *Node {
+func (tree Conc) lookup(p *Node, i Position) *Node {
    if p.isLeaf() {
       assert(i == 0)
       return p
@@ -115,12 +115,12 @@ func (tree Conc) lookup(p *Node, i list.Position) *Node {
    }
 }
 
-func (tree *Conc) Update(i list.Position, x list.Data) {
+func (tree *Conc) Update(i Position, x Data) {
    assert(i < tree.size)
    tree.root = tree.update(tree.root, i, x)
 }
 
-func (tree *Conc) update(p *Node, i list.Position, x list.Data) *Node {
+func (tree *Conc) update(p *Node, i Position, x Data) *Node {
    if p.isLeaf() {
       return tree.asLeaf(x)
    }
@@ -131,7 +131,7 @@ func (tree *Conc) update(p *Node, i list.Position, x list.Data) *Node {
    }
 }
 
-func (tree *Conc) Insert(i list.Position, x list.Data) {
+func (tree *Conc) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.size++
    if tree.root == nil {
@@ -141,7 +141,7 @@ func (tree *Conc) Insert(i list.Position, x list.Data) {
    }
 }
 
-func (tree *Conc) insert(p *Node, i list.Position, x list.Data) *Node {
+func (tree *Conc) insert(p *Node, i Position, x Data) *Node {
    if p.isLeaf() {
       if i == 0 {
          return tree.link(tree.asLeaf(x), p)
@@ -156,14 +156,14 @@ func (tree *Conc) insert(p *Node, i list.Position, x list.Data) *Node {
    }
 }
 
-func (tree *Conc) Delete(i list.Position) (x list.Data) {
+func (tree *Conc) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.size--
    tree.root = tree.delete(tree.root, i, &x)
    return
 }
 
-func (tree *Conc) delete(p *Node, i list.Position, x *list.Data) *Node {
+func (tree *Conc) delete(p *Node, i Position, x *Data) *Node {
    if p.isLeaf() {
       *x = p.x
       return nil
@@ -175,7 +175,7 @@ func (tree *Conc) delete(p *Node, i list.Position, x *list.Data) *Node {
    }
 }
 
-func (tree Conc) Split(i list.Position) (list.List, list.List) {
+func (tree Conc) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    if i == 0 {
       return &Conc{Tree: Tree{pool: tree.pool}},
@@ -186,7 +186,7 @@ func (tree Conc) Split(i list.Position) (list.List, list.List) {
    }
 }
 
-func (tree Conc) split(p *Node, i list.Position) (*Node, *Node) {
+func (tree Conc) split(p *Node, i Position) (*Node, *Node) {
    if p.isLeaf() {
       if i == 0 {
          return nil, p
@@ -217,11 +217,11 @@ func (tree *Conc) join(other *Conc) *Node {
    return tree.balanced(tree.root, other.root)
 }
 
-func (tree Conc) Each(visit func(list.Data)) {
+func (tree Conc) Each(visit func(Data)) {
    tree.inorder(tree.root, visit)
 }
 
-func (tree Conc) inorder(p *Node, visit func(list.Data)) {
+func (tree Conc) inorder(p *Node, visit func(Data)) {
    if p == nil {
       return
    }

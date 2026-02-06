@@ -21,7 +21,7 @@ func (tree *WBSTBottomUp) Clone() list.List {
       Tree: tree.Tree.Clone(),
    }
 }
-func (tree WBSTBottomUp) verifyBalance(p *Node, s list.Size) {
+func (tree WBSTBottomUp) verifyBalance(p *Node, s Size) {
    if p == nil {
       return
    }
@@ -35,7 +35,7 @@ func (tree WBSTBottomUp) verifyBalance(p *Node, s list.Size) {
    tree.verifyBalance(p.r, sr)
 }
 
-func (tree WBSTBottomUp) verifyHeight(root *Node, size list.Size) {
+func (tree WBSTBottomUp) verifyHeight(root *Node, size Size) {
    invariant(root.height() <= tree.maxHeight(size))
 }
 
@@ -46,7 +46,7 @@ func (tree WBSTBottomUp) Verify() {
 }
 
 
-func (tree WBSTBottomUp) join(l *Node, r *Node, sl, sr list.Size) (k *Node) {
+func (tree WBSTBottomUp) join(l *Node, r *Node, sl, sr Size) (k *Node) {
    if l == nil { return r }
    if r == nil { return l }
    if sl <= sr {
@@ -58,7 +58,7 @@ func (tree WBSTBottomUp) join(l *Node, r *Node, sl, sr list.Size) (k *Node) {
    }
 }
 
-func (tree WBSTBottomUp) extractMin(p *Node, s list.Size, x **Node) *Node {
+func (tree WBSTBottomUp) extractMin(p *Node, s Size, x **Node) *Node {
    tree.persist(&p)
    if p.l == nil {
       *x = p
@@ -84,7 +84,7 @@ func (tree WBSTBottomUp) extractMin(p *Node, s list.Size, x **Node) *Node {
    return p
 }
 
-func (tree WBSTBottomUp) extractMax(p *Node, s list.Size, x **Node) *Node {
+func (tree WBSTBottomUp) extractMax(p *Node, s Size, x **Node) *Node {
    tree.persist(&p)
    if p.r == nil {
       *x = p
@@ -121,7 +121,7 @@ func (tree WBSTBottomUp) Join(that list.List) list.List {
    }
 }
 
-func (tree WBSTBottomUp) build(l, p, r *Node, sl, sr list.Size) *Node {
+func (tree WBSTBottomUp) build(l, p, r *Node, sl, sr Size) *Node {
    if sl <= sr { // TODO: consider == here?
       return tree.buildR(p, l, r, sl, sr)
    } else {
@@ -129,7 +129,7 @@ func (tree WBSTBottomUp) build(l, p, r *Node, sl, sr list.Size) *Node {
    }
 }
 
-func (tree *WBSTBottomUp) buildL(p *Node, l, r *Node, sl, sr list.Size) *Node {
+func (tree *WBSTBottomUp) buildL(p *Node, l, r *Node, sl, sr Size) *Node {
    if tree.isBalanced(sr, sl) {
       p.l = l
       p.r = r
@@ -158,7 +158,7 @@ func (tree *WBSTBottomUp) buildL(p *Node, l, r *Node, sl, sr list.Size) *Node {
    return l
 }
 
-func (tree *WBSTBottomUp) buildR(p *Node, l, r *Node, sl, sr list.Size) *Node {
+func (tree *WBSTBottomUp) buildR(p *Node, l, r *Node, sl, sr Size) *Node {
    if tree.isBalanced(sl, sr) {
       p.l = l
       p.r = r
@@ -183,7 +183,7 @@ func (tree *WBSTBottomUp) buildR(p *Node, l, r *Node, sl, sr list.Size) *Node {
    return r
 }
 
-func (tree *WBSTBottomUp) split(p *Node, i, s list.Size) (l, r *Node) {
+func (tree *WBSTBottomUp) split(p *Node, i, s Size) (l, r *Node) {
    if p == nil {
       return
    }
@@ -202,7 +202,7 @@ func (tree *WBSTBottomUp) split(p *Node, i, s list.Size) (l, r *Node) {
    return l, r
 }
 
-func (tree *WBSTBottomUp) Split(i list.Position) (list.List, list.List) {
+func (tree *WBSTBottomUp) Split(i Position) (list.List, list.List) {
    tree.share(tree.root)
    l, r := tree.split(tree.root, i, tree.size)
 
@@ -211,7 +211,7 @@ func (tree *WBSTBottomUp) Split(i list.Position) (list.List, list.List) {
 }
 
 
-func (tree *WBSTBottomUp) insert(p *Node, s list.Size, i list.Position, x list.Data) *Node {
+func (tree *WBSTBottomUp) insert(p *Node, s Size, i Position, x Data) *Node {
    if p == nil {
       return tree.allocate(Node{x: x})
    }
@@ -247,7 +247,7 @@ func (tree *WBSTBottomUp) insert(p *Node, s list.Size, i list.Position, x list.D
    return p
 }
 
-func (tree *WBSTBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.Data) *Node {
+func (tree *WBSTBottomUp) delete(p *Node, s Size, i Position, x *Data) *Node {
    sl := p.s
    sr := s - p.s - 1
 
@@ -300,24 +300,24 @@ func (tree *WBSTBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.
    return p
 }
 
-func (tree *WBSTBottomUp) Select(i list.Size) list.Data {
+func (tree *WBSTBottomUp) Select(i Size) Data {
    assert(i < tree.size)
    return tree.lookup(tree.root, i)
 }
 
-func (tree *WBSTBottomUp) Update(i list.Size, x list.Data) {
+func (tree *WBSTBottomUp) Update(i Size, x Data) {
    assert(i < tree.size)
    tree.persist(&tree.root)
    tree.update(tree.root, i, x)
 }
 
-func (tree *WBSTBottomUp) Insert(i list.Position, x list.Data) {
+func (tree *WBSTBottomUp) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.root = tree.insert(tree.root, tree.size, i, x)
    tree.size++
 }
 
-func (tree *WBSTBottomUp) Delete(i list.Position) (x list.Data) {
+func (tree *WBSTBottomUp) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.root = tree.delete(tree.root, tree.size, i, &x)
    tree.size--

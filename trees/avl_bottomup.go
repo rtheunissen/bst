@@ -40,12 +40,12 @@ func (tree *AVLBottomUp) Verify() {
    tree.AVL.verifyRanks(tree.root, tree.size)
 }
 
-func (tree *AVLBottomUp) Insert(i list.Position, x list.Data) {
+func (tree *AVLBottomUp) Insert(i Position, x Data) {
    tree.root = tree.insert(tree.root, i, x)
    tree.size = tree.size + 1
 }
 
-func (tree *AVLBottomUp) insert(p *Node, i list.Position, x list.Data) *Node {
+func (tree *AVLBottomUp) insert(p *Node, i Position, x Data) *Node {
    if p == nil {
       return tree.allocate(Node{x: x})
    }
@@ -231,14 +231,14 @@ func (tree *AVLBottomUp) balanceInsertR(p *Node) *Node {
    return p
 }
 
-func (tree *AVLBottomUp) Delete(i list.Position) (x list.Data) {
+func (tree *AVLBottomUp) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.root = tree.delete(tree.root, tree.size, i, &x)
    tree.size = tree.size - 1
    return x
 }
 
-func (tree *AVLBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.Data) *Node {
+func (tree *AVLBottomUp) delete(p *Node, s Size, i Position, x *Data) *Node {
    sl := p.sizeL()
    sr := p.sizeR(s)
 
@@ -571,7 +571,7 @@ func (tree *AVLBottomUp) deleteMax(p *Node, max **Node) *Node {
 // consider that the left subtree of `r` will consist of all the nodes in `l`,
 // then `p`,all the nodes currently in that subtree.
 //
-func (tree *AVLBottomUp) buildL(l, p, r *Node, sl list.Size) *Node {
+func (tree *AVLBottomUp) buildL(l, p, r *Node, sl Size) *Node {
    assert(tree.rank(r) >= tree.rank(l))
    if tree.rankDifference(r, l) <= 1 {
       p.l = l
@@ -586,7 +586,7 @@ func (tree *AVLBottomUp) buildL(l, p, r *Node, sl list.Size) *Node {
    return tree.balanceInsertL(r)
 }
 
-func (tree *AVLBottomUp) buildR(l, p, r *Node, sl list.Size) *Node {
+func (tree *AVLBottomUp) buildR(l, p, r *Node, sl Size) *Node {
    assert(tree.rank(l) >= tree.rank(r))
    if tree.rankDifference(l, r) <= 1 {
       p.l = l
@@ -602,7 +602,7 @@ func (tree *AVLBottomUp) buildR(l, p, r *Node, sl list.Size) *Node {
 
 // Constructs a balanced tree with root p where all nodes of l are to the left
 // of p and all nodes in r are to the right of p.
-func (tree *AVLBottomUp) build(l, p, r *Node, sl list.Size) *Node {
+func (tree *AVLBottomUp) build(l, p, r *Node, sl Size) *Node {
    assert(sl == l.size())
    if tree.rank(l) < tree.rank(r) {
       return tree.buildL(l, p, r, sl)
@@ -618,7 +618,7 @@ func (tree *AVLBottomUp) build(l, p, r *Node, sl list.Size) *Node {
 // delete it, all the way back up as the recursion unwinds, then descend again
 // along the same path anyway.
 //
-func (tree *AVLBottomUp) joinL(l, r *Node, sl list.Size) (p *Node) {
+func (tree *AVLBottomUp) joinL(l, r *Node, sl Size) (p *Node) {
    if tree.rankDifference(r, l) <= 1 {
       return tree.build(l, p, tree.deleteMin(r, &p), sl)
    }
@@ -628,7 +628,7 @@ func (tree *AVLBottomUp) joinL(l, r *Node, sl list.Size) (p *Node) {
    return tree.balanceInsertL(r)
 }
 
-func (tree *AVLBottomUp) joinR(l, r *Node, sl list.Size) (p *Node) {
+func (tree *AVLBottomUp) joinR(l, r *Node, sl Size) (p *Node) {
    if tree.rankDifference(l, r) <= 1 {
       return tree.build(tree.deleteMax(l, &p), p, r, sl - 1)
    }
@@ -639,7 +639,7 @@ func (tree *AVLBottomUp) joinR(l, r *Node, sl list.Size) (p *Node) {
 
 // Constructs a balanced tree with root `p` where all nodes in `l` are to the
 // left of `p` and all nodes in `r` to the right of `p`.
-func (tree *AVLBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
+func (tree *AVLBottomUp) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
    if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
@@ -663,7 +663,7 @@ func (tree *AVLBottomUp) Join(other list.List) list.List {
 
 // Splits the tree of `p` into two trees `l` and `r` at position `i`, such that
 // the resulting size of `l` is equal to `i`.
-func (tree *AVLBottomUp) split(p *Node, i, s list.Size) (l, r *Node) {
+func (tree *AVLBottomUp) split(p *Node, i, s Size) (l, r *Node) {
    assert(s == p.size())
    if p == nil {
       return
@@ -679,7 +679,7 @@ func (tree *AVLBottomUp) split(p *Node, i, s list.Size) (l, r *Node) {
    return l, r
 }
 
-func (tree *AVLBottomUp) Split(i list.Position) (list.List, list.List) {
+func (tree *AVLBottomUp) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    tree.share(tree.root)
 

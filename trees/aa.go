@@ -55,7 +55,7 @@ func (tree AA) aaSplit(p **Node) {
    }
 }
 
-func (tree *AA) insert(p *Node, i list.Position, x list.Data) *Node {
+func (tree *AA) insert(p *Node, i Position, x Data) *Node {
    if p == nil {
       return tree.allocate(Node{x: x})
    }
@@ -71,7 +71,7 @@ func (tree *AA) insert(p *Node, i list.Position, x list.Data) *Node {
    return p
 }
 
-func (tree *AA) Insert(i list.Position, x list.Data) {
+func (tree *AA) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.root = tree.insert(tree.root, i, x)
    tree.size++
@@ -132,7 +132,7 @@ func (tree *AA) aaDeleteMax(p *Node, max **Node) *Node {
    return tree.fixAfterDelete(p)
 }
 
-func (tree *AA) delete(p *Node, i list.Position, x *list.Data) *Node {
+func (tree *AA) delete(p *Node, i Position, x *Data) *Node {
    tree.persist(&p)
    if i < p.s {
       p.s = p.s - 1
@@ -159,14 +159,14 @@ func (tree *AA) delete(p *Node, i list.Position, x *list.Data) *Node {
    return tree.fixAfterDelete(p)
 }
 
-func (tree *AA) Delete(i list.Position) (x list.Data) {
+func (tree *AA) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.root = tree.delete(tree.root, i, &x)
    tree.size--
    return
 }
 
-func (tree *AA) build(l, p, r *Node, sl list.Size) *Node {
+func (tree *AA) build(l, p, r *Node, sl Size) *Node {
    rl := tree.rank(l)
    rr := tree.rank(r)
    if utility.Distance(rl, rr) <= 1 {
@@ -188,7 +188,7 @@ func (tree *AA) build(l, p, r *Node, sl list.Size) *Node {
    }
 }
 
-func (tree *AA) join(l, r *Node, sl, sr list.Size) (p *Node) {
+func (tree *AA) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
    if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
@@ -210,7 +210,7 @@ func (tree *AA) Join(other list.List) list.List {
    }
 }
 
-func (tree *AA) split(p *Node, i, s list.Size) (l, r *Node) {
+func (tree *AA) split(p *Node, i, s Size) (l, r *Node) {
    if p == nil {
       return
    }
@@ -229,7 +229,7 @@ func (tree *AA) split(p *Node, i, s list.Size) (l, r *Node) {
    return l, r
 }
 
-func (tree *AA) Split(i list.Position) (list.List, list.List) {
+func (tree *AA) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    tree.share(tree.root)
    l, r := tree.split(tree.root, i, tree.size)

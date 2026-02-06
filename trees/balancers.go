@@ -1,7 +1,6 @@
 package trees
 
 import (
-   "github.com/rtheunissen/bst/types/list"
    "github.com/rtheunissen/bst/utility"
    "github.com/rtheunissen/bst/utility/number"
    "math"
@@ -43,7 +42,7 @@ func partition(p *Node, i uint64) *Node {
 
 type Median struct{}
 
-func (balancer Median) balance(p *Node, s list.Size) *Node {
+func (balancer Median) balance(p *Node, s Size) *Node {
    if s <= 2 {
       return p
    }
@@ -65,7 +64,7 @@ func (balancer Median) Verify(tree Tree) {
 }
 
 // -1 <= L - R <= 1
-func (balancer Median) verify(p *Node, s list.Size) {
+func (balancer Median) verify(p *Node, s Size) {
    if p == nil {
       return
    }
@@ -75,7 +74,7 @@ func (balancer Median) verify(p *Node, s list.Size) {
    balancer.verify(p.r, p.sizeR(s))
 }
 
-func (Median) isBalanced(p *Node, s list.Size) bool {
+func (Median) isBalanced(p *Node, s Size) bool {
    sl := p.sizeL()
    sr := p.sizeR(s)
    return sl + 1 >= sr &&
@@ -84,7 +83,7 @@ func (Median) isBalanced(p *Node, s list.Size) bool {
 
 type Height struct{}
 
-func (balancer Height) balance(p *Node, s list.Size) *Node {
+func (balancer Height) balance(p *Node, s Size) *Node {
    if s <= 2 {
       return p
    }
@@ -101,7 +100,7 @@ func (balancer Height) Restore(tree Tree) Tree {
    return tree
 }
 
-func (Height) isBalanced(p *Node, s list.Size) bool {
+func (Height) isBalanced(p *Node, s Size) bool {
    sl := p.sizeL()
    sr := p.sizeR(s)
    return utility.GreaterThanOrEqualToMSB(sl + 1, sr) &&
@@ -116,7 +115,7 @@ func (balancer Height) Verify(tree Tree) {
 // subtrees is no greater than 1, and both subtrees are also height-balanced.
 //
 // invariant(p.height() <= FloorLog2(s))
-func (balancer Height) verify(p *Node, s list.Size) (height int) {
+func (balancer Height) verify(p *Node, s Size) (height int) {
    if p == nil {
       return
    }
@@ -130,7 +129,7 @@ func (balancer Height) verify(p *Node, s list.Size) (height int) {
 
 type Log struct{}
 
-func (balancer Log) balance(p *Node, s list.Size) *Node {
+func (balancer Log) balance(p *Node, s Size) *Node {
    if s <= 3 {
       return p
    }
@@ -142,7 +141,7 @@ func (balancer Log) balance(p *Node, s list.Size) *Node {
    return p
 }
 
-func (balancer Log) balanced(p *Node, s list.Size) bool {
+func (balancer Log) balanced(p *Node, s Size) bool {
    sl := p.sizeL()
    sr := p.sizeR(s)
    return utility.GreaterThanOrEqualToMSB(sl + 1, (sr + 1) >> 1) &&
@@ -159,7 +158,7 @@ func (balancer Log) Verify(tree Tree) {
 }
 
 // -1 <= ⌊log₂(L)⌋ - ⌊log₂(R)⌋ <= 1
-func (balancer Log) verify(p *Node, s list.Size) {
+func (balancer Log) verify(p *Node, s Size) {
    if p == nil {
       return
    }
@@ -178,7 +177,7 @@ func (balancer Log) verify(p *Node, s list.Size) {
 
 type Weight struct{}
 
-func (balancer Weight) balance(p *Node, s list.Size) *Node {
+func (balancer Weight) balance(p *Node, s Size) *Node {
    if s <= 3 {
       return p
    }
@@ -190,7 +189,7 @@ func (balancer Weight) balance(p *Node, s list.Size) *Node {
    return p
 }
 
-func (balancer Weight) isBalanced(x, y list.Size) bool {
+func (balancer Weight) isBalanced(x, y Size) bool {
    return (x + 1) >= (y + 1) >> 1 &&
           (y + 1) >= (x + 1) >> 1
 }
@@ -204,7 +203,7 @@ func (balancer Weight) Verify(tree Tree) {
    balancer.verify(tree.root, tree.size)
 }
 
-func (balancer Weight) verify(p *Node, s list.Size) {
+func (balancer Weight) verify(p *Node, s Size) {
    if p == nil {
       return
    }
@@ -229,7 +228,7 @@ func (balancer Cost) Restore(tree Tree) Tree {
    return tree
 }
 
-func (balancer Cost) balance(p *Node, s list.Size) *Node {
+func (balancer Cost) balance(p *Node, s Size) *Node {
    if s <= 2 {
       return p
    }
@@ -241,7 +240,7 @@ func (balancer Cost) balance(p *Node, s list.Size) *Node {
    return p
 }
 
-func (Cost) isBalanced(p *Node, s list.Size) bool {
+func (Cost) isBalanced(p *Node, s Size) bool {
    if p.sizeL() >= p.sizeR(s) {
      return p.sizeR(s) >= p.l.sizeL() && p.sizeR(s) >= p.l.sizeR(p.sizeL())
    } else {
@@ -253,7 +252,7 @@ func (balancer Cost) Verify(tree Tree) {
    balancer.verify(tree.root, tree.size)
 }
 
-func (balancer Cost) verify(p *Node, s list.Size) (height int) {
+func (balancer Cost) verify(p *Node, s Size) (height int) {
    if p == nil {
       return
    }
@@ -299,8 +298,8 @@ func (balancer DSW) toVine(p *Node) (vine *Node) {
    return n.r
 }
 
-func (balancer DSW) toTree(vine *Node, size list.Size) *Node {
-   m := list.Size(1 << utility.Log2(size + 1) - 1)
+func (balancer DSW) toTree(vine *Node, size Size) *Node {
+   m := Size(1 << utility.Log2(size + 1) - 1)
    p := balancer.compress(vine, size - m)
    for m > 1 {
        m = m >> 1
@@ -309,7 +308,7 @@ func (balancer DSW) toTree(vine *Node, size list.Size) *Node {
    return p
 }
 
-func (balancer DSW) compress(p *Node, k list.Size) *Node {
+func (balancer DSW) compress(p *Node, k Size) *Node {
    n := Node{}
    l := &n
    n.r = p
@@ -321,7 +320,7 @@ func (balancer DSW) compress(p *Node, k list.Size) *Node {
    return n.r
 }
 
-func (Tree) Vine(size list.Size) Tree {
+func (Tree) Vine(size Size) Tree {
    t := Tree{}
    n := Node{}
    p := &n
@@ -333,7 +332,7 @@ func (Tree) Vine(size list.Size) Tree {
    return t
 }
 
-func (Tree) WorstCaseMedianVine(size list.Size) Tree {
+func (Tree) WorstCaseMedianVine(size Size) Tree {
    assert(size > 0)
    t := Tree{}
    n := Node{}
@@ -356,7 +355,7 @@ func (tree Tree) Randomize(access number.Distribution) Tree {
    return tree
 }
 
-func (tree Tree) randomize(access number.Distribution, p *Node, s list.Size) *Node {
+func (tree Tree) randomize(access number.Distribution, p *Node, s Size) *Node {
    assert(p.size() == s)
    if p == nil {
       return nil

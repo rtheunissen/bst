@@ -1,7 +1,6 @@
 package trees
 
 import (
-   "github.com/rtheunissen/bst/types/list"
    "math"
 )
 
@@ -9,7 +8,7 @@ type AVL struct {
    RankBalanced
 }
 
-func (tree AVL) verifyRanks(p *Node, s list.Size) int {
+func (tree AVL) verifyRanks(p *Node, s Size) int {
    if p == nil {
       return -1
    }

@@ -20,7 +20,7 @@ func (tree *AVLWeakTopDown) Clone() list.List {
    }
 }
 
-func (tree *AVLWeakTopDown) dissolve(p **Node, x *list.Data) {
+func (tree *AVLWeakTopDown) dissolve(p **Node, x *Data) {
    old := *p
    tree.share(old.l)
    tree.share(old.r)
@@ -29,17 +29,17 @@ func (tree *AVLWeakTopDown) dissolve(p **Node, x *list.Data) {
    tree.release(old)
 }
 
-func (tree *AVLWeakTopDown) Update(i list.Size, x list.Data) {
+func (tree *AVLWeakTopDown) Update(i Size, x Data) {
    tree.Tree.Update(i, x)
 }
 
-func (tree *AVLWeakTopDown) Select(i list.Size) list.Data {
+func (tree *AVLWeakTopDown) Select(i Size) Data {
    return tree.Tree.Select(i)
 }
 
 // This top-down insertion algorithm was translated and paraphrased from the
 // _Deletion Without Rebalancing in Binary Search Trees_ paper referenced above.
-func (tree *AVLWeakTopDown) insert(p **Node, i list.Position, x list.Data) {
+func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
   //
   // "If the tree is empty, create a new node containing the item to be inserted
   //  and make it the root, completing the insertion."
@@ -255,19 +255,19 @@ func (tree *AVLWeakTopDown) insert(p **Node, i list.Position, x list.Data) {
   }
 }
 
-func (tree *AVLWeakTopDown) Insert(i list.Position, x list.Data) {
+func (tree *AVLWeakTopDown) Insert(i Position, x Data) {
    tree.insert(&tree.root, i, x)
    tree.size = tree.size + 1
 }
 
-func (tree *AVLWeakTopDown) Delete(i list.Position) (x list.Data) {
+func (tree *AVLWeakTopDown) Delete(i Position) (x Data) {
    assert(i < tree.size)
    x = tree.delete(&tree.root, i)
    tree.size--
    return
 }
 
-func (tree AVLWeakTopDown) join(l, r *Node, sl, sr list.Size) (p *Node) {
+func (tree AVLWeakTopDown) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
    if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
@@ -296,7 +296,7 @@ func (tree AVLWeakTopDown) Join(other list.List) list.List {
 }
 
 
-func (tree AVLWeakTopDown) split(p *Node, i, s list.Size) (l, r *Node) {
+func (tree AVLWeakTopDown) split(p *Node, i, s Size) (l, r *Node) {
    if p == nil {
       return
    }
@@ -316,7 +316,7 @@ func (tree AVLWeakTopDown) split(p *Node, i, s list.Size) (l, r *Node) {
 }
 
 
-func (tree AVLWeakTopDown) Split(i list.Position) (list.List, list.List) {
+func (tree AVLWeakTopDown) Split(i Position) (list.List, list.List) {
    assert(i <= tree.size)
    tree.share(tree.root)
    l, r := tree.split(tree.root, i, tree.size)
@@ -418,7 +418,7 @@ func (tree AVLWeakTopDown) resetSafeNode(p *Node) bool {
    return false // Could not reset the safe node.
 }
 
-func (tree AVLWeakTopDown) delete(p **Node, i list.Position) (x list.Data) {
+func (tree AVLWeakTopDown) delete(p **Node, i Position) (x Data) {
    if (*p).s == i {
      tree.dissolve(p, &x)
      return
@@ -451,7 +451,7 @@ func (tree AVLWeakTopDown) delete(p **Node, i list.Position) (x list.Data) {
       }
    }
 }
-func (tree AVLWeakTopDown) deleteMax(p **Node, s list.Size) (max *Node) {
+func (tree AVLWeakTopDown) deleteMax(p **Node, s Size) (max *Node) {
    g := p
    if (*p).r == nil {
       return tree.replacedByLeftSubtree(p)

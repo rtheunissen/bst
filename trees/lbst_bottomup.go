@@ -21,7 +21,7 @@ func (tree *LBSTBottomUp) Clone() list.List {
       *tree.WBSTBottomUp.Clone().(*WBSTBottomUp),
    }
 }
-func (tree LBSTBottomUp) Split(i list.Position) (list.List, list.List) {
+func (tree LBSTBottomUp) Split(i Position) (list.List, list.List) {
    l, r := tree.WBSTBottomUp.Split(i)
    return &LBSTBottomUp{*l.(*WBSTBottomUp)},
           &LBSTBottomUp{*r.(*WBSTBottomUp)}

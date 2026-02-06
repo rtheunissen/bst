@@ -2,8 +2,6 @@ package trees
 
 import (
 	"math"
-
-	"github.com/rtheunissen/bst/types/list"
 )
 
 type RedBlack struct {
@@ -22,7 +20,7 @@ func (tree RedBlack) isBlack(parent, child *Node) bool {
    return tree.isOneChild(parent, child)
 }
 
-func (tree RedBlack) verifyHeight(p *Node, s list.Size) int {
+func (tree RedBlack) verifyHeight(p *Node, s Size) int {
    if p == nil {
       return -1
    }

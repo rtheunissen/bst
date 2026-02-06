@@ -23,13 +23,13 @@ func (tree *Randomized) Clone() list.List {
    }
 }
 
-func (tree *Randomized) Insert(i list.Position, x list.Data) {
+func (tree *Randomized) Insert(i Position, x Data) {
    assert(i <= tree.size)
    tree.insert(&tree.root, tree.size, i, x)
    tree.size++
 }
 
-func (tree *Randomized) insert(p **Node, s list.Size, i list.Position, x list.Data) {
+func (tree *Randomized) insert(p **Node, s Size, i Position, x Data) {
    for {
       if random.LessThan(s + 1, tree.Source) == s {
          l, r := tree.split(*p, i)
@@ -49,7 +49,7 @@ func (tree *Randomized) insert(p **Node, s list.Size, i list.Position, x list.Da
    }
 }
 
-func (tree Randomized) delete(p **Node, s list.Size, i list.Position, x *list.Data) {
+func (tree Randomized) delete(p **Node, s Size, i Position, x *Data) {
    for {
       if i == (*p).s {
          old := *p
@@ -73,7 +73,7 @@ func (tree Randomized) delete(p **Node, s list.Size, i list.Position, x *list.Da
    }
 }
 
-func (tree *Randomized) Delete(i list.Position) (x list.Data) {
+func (tree *Randomized) Delete(i Position) (x Data) {
    assert(i < tree.size)
    tree.delete(&tree.root, tree.size, i, &x)
    tree.size--
@@ -114,7 +114,7 @@ func (tree *Randomized) Update(i Size, x Data) {
    tree.update(tree.root, i, x)
 }
 
-func (tree *Randomized) Split(i list.Position) (list.List, list.List) {
+func (tree *Randomized) Split(i Position) (list.List, list.List) {
    l, r := tree.Tree.Split(i)
    return &Randomized{l, tree.Source},
           &Randomized{r, tree.Source}

@@ -1,15 +1,14 @@
 package trees
 
 import (
-   "github.com/rtheunissen/bst/types/list"
    "math"
    "math/big"
 )
 
 type WeightBalance interface {
-   maxHeight(s list.Size) int
-   isBalanced(x, y list.Size) bool
-   singleRotation(x, y list.Size) bool
+   maxHeight(s Size) int
+   isBalanced(x, y Size) bool
+   singleRotation(x, y Size) bool
 }
 
 type ThreeTwo struct {
@@ -25,37 +24,37 @@ type ThreeTwo struct {
 //        = log_{(Δ+1)/Δ}(n+1)
 //        = log_{4/3}(n+1)
 //
-func (ThreeTwo) maxHeight(s list.Size) int {
+func (ThreeTwo) maxHeight(s Size) int {
    return int(math.Log(float64(s)+1)/math.Log(float64(4)/float64(3)))
 }
 
-func (ThreeTwo) isBalanced(x, y list.Size) bool {
+func (ThreeTwo) isBalanced(x, y Size) bool {
    return 3 * (x + 1) >= (y + 1)
 }
 
-func (ThreeTwo) singleRotation(x, y list.Size) bool {
+func (ThreeTwo) singleRotation(x, y Size) bool {
    return 2 * (x + 1) > (y + 1)
 }
 
 type Rational struct {
    Delta *big.Rat
    Gamma *big.Rat
-   Cache map[[2]list.Size]bool
+   Cache map[[2]Size]bool
 }
 
-func (rat Rational) maxHeight(s list.Size) int {
+func (rat Rational) maxHeight(s Size) int {
    delta, _ := rat.Delta.Float64()
    return int(math.Log(float64(s)+1)/math.Log((delta+1)/delta))
 }
 
-func (rat Rational) isBalanced(x, y list.Size) bool {
+func (rat Rational) isBalanced(x, y Size) bool {
    if x >= y {
       return true
    }
    if rat.Cache == nil {
-      rat.Cache = map[[2]list.Size]bool{}
+      rat.Cache = map[[2]Size]bool{}
    }
-   key := [2]list.Size{x, y}
+   key := [2]Size{x, y}
    if balanced, cached := rat.Cache[key]; cached {
       return balanced
    } else {
@@ -69,7 +68,7 @@ func (rat Rational) isBalanced(x, y list.Size) bool {
    }
 }
 
-func (rat Rational) singleRotation(x, y list.Size) bool {
+func (rat Rational) singleRotation(x, y Size) bool {
    if (x + 1) >= (y + 1) {
       return true
    }

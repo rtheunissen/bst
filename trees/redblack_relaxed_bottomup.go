@@ -23,23 +23,23 @@ func (tree *RedBlackRelaxedBottomUp) Clone() list.List {
    }
 }
 
-func (tree *RedBlackRelaxedBottomUp) Insert(i list.Position, x list.Data) {
+func (tree *RedBlackRelaxedBottomUp) Insert(i Position, x Data) {
    tree.RedBlackBottomUp.Insert(i, x)
 }
 
-func (tree *RedBlackRelaxedBottomUp) Delete(i list.Position) list.Data {
+func (tree *RedBlackRelaxedBottomUp) Delete(i Position) Data {
    return tree.Tree.Delete(i)
 }
 
-func (tree *RedBlackRelaxedBottomUp) Select(i list.Size) list.Data {
+func (tree *RedBlackRelaxedBottomUp) Select(i Size) Data {
    return tree.Tree.Select(i)
 }
 
-func (tree *RedBlackRelaxedBottomUp) Update(i list.Size, x list.Data) {
+func (tree *RedBlackRelaxedBottomUp) Update(i Size, x Data) {
    tree.Tree.Update(i, x)
 }
 
-func (tree RedBlackRelaxedBottomUp) join(l, r *Node, sl, sr list.Size) (p *Node) {
+func (tree RedBlackRelaxedBottomUp) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
    if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
@@ -59,7 +59,7 @@ func (tree *RedBlackRelaxedBottomUp) Join(other list.List) list.List {
    }
 }
 
-func (tree *RedBlackRelaxedBottomUp) Split(i list.Position) (list.List, list.List) {
+func (tree *RedBlackRelaxedBottomUp) Split(i Position) (list.List, list.List) {
    l, r := tree.RedBlackBottomUp.Split(i)
    return &RedBlackRelaxedBottomUp{RedBlackBottomUp: *l.(*RedBlackBottomUp)},
           &RedBlackRelaxedBottomUp{RedBlackBottomUp: *r.(*RedBlackBottomUp)}
