@@ -246,7 +246,7 @@ func (tree Conc) verifyHeights(p *Node) {
    if p.isLeaf() {
       invariant(p.y == 0)
    } else {
-      invariant(utility.Distance(p.l.y, p.r.y) <= 1)
+      invariant(utility.Distance(int(p.l.y), int(p.r.y)) <= 1)
    }
    tree.verifyHeights(p.l)
    tree.verifyHeights(p.r)

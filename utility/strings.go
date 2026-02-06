@@ -2,9 +2,6 @@ package utility
 
 import (
    "fmt"
-   "golang.org/x/exp/constraints"
-   "golang.org/x/text/language"
-   "golang.org/x/text/message"
    "strconv"
    "strings"
    "unicode/utf8"
@@ -54,6 +51,18 @@ func ParseFloat64(s string) float64 {
 }
 
 
-func CommaSep[T constraints.Integer](number T) string {
-   return message.NewPrinter(language.English).Sprint(number)
+func CommaSep(number uint64) string {
+   s := fmt.Sprint(number)
+   n := len(s)
+   if n <= 3 {
+      return s
+   }
+   var b strings.Builder
+   for i, c := range s {
+      if i > 0 && (n-i)%3 == 0 {
+         b.WriteByte(',')
+      }
+      b.WriteRune(c)
+   }
+   return b.String()
 }

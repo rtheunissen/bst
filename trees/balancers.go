@@ -69,7 +69,7 @@ func (balancer Median) verify(p *Node, s list.Size) {
    if p == nil {
       return
    }
-   invariant(utility.Distance(p.sizeL(), p.sizeR(s)) <= 1)
+   invariant(utility.Distance(int(p.sizeL()), int(p.sizeR(s))) <= 1)
 
    balancer.verify(p.l, p.sizeL())
    balancer.verify(p.r, p.sizeR(s))
@@ -166,7 +166,7 @@ func (balancer Log) verify(p *Node, s list.Size) {
    sl := p.sizeL()
    sr := p.sizeR(s)
 
-   invariant(utility.Distance(utility.Log2(sl + 1), utility.Log2(sr + 1)) <= 1)
+   invariant(utility.Distance(int(utility.Log2(sl + 1)), int(utility.Log2(sr + 1))) <= 1)
 
    balancer.verify(p.l, sl)
    balancer.verify(p.r, sr)

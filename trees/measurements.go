@@ -1,10 +1,6 @@
 package trees
 
-import (
-   "golang.org/x/exp/constraints"
-)
-
-func measurement[T constraints.Integer | constraints.Float](addr *T, delta T) {
+func measurement(addr *uint64, delta uint64) {
    *addr = *addr + delta
 }
 
