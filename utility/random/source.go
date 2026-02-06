@@ -1,10 +1,6 @@
 package random
 
-import (
-   "golang.org/x/exp/rand"
-)
-
-type Source = rand.Source
+type Source = *xoshiro256
 
 var common = xoshiro256{}
 

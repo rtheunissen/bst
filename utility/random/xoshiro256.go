@@ -4,7 +4,6 @@ import (
    "math/bits"
 )
 
-// TODO: which exactly?
 type xoshiro256 [4]uint64
 
 func (source *xoshiro256) Seed(seed uint64) {
