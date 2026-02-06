@@ -39,13 +39,13 @@ func (tree LLRB) fixUp(p *Node) *Node {
    // Right-leaning red link: rotate left to make it left-leaning.
    //
    if tree.isRed(p, p.r) && !tree.isRed(p, p.l) {
-      tree.rotateL(&p)
+      tree.treeRotateL(&p)
    }
    //
    // Two consecutive left red links: rotate right.
    //
    if tree.isRed(p, p.l) && tree.isRed(p.l, p.l.l) {
-      tree.rotateR(&p)
+      tree.treeRotateR(&p)
    }
    //
    // Both children red: promote (color flip).
@@ -82,8 +82,8 @@ func (tree LLRB) moveRedLeft(p *Node) *Node {
    tree.demote(p)
    if p.r != nil && tree.isRed(p.r, p.r.l) {
       tree.persist(&p.r)
-      tree.rotateR(&p.r)
-      tree.rotateL(&p)
+      tree.treeRotateR(&p.r)
+      tree.treeRotateL(&p)
       tree.promote(p)
    }
    return p
@@ -94,7 +94,7 @@ func (tree LLRB) moveRedLeft(p *Node) *Node {
 func (tree LLRB) moveRedRight(p *Node) *Node {
    tree.demote(p)
    if p.l != nil && tree.isRed(p.l, p.l.l) {
-      tree.rotateR(&p)
+      tree.treeRotateR(&p)
       tree.promote(p)
    }
    return p
@@ -124,7 +124,7 @@ func (tree *LLRB) delete(p *Node, i Position, x *Data) *Node {
       p.l = tree.delete(p.l, i, x)
    } else {
       if tree.isRed(p, p.l) {
-         tree.rotateR(&p)
+         tree.treeRotateR(&p)
       }
       if i == p.s && p.r == nil {
          *x = p.x
@@ -161,9 +161,9 @@ func (tree LLRB) balanceInsertL(p *Node) *Node {
          }
       } else {
          if tree.isRed(p.l, p.l.l) {
-            tree.rotateR(&p)
+            tree.treeRotateR(&p)
          } else if tree.isRed(p.l, p.l.r) {
-            tree.rotateLR(&p)
+            tree.treeRotateLR(&p)
          }
       }
    }
@@ -178,9 +178,9 @@ func (tree LLRB) balanceInsertR(p *Node) *Node {
          }
       } else {
          if tree.isRed(p.r, p.r.r) {
-            tree.rotateL(&p)
+            tree.treeRotateL(&p)
          } else if tree.isRed(p.r, p.r.l) {
-            tree.rotateRL(&p)
+            tree.treeRotateRL(&p)
          }
       }
    }
@@ -213,7 +213,7 @@ func (tree *LLRB) build(l, p, r *Node, sl Size) *Node {
 func (tree *LLRB) deleteMax(p *Node, max **Node) *Node {
    tree.persist(&p)
    if tree.isRed(p, p.l) {
-      tree.rotateR(&p)
+      tree.treeRotateR(&p)
    }
    if p.r == nil {
       *max = p

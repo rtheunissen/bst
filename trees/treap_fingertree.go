@@ -24,7 +24,7 @@ func (tree *TreapFingerTree) Clone() list.List {
 }
 
 func (tree *TreapFingerTree) reverseL(p *Node, g *Node, s Size) *Node {
-   assert(s == p.size())
+   assert(s == size(p))
    for {
       if p == nil {
          return g
@@ -593,7 +593,7 @@ func (tree *TreapFingerTree) deleteFromHead(i Position, x *Data) {
 }
 
 func (tree *TreapFingerTree) join(l, r *Node, sl Size) (root *Node) {
-   assert(sl == l.size())
+   assert(sl == size(l))
    p := &root
    for {
       if l == nil {
@@ -772,7 +772,7 @@ func (tree TreapFingerTree) eachFromHead(p *Node, visit func(Data)) {
       return
    }
    visit(p.x)
-   p.r.inorder(visit)
+   inorder(p.r, visit)
    tree.eachFromHead(p.l, visit)
 }
 
@@ -781,11 +781,11 @@ func (tree TreapFingerTree) eachFromTail(p *Node, visit func(Data)) {
       return
    }
    tree.eachFromTail(p.r, visit)
-   p.l.inorder(visit)
+   inorder(p.l, visit)
    visit(p.x)
 }
 
-func (tree TreapFingerTree) inorder(p *Node, visit func(Data)) {
+func (tree TreapFingerTree) fingerInorder(p *Node, visit func(Data)) {
    if p == nil {
       return
    }
@@ -795,7 +795,7 @@ func (tree TreapFingerTree) inorder(p *Node, visit func(Data)) {
 }
 
 func (tree TreapFingerTree) Each(visit func(Data)) {
-   tree.inorder(tree.root, visit)
+   tree.fingerInorder(tree.root, visit)
 }
 
 func (tree TreapFingerTree) verifyRanks() {
@@ -821,7 +821,7 @@ func (tree TreapFingerTree) verifyPositions() {
       return
    }
    // The root's size must be equal to the size of the left subtree.
-   invariant(tree.root.s == tree.getHead().size())
+   invariant(tree.root.s == size(tree.getHead()))
 
    // Verify internal positions along the spines.
    for l := tree.getHead(); l != nil; l = l.l {
@@ -833,7 +833,7 @@ func (tree TreapFingerTree) verifyPositions() {
 }
 
 func (tree TreapFingerTree) Verify() {
-   invariant(tree.size == tree.root.size())
+   invariant(tree.size == size(tree.root))
    tree.verifyPositions()
    tree.verifyRanks()
 }

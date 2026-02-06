@@ -45,7 +45,7 @@ func (tree *Splay) splay(p *Node, i Position) *Node {
             //
             tree.persist(&p.l)
             tree.persist(&p.l.l)
-            p = p.rotateR()
+            p = rotateR(p)
           p.s = p.s - i - 1
           r.l = p
             r = r.l
@@ -82,7 +82,7 @@ func (tree *Splay) splay(p *Node, i Position) *Node {
             //
             tree.persist(&p.r)
             tree.persist(&p.r.r)
-            p = p.rotateL()
+            p = rotateL(p)
             i = i - p.s - 1
           l.r = p
             l = l.r
@@ -223,11 +223,11 @@ func (tree *Splay) splayMax(l *Node) *Node {
       if l.r.r != nil {
          tree.persist(&l.r)
          tree.persist(&l.r.r)
-         l.r = l.r.rotateL()
-         l = l.rotateL()
+         l.r = rotateL(l.r)
+         l = rotateL(l)
       } else {
          tree.persist(&l.r)
-         l = l.rotateL()
+         l = rotateL(l)
       }
    }
    return l

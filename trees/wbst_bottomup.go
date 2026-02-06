@@ -25,8 +25,8 @@ func (tree WBSTBottomUp) verifyBalance(p *Node, s Size) {
    if p == nil {
       return
    }
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
 
    invariant(tree.isBalanced(sl, sr))
    invariant(tree.isBalanced(sr, sl))
@@ -36,7 +36,7 @@ func (tree WBSTBottomUp) verifyBalance(p *Node, s Size) {
 }
 
 func (tree WBSTBottomUp) verifyHeight(root *Node, size Size) {
-   invariant(root.height() <= tree.maxHeight(size))
+   invariant(height(root) <= tree.maxHeight(size))
 }
 
 func (tree WBSTBottomUp) Verify() {
@@ -76,9 +76,9 @@ func (tree WBSTBottomUp) extractMin(p *Node, s Size, x **Node) *Node {
       srr := sr - (*p).r.s - 1
       //
       if tree.singleRotation(srr, srl) {
-         tree.rotateL(&p)
+         tree.treeRotateL(&p)
       } else {
-         tree.rotateRL(&p)
+         tree.treeRotateRL(&p)
       }
    }
    return p
@@ -97,9 +97,9 @@ func (tree WBSTBottomUp) extractMax(p *Node, s Size, x **Node) *Node {
    p.r = tree.extractMax(p.r, sr, x)
    if !tree.isBalanced(sr-1, sl) {
       if tree.singleRotation((*p).l.s, sl-(*p).l.s-1) {
-         tree.rotateR(&p)
+         tree.treeRotateR(&p)
       } else {
-         tree.rotateLR(&p)
+         tree.treeRotateLR(&p)
       }
    }
    return p
@@ -150,9 +150,9 @@ func (tree *WBSTBottomUp) buildL(p *Node, l, r *Node, sl, sr Size) *Node {
       srl := l.r.s
 
       if tree.singleRotation(srr, srl) {
-         tree.rotateL(&l)
+         tree.treeRotateL(&l)
       } else {
-         tree.rotateRL(&l)
+         tree.treeRotateRL(&l)
       }
    }
    return l
@@ -175,9 +175,9 @@ func (tree *WBSTBottomUp) buildR(p *Node, l, r *Node, sl, sr Size) *Node {
 
    if !tree.isBalanced(srr, r.s) {
       if tree.singleRotation(r.l.s, r.s-r.l.s-1) {
-         tree.rotateR(&r)
+         tree.treeRotateR(&r)
       } else {
-         tree.rotateLR(&r)
+         tree.treeRotateLR(&r)
       }
    }
    return r
@@ -228,9 +228,9 @@ func (tree *WBSTBottomUp) insert(p *Node, s Size, i Position, x Data) *Node {
 
       if !tree.isBalanced(sr, sl+1) {
          if !tree.singleRotation((*p).l.s, p.s-(*p).l.s-1) {
-            tree.rotateLR(&p)
+            tree.treeRotateLR(&p)
          } else {
-            tree.rotateR(&p)
+            tree.treeRotateR(&p)
          }
       }
    } else {
@@ -238,9 +238,9 @@ func (tree *WBSTBottomUp) insert(p *Node, s Size, i Position, x Data) *Node {
 
       if !tree.isBalanced(sl, sr+1) {
          if !tree.singleRotation(sr+1-(*p).r.s-1, (*p).r.s) {
-            tree.rotateRL(&p)
+            tree.treeRotateRL(&p)
          } else {
-            tree.rotateL(&p)
+            tree.treeRotateL(&p)
          }
       }
    }
@@ -280,9 +280,9 @@ func (tree *WBSTBottomUp) delete(p *Node, s Size, i Position, x *Data) *Node {
          srl := (*p).r.s
          srr := sr - (*p).r.s - 1
          if tree.singleRotation(srr, srl) {
-            tree.rotateL(&p)
+            tree.treeRotateL(&p)
          } else {
-            tree.rotateRL(&p)
+            tree.treeRotateRL(&p)
          }
       }
    } else {
@@ -291,9 +291,9 @@ func (tree *WBSTBottomUp) delete(p *Node, s Size, i Position, x *Data) *Node {
          sll := (*p).l.s
          slr := sl - (*p).l.s - 1
          if tree.singleRotation(sll, slr) {
-            tree.rotateR(&p)
+            tree.treeRotateR(&p)
          } else {
-            tree.rotateLR(&p)
+            tree.treeRotateLR(&p)
          }
       }
    }

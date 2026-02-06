@@ -24,8 +24,8 @@ func (tree RedBlack) verifyHeight(p *Node, s Size) int {
    if p == nil {
       return -1
    }
-   l := tree.verifyHeight(p.l, p.sizeL())
-   r := tree.verifyHeight(p.r, p.sizeR(s))
+   l := tree.verifyHeight(p.l, sizeL(p))
+   r := tree.verifyHeight(p.r, sizeR(p, s))
    h := max(l, r) + 1
    
    invariant(h <= 2 * tree.rank(p) + 1)
@@ -37,7 +37,7 @@ func (tree RedBlack) verifyRanks(p *Node) {
    if p == nil {
       return
    }
-   if p.isLeaf() {
+   if isLeaf(p) {
       invariant(tree.rank(p) == 0)
    }
    invariant(tree.rank(p) >= tree.rank(p.l))

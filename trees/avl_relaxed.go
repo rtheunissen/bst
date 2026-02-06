@@ -9,7 +9,7 @@ func (tree AVLRelaxed) verifyRanks(p *Node) {
      return
   }
   // The height of a relaxed AVL tree is no greater than its rank.
-  invariant(tree.rank(p) >= p.height())
+  invariant(tree.rank(p) >= height(p))
 
   // Every rank difference is positive.
   invariant(tree.rank(p) > tree.rank(p.l))

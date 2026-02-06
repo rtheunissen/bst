@@ -5,7 +5,7 @@ type RedBlackRelaxed struct {
 }
 
 func (tree RedBlackRelaxed) verifyHeight(p *Node) {
-   invariant(p.height() <= 2 * tree.rank(p) + 1)
+   invariant(height(p) <= 2 * tree.rank(p) + 1)
 }
 
 func (tree RedBlackRelaxed) verifyRanks(p *Node) {

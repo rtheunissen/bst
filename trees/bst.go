@@ -91,7 +91,7 @@ func (tree Tree) lookup(p *Node, i Size) Data {
 }
 
 func (tree Tree) Each(visit func(Data)) {
-   tree.root.inorder(visit)
+   inorder(tree.root, visit)
 }
 
 func (tree *Tree) join(l, r *Node, sl, sr Size) *Node {
@@ -121,7 +121,7 @@ func (tree *Tree) join(l, r *Node, sl, sr Size) *Node {
 }
 
 func (tree *Tree) partition(p *Node, i uint64) *Node {
-   assert(i < p.size())
+   assert(i < size(p))
    // measurement(&partitionCount, 1)
 
    n := Node{s: i}
@@ -170,7 +170,7 @@ func (tree *Tree) dissolveRandom(p *Node, s Size) *Node {
    if p.r == nil {
       return p.l
    }
-   if random.LessThan(p.sizeL() + p.sizeR(s), random.Uniform()) < p.sizeL() {
+   if random.LessThan(sizeL(p) + sizeR(p, s), random.Uniform()) < sizeL(p) {
       l := tree.deleteMax(&p.l)
       l.r = p.r
       l.l = p.l
@@ -233,7 +233,7 @@ func (tree *Tree) dissolvePreferSmallerSubtree(p *Node, s Size) *Node {
    if p.r == nil {
       return p.l
    }
-   if p.sizeL() > p.sizeR(s) {
+   if sizeL(p) > sizeR(p, s) {
       r := tree.deleteMin(&p.r)
       r.l = p.l
       r.r = p.r
@@ -257,7 +257,7 @@ func (tree *Tree) dissolvePreferLargerSubtree(p *Node, s Size) *Node {
    if p.r == nil {
       return p.l
    }
-   if p.sizeL() < p.sizeR(s) {
+   if sizeL(p) < sizeR(p, s) {
       r := tree.deleteMin(&p.r)
       r.l = p.l
       r.r = p.r
@@ -364,10 +364,10 @@ func (tree Tree) InteriorHeightsAlongTheSpines() (h [2][]int) {
    }
    //
    for l := tree.root.l; l != nil; l = l.l {
-      h[0] = append(h[0], l.r.height()+1)
+      h[0] = append(h[0], height(l.r)+1)
    }
    for r := tree.root.r; r != nil; r = r.r {
-      h[1] = append(h[1], r.l.height()+1)
+      h[1] = append(h[1], height(r.l)+1)
    }
 
    // Reverse the left spine.
@@ -387,10 +387,10 @@ func (tree Tree) ExteriorHeightsAlongTheSpines() (h [2][]int) {
    }
    //
    for l := tree.root.l; l != nil; l = l.l {
-      h[0] = append(h[0], l.height())
+      h[0] = append(h[0], height(l))
    }
    for r := tree.root.r; r != nil; r = r.r {
-      h[1] = append(h[1], r.height())
+      h[1] = append(h[1], height(r))
    }
 
    // Reverse the left spine.

@@ -33,33 +33,17 @@ package trees
 // therefore be modified "in-place". In short, if a tree never shares its nodes
 // then none of its nodes will ever need to be copied.
 //
-type ReferenceCounter struct {
-	refs uint64
-}
-
-// AddReference increments the reference count.
-func (rc *ReferenceCounter) AddReference() {
-	rc.refs++
-}
-
-// RemoveReference decrements the reference count.
-func (rc *ReferenceCounter) RemoveReference() {
-	if rc.refs > 0 {
-		rc.refs--
-	}
-}
-
 // Removes one reference from the given node.
 func (tree Tree) release(p *Node) {
-	if p != nil {
-		p.RemoveReference()
+	if p != nil && p.refs > 0 {
+		p.refs--
 	}
 }
 
 // Adds a reference to the node to share it with another tree.
 func (tree Tree) share(p *Node) {
 	if p != nil {
-		p.AddReference()
+		p.refs++
 	}
 }
 

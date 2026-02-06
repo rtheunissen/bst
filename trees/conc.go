@@ -21,7 +21,7 @@ type Conc struct {
 }
 
 func (tree Conc) Count(p *Node) Size {
-   if p.isLeaf() {
+   if isLeaf(p) {
       return 1
    } else {
       return tree.Count(p.l) + tree.Count(p.r)
@@ -104,7 +104,7 @@ func (tree Conc) Select(i Position) (x Data) {
 }
 
 func (tree Conc) lookup(p *Node, i Position) *Node {
-   if p.isLeaf() {
+   if isLeaf(p) {
       assert(i == 0)
       return p
    }
@@ -121,7 +121,7 @@ func (tree *Conc) Update(i Position, x Data) {
 }
 
 func (tree *Conc) update(p *Node, i Position, x Data) *Node {
-   if p.isLeaf() {
+   if isLeaf(p) {
       return tree.asLeaf(x)
    }
    if i < p.l.s {
@@ -142,7 +142,7 @@ func (tree *Conc) Insert(i Position, x Data) {
 }
 
 func (tree *Conc) insert(p *Node, i Position, x Data) *Node {
-   if p.isLeaf() {
+   if isLeaf(p) {
       if i == 0 {
          return tree.link(tree.asLeaf(x), p)
       } else {
@@ -164,7 +164,7 @@ func (tree *Conc) Delete(i Position) (x Data) {
 }
 
 func (tree *Conc) delete(p *Node, i Position, x *Data) *Node {
-   if p.isLeaf() {
+   if isLeaf(p) {
       *x = p.x
       return nil
    }
@@ -187,7 +187,7 @@ func (tree Conc) Split(i Position) (list.List, list.List) {
 }
 
 func (tree Conc) split(p *Node, i Position) (*Node, *Node) {
-   if p.isLeaf() {
+   if isLeaf(p) {
       if i == 0 {
          return nil, p
       } else {
@@ -218,18 +218,18 @@ func (tree *Conc) join(other *Conc) *Node {
 }
 
 func (tree Conc) Each(visit func(Data)) {
-   tree.inorder(tree.root, visit)
+   tree.concInorder(tree.root, visit)
 }
 
-func (tree Conc) inorder(p *Node, visit func(Data)) {
+func (tree Conc) concInorder(p *Node, visit func(Data)) {
    if p == nil {
       return
    }
-   if p.isLeaf() {
+   if isLeaf(p) {
       visit(p.x)
    } else {
-      tree.inorder(p.l, visit)
-      tree.inorder(p.r, visit)
+      tree.concInorder(p.l, visit)
+      tree.concInorder(p.r, visit)
    }
 }
 
@@ -243,7 +243,7 @@ func (tree Conc) verifyHeights(p *Node) {
    if p == nil {
       return
    }
-   if p.isLeaf() {
+   if isLeaf(p) {
       invariant(p.y == 0)
    } else {
       invariant(utility.Distance(int(p.l.y), int(p.r.y)) <= 1)

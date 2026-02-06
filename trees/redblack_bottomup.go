@@ -31,8 +31,8 @@ func (tree *RedBlackBottomUp) Delete(i Position) (x Data) {
 }
 
 func (tree *RedBlackBottomUp) delete(p *Node, s Size, i Position, x *Data) *Node {
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
 
    if i == sl {
       tree.share(p.l)
@@ -66,13 +66,13 @@ func (tree RedBlackBottomUp) balanceDeleteL(p *Node) *Node {
       assert(tree.isZeroChild(p, p.r))
       assert(tree.isTwoChild(p, p.l))
       assert(tree.isOneOne(p.r))
-      tree.rotateL(&p)
+      tree.treeRotateL(&p)
       assert(tree.isZeroChild(p, p.l))
       assert(tree.isOneChild(p, p.r))
       if tree.isZeroChild(p.l.r, p.l.r.r) {
          assert(tree.isOneChild(p.l, p.l.r))
          assert(tree.isTwoChild(p.l, p.l.l))
-         tree.rotateL(&p.l)
+         tree.treeRotateL(&p.l)
          tree.promote(p.l)
          tree.demote(p.l.l)
          return p
@@ -80,7 +80,7 @@ func (tree RedBlackBottomUp) balanceDeleteL(p *Node) *Node {
       if tree.isZeroChild(p.l.r, p.l.r.l) {
          assert(tree.isOneChild(p.l, p.l.r))
          assert(tree.isTwoChild(p.l, p.l.l))
-         tree.rotateRL(&p.l)
+         tree.treeRotateRL(&p.l)
          tree.promote(p.l)
          tree.demote(p.l.l)
          return p
@@ -95,13 +95,13 @@ func (tree RedBlackBottomUp) balanceDeleteL(p *Node) *Node {
       assert(tree.isOneChild(p, p.r))
       assert(tree.isTwoChild(p, p.l))
       if tree.isZeroChild(p.r, p.r.r) {
-         tree.rotateL(&p)
+         tree.treeRotateL(&p)
          tree.promote(p)
          tree.demote(p.l)
          return p
       }
       if tree.isZeroChild(p.r, p.r.l) {
-         tree.rotateRL(&p)
+         tree.treeRotateRL(&p)
          tree.promote(p)
          tree.demote(p.l)
          return p
@@ -125,13 +125,13 @@ func (tree RedBlackBottomUp) balanceDeleteR(p *Node) *Node {
       assert(tree.isZeroChild(p, p.l))
       assert(tree.isTwoChild(p, p.r))
       assert(tree.isOneOne(p.l))
-      tree.rotateR(&p)
+      tree.treeRotateR(&p)
       assert(tree.isZeroChild(p, p.r))
       assert(tree.isOneChild(p, p.l))
       if tree.isZeroChild(p.r.l, p.r.l.l) {
          assert(tree.isOneChild(p.r, p.r.l))
          assert(tree.isTwoChild(p.r, p.r.r))
-         tree.rotateR(&p.r)
+         tree.treeRotateR(&p.r)
          tree.promote(p.r)
          tree.demote(p.r.r)
          return p
@@ -139,7 +139,7 @@ func (tree RedBlackBottomUp) balanceDeleteR(p *Node) *Node {
       if tree.isZeroChild(p.r.l, p.r.l.r) {
          assert(tree.isOneChild(p.r, p.r.l))
          assert(tree.isTwoChild(p.r, p.r.r))
-         tree.rotateLR(&p.r)
+         tree.treeRotateLR(&p.r)
          tree.promote(p.r)
          tree.demote(p.r.r)
          return p
@@ -154,13 +154,13 @@ func (tree RedBlackBottomUp) balanceDeleteR(p *Node) *Node {
       assert(tree.isOneChild(p, p.l))
       assert(tree.isTwoChild(p, p.r))
       if tree.isZeroChild(p.l, p.l.l) {
-         tree.rotateR(&p)
+         tree.treeRotateR(&p)
          tree.promote(p)
          tree.demote(p.r)
          return p
       }
       if tree.isZeroChild(p.l, p.l.r) {
-         tree.rotateLR(&p)
+         tree.treeRotateLR(&p)
          tree.promote(p)
          tree.demote(p.r)
          return p
@@ -202,11 +202,11 @@ func (tree RedBlackBottomUp) balanceInsertL(p *Node) *Node {
          }
       } else {
          if tree.isZeroChild(p.l, p.l.l) {
-            tree.rotateR(&p)
+            tree.treeRotateR(&p)
             return p
          }
          if tree.isZeroChild(p.l, p.l.r) {
-            tree.rotateLR(&p)
+            tree.treeRotateLR(&p)
             return p
          }
       }
@@ -223,11 +223,11 @@ func (tree RedBlackBottomUp) balanceInsertR(p *Node) *Node {
          }
       } else {
          if tree.isZeroChild(p.r, p.r.r) {
-            tree.rotateL(&p)
+            tree.treeRotateL(&p)
             return p
          }
          if tree.isZeroChild(p.r, p.r.l) {
-            tree.rotateRL(&p)
+            tree.treeRotateRL(&p)
             return p
          }
       }
@@ -302,12 +302,12 @@ func (tree RedBlackBottomUp) split(p *Node, s, i Size) (l, r *Node) {
       return
    }
    tree.persist(&p)
-   if i <= p.sizeL() {
-      l, r = tree.split(p.l, p.sizeL(), i)
-      r, l = tree.build(r, p, p.r, p.sizeL()-i), l
+   if i <= sizeL(p) {
+      l, r = tree.split(p.l, sizeL(p), i)
+      r, l = tree.build(r, p, p.r, sizeL(p)-i), l
    } else {
-      l, r = tree.split(p.r, p.sizeR(s), i-p.sizeL()-1)
-      l, r = tree.build(p.l, p, l, p.sizeL()), r
+      l, r = tree.split(p.r, sizeR(p, s), i-sizeL(p)-1)
+      l, r = tree.build(p.l, p, l, sizeL(p)), r
    }
    return l, r
 }

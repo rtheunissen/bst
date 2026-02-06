@@ -65,7 +65,7 @@ type Position = uint64
 type Data = uint64
 
 type Node struct {
-	ReferenceCounter
+	refs uint64 // Reference count for copy-on-write persistence.
 
 	l *Node // Pointers to the left and right subtrees.
 	r *Node
@@ -86,7 +86,7 @@ func averagePathLength(p *Node, depth uint64, totalDepth *uint64, totalNodes *ui
 	averagePathLength(p.r, depth+1, totalDepth, totalNodes)
 }
 
-func (p *Node) AveragePathLength() float64 {
+func nodeAveragePathLength(p *Node) float64 {
 	if p == nil {
 		return 0
 	}
@@ -96,50 +96,50 @@ func (p *Node) AveragePathLength() float64 {
 	return float64(totalDepth) / float64(totalNodes)
 }
 
-func (p *Node) isLeaf() bool {
+func isLeaf(p *Node) bool {
 	return p.l == nil && p.r == nil
 }
 
-func (p *Node) MaximumPathLength() int {
-	return p.height()
+func nodeMaximumPathLength(p *Node) int {
+	return height(p)
 }
 
-func (p *Node) height() int {
+func height(p *Node) int {
 	if p == nil {
 		return -1
 	}
-	return 1 + max(p.l.height(), p.r.height())
+	return 1 + max(height(p.l), height(p.r))
 }
 
 // Counts the number of nodes reachable from p*, including itself.
-func (p *Node) size() Size {
+func size(p *Node) Size {
 	if p == nil {
 		return 0
 	} else {
-		return 1 + p.l.size() + p.r.size()
+		return 1 + size(p.l) + size(p.r)
 	}
 }
 
 // Returns the number of nodes in the left subtree of p*.
-func (p *Node) sizeL() Size {
+func sizeL(p *Node) Size {
 	return p.s
 }
 
 // Returns the number of nodes in the right subtree of p*, given the s of p*.
-func (p *Node) sizeR(s Size) Size {
+func sizeR(p *Node, s Size) Size {
 	return s - p.s - 1
 }
 
-func (p *Node) inorder(visit func(Data)) {
+func inorder(p *Node, visit func(Data)) {
 	if p == nil {
 		return
 	}
-	p.l.inorder(visit)
+	inorder(p.l, visit)
 	visit(p.x)
-	p.r.inorder(visit)
+	inorder(p.r, visit)
 }
 
-func (p *Node) rotateL() (r *Node) {
+func rotateL(p *Node) (r *Node) {
 	// measurement(&rotations, 1)
 	r = p.r
 	p.r = r.l
@@ -148,7 +148,7 @@ func (p *Node) rotateL() (r *Node) {
 	return r
 }
 
-func (p *Node) rotateR() (l *Node) {
+func rotateR(p *Node) (l *Node) {
 	// measurement(&rotations, 1)
 	l = p.l
 	p.l = l.r
@@ -158,23 +158,23 @@ func (p *Node) rotateR() (l *Node) {
 }
 
 // Rotates the LEFT subtree LEFT, then rotates the root RIGHT.
-func (p *Node) rotateLR() *Node {
-	p.l = p.l.rotateL()
-	return p.rotateR()
+func rotateLR(p *Node) *Node {
+	p.l = rotateL(p.l)
+	return rotateR(p)
 }
 
 // Rotates the RIGHT subtree RIGHT, then rotates the root LEFT.
-func (p *Node) rotateRL() *Node {
-	p.r = p.r.rotateR()
-	return p.rotateL()
+func rotateRL(p *Node) *Node {
+	p.r = rotateR(p.r)
+	return rotateL(p)
 }
 
 func (tree Tree) verifySize(p *Node, s Size) Size {
 	if p == nil {
 		return 0
 	}
-	sl := tree.verifySize(p.l, p.sizeL())
-	sr := tree.verifySize(p.r, p.sizeR(s))
+	sl := tree.verifySize(p.l, sizeL(p))
+	sr := tree.verifySize(p.r, sizeR(p, s))
 
 	invariant(s == sl+sr+1)
 	return s
@@ -318,26 +318,26 @@ func pathDeletingRightIgnoringIndex(p *Node) **Node {
 	return &p.r
 }
 
-func (tree Tree) rotateL(p **Node) {
+func (tree Tree) treeRotateL(p **Node) {
 	tree.persist(&(*p).r)
-	*p = (*p).rotateL()
+	*p = rotateL(*p)
 }
 
-func (tree Tree) rotateR(p **Node) {
+func (tree Tree) treeRotateR(p **Node) {
 	tree.persist(&(*p).l)
-	*p = (*p).rotateR()
+	*p = rotateR(*p)
 }
 
-func (tree Tree) rotateRL(p **Node) {
+func (tree Tree) treeRotateRL(p **Node) {
 	tree.persist(&(*p).r)
 	tree.persist(&(*p).r.l)
-	*p = (*p).rotateRL()
+	*p = rotateRL(*p)
 }
 
-func (tree Tree) rotateLR(p **Node) {
+func (tree Tree) treeRotateLR(p **Node) {
 	tree.persist(&(*p).l)
 	tree.persist(&(*p).l.r)
-	*p = (*p).rotateLR()
+	*p = rotateLR(*p)
 }
 
 func (tree *Tree) appendR(p **Node, n *Node) {

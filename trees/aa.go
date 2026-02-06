@@ -42,7 +42,7 @@ func (tree *AA) Clone() list.List {
 
 func (tree AA) skew(p **Node) {
    if *p != nil && tree.isZeroChild(*p, (*p).l) {
-      tree.rotateR(p)
+      tree.treeRotateR(p)
    }
 }
 
@@ -50,7 +50,7 @@ func (tree AA) aaSplit(p **Node) {
    if *p != nil && (*p).r != nil &&
       tree.isZeroChild(*p, (*p).r) &&
       tree.isZeroChild((*p).r, (*p).r.r) {
-      tree.rotateL(p)
+      tree.treeRotateL(p)
       tree.promote(*p)
    }
 }
@@ -241,7 +241,7 @@ func (tree AA) verifyRanks(p *Node) {
    if p == nil {
       return
    }
-   if p.isLeaf() {
+   if isLeaf(p) {
       invariant(tree.rank(p) == 0)
    }
    // All rank differences are positive (no left 0-children allowed).

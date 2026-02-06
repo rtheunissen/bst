@@ -40,12 +40,12 @@ func (tree *TreapBottomUp) insert(p *Node, i Position, x Data) *Node {
       p.s = p.s + 1
       p.l = tree.insert(p.l, i, x)
       if p.l.y > p.y {
-         tree.rotateR(&p)
+         tree.treeRotateR(&p)
       }
    } else {
       p.r = tree.insert(p.r, i - p.s - 1, x)
       if p.r.y > p.y {
-         tree.rotateL(&p)
+         tree.treeRotateL(&p)
       }
    }
    return p

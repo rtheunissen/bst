@@ -12,7 +12,7 @@ func (tree AVLWeak) verifyHeight(root *Node, size Size) {
    if root == nil {
       return
    }
-   height := root.height()
+   height := height(root)
    invariant(tree.rank(root) >= height || height == 0)
    invariant(tree.rank(root) <= 2*height)
    invariant(tree.rank(root) <= 2*int(utility.Log2(size)))
@@ -22,7 +22,7 @@ func (tree AVLWeak) verifyRanks(p *Node) {
    if p == nil {
       return
    }
-   if p.isLeaf() {
+   if isLeaf(p) {
       invariant(tree.rank(p) == 0)
    }
    invariant(tree.rank(p) > tree.rank(p.l))

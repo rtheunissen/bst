@@ -107,7 +107,7 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            //
            if (*p).l.l == nil {
               tree.attachLL(*p, x)
-              tree.rotateR(p)
+              tree.treeRotateR(p)
               tree.promote(*p)
               tree.demote((*p).r)
               return
@@ -129,7 +129,7 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            // "Otherwise promote the new node and its parent, making its parent
            //  a 0-child, then do a rotate or double rotate step to make all
            //  rank differences positive."
-           tree.rotateR(p)
+           tree.treeRotateR(p)
            tree.promote(*p)
            tree.demote((*p).r)
            tree.pathLeft(&p)
@@ -150,7 +150,7 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            //
            if (*p).l.r == nil {
               tree.attachLR(*p, x)
-              tree.rotateLR(p)
+              tree.treeRotateLR(p)
               tree.promote(*p)
               tree.demote((*p).r)
               return
@@ -167,7 +167,7 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            //  a 0-child, then do a rotate or double rotate step to make all
            //  rank differences positive."
            //
-           tree.rotateLR(p)
+           tree.treeRotateLR(p)
            tree.promote(*p)
            tree.promote(*p)
            tree.demote((*p).r)
@@ -207,7 +207,7 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            //
            if (*p).r.r == nil {
               tree.attachRR(*p, x)
-              tree.rotateL(p)
+              tree.treeRotateL(p)
               tree.promote(*p)
               tree.demote((*p).l)
               return
@@ -217,7 +217,7 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
               tree.pathRight(&p, &i)
               continue
            }
-           tree.rotateL(p)
+           tree.treeRotateL(p)
            tree.promote(*p)
            tree.demote((*p).l)
            tree.pathRight(&p, &i)
@@ -230,7 +230,7 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            //
            if (*p).r.l == nil {
               tree.attachRL(*p, x)
-              tree.rotateRL(p)
+              tree.treeRotateRL(p)
               tree.demote((*p).l)
               tree.promote(*p)
               return
@@ -240,7 +240,7 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
               tree.pathLeft(&p)
               continue
            }
-           tree.rotateRL(p)
+           tree.treeRotateRL(p)
            tree.promote(*p)
            tree.promote(*p)
            tree.demote((*p).l)
@@ -327,7 +327,7 @@ func (tree AVLWeakTopDown) Split(i Position) (list.List, list.List) {
 func (tree AVLWeakTopDown) rebalanceOnDelete(p *Node) *Node {
    if tree.isThreeChild(p, p.r) {
       if tree.isOneChild(p.l, p.l.l) {
-         tree.rotateR(&p)
+         tree.treeRotateR(&p)
          tree.promote(p)
          tree.demote(p.r)
 
@@ -339,7 +339,7 @@ func (tree AVLWeakTopDown) rebalanceOnDelete(p *Node) *Node {
             tree.demote(p.r)
          }
       } else {
-         tree.rotateLR(&p)
+         tree.treeRotateLR(&p)
          tree.promote(p)
          tree.promote(p)
          tree.demote(p.l)
@@ -351,7 +351,7 @@ func (tree AVLWeakTopDown) rebalanceOnDelete(p *Node) *Node {
       }
    } else if tree.isThreeChild(p, p.l) {
       if tree.isOneChild(p.r, p.r.r) {
-         tree.rotateL(&p)
+         tree.treeRotateL(&p)
          tree.promote(p)
          tree.demote(p.l)
 
@@ -363,7 +363,7 @@ func (tree AVLWeakTopDown) rebalanceOnDelete(p *Node) *Node {
             tree.demote(p.l)
          }
       } else {
-         tree.rotateRL(&p)
+         tree.treeRotateRL(&p)
          tree.promote(p)
          tree.promote(p)
          tree.demote(p.l)
@@ -385,7 +385,7 @@ func (tree AVLWeakTopDown) rebalanceAfterDissolve(g **Node, p **Node) {
    //  into a 2,2 leaf, violating the rank rule. In this case we begin
    //  by demoting the parent, which may make it a 3-child."
    //
-   if (*p).isLeaf() && tree.isTwoTwo(*p) {
+   if isLeaf(*p) && tree.isTwoTwo(*p) {
       tree.demote(*p)
    }
    *g = tree.rebalanceOnDelete(*g)

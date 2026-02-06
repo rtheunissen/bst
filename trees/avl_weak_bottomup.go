@@ -26,8 +26,8 @@ func (tree *AVLWeakBottomUp) Clone() list.List {
 }
 
 func (tree AVLWeakBottomUp) delete(p *Node, s Size, i Position, x *Data) *Node {
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
 
    if i == p.s {
       *x = p.x
@@ -59,7 +59,7 @@ func (tree *AVLWeakBottomUp) Insert(i Position, x Data) {
 }
 
 func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
-   if p.isLeaf() && tree.isTwoTwo(p) {
+   if isLeaf(p) && tree.isTwoTwo(p) {
       tree.demote(p)
       return p
    }
@@ -72,7 +72,7 @@ func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
          tree.demote(p)
 
       } else if tree.isOneChild(p.l, p.l.l) {
-         tree.rotateR(&p)
+         tree.treeRotateR(&p)
          tree.promote(p)
          tree.demote(p.r)
 
@@ -84,7 +84,7 @@ func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
             tree.demote(p.r)
          }
       } else {
-         tree.rotateLR(&p)
+         tree.treeRotateLR(&p)
          tree.promote(p)
          tree.promote(p)
          tree.demote(p.l)
@@ -103,7 +103,7 @@ func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
          tree.demote(p)
 
       } else if tree.isOneChild(p.r, p.r.r) {
-         tree.rotateL(&p)
+         tree.treeRotateL(&p)
          tree.promote(p)
          tree.demote(p.l)
 
@@ -115,7 +115,7 @@ func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
             tree.demote(p.l)
          }
       } else {
-         tree.rotateRL(&p)
+         tree.treeRotateRL(&p)
          tree.promote(p)
          tree.promote(p)
          tree.demote(p.l)
@@ -182,7 +182,7 @@ func (tree *AVLWeakBottomUp) buildL(l, p, r *Node, sl Size) *Node {
       return p
    }
    tree.persist(&r)
-   r.s = r.sizeL() + sl + 1
+   r.s = sizeL(r) + sl + 1
    r.l = tree.buildL(l, p, r.l, sl)
    return tree.balanceInsertL(r)
 }
@@ -198,7 +198,7 @@ func (tree *AVLWeakBottomUp) buildR(l, p, r *Node, sl Size) *Node {
       return p
    }
    tree.persist(&l)
-   l.r = tree.buildR(l.r, p, r, l.sizeR(sl))
+   l.r = tree.buildR(l.r, p, r, sizeR(l, sl))
    return tree.balanceInsertR(l)
 }
 

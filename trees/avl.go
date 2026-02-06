@@ -19,8 +19,8 @@ func (tree AVL) verifyRanks(p *Node, s Size) int {
    invariant(tree.isOneChild(p, p.r) || tree.isOneChild(p, p.l))
 
    // Verify recursively, returning height.
-   invariant(tree.rank(p.l) == tree.verifyRanks(p.l, p.sizeL()))
-   invariant(tree.rank(p.r) == tree.verifyRanks(p.r, p.sizeR(s)))
+   invariant(tree.rank(p.l) == tree.verifyRanks(p.l, sizeL(p)))
+   invariant(tree.rank(p.r) == tree.verifyRanks(p.r, sizeR(p, s)))
 
    height := 1 + max(tree.rank(p.l), tree.rank(p.r))
 

@@ -50,12 +50,12 @@ func (tree *AVLBottomUp) insert(p *Node, i Position, x Data) *Node {
       return tree.allocate(Node{x: x})
    }
    tree.persist(&p)
-   if i <= p.sizeL() {
-      p.s = p.sizeL() + 1
+   if i <= sizeL(p) {
+      p.s = sizeL(p) + 1
       p.l = tree.insert(p.l, i, x)
       return tree.balanceInsertL(p)
    } else {
-      p.r = tree.insert(p.r, i - (p.sizeL() + 1), x)
+      p.r = tree.insert(p.r, i - (sizeL(p) + 1), x)
       return tree.balanceInsertR(p)
    }
 }
@@ -202,12 +202,12 @@ func (tree *AVLBottomUp) balanceInsertL(p *Node) *Node {
    //
    //
    if tree.isTwoChild(p.l, p.l.r) {
-      tree.rotateR(&p)
+      tree.treeRotateR(&p)
       tree.demote(p.r)
       return p
    }
    assert(tree.isOneChild(p.l, p.l.r))
-   tree.rotateLR(&p)
+   tree.treeRotateLR(&p)
    tree.promote(p)
    tree.demote(p.l)
    tree.demote(p.r)
@@ -219,10 +219,10 @@ func (tree *AVLBottomUp) balanceInsertR(p *Node) *Node {
       if tree.isOneChild(p, p.l) {
          tree.promote(p)
       } else if tree.isTwoChild(p.r, p.r.l) {
-         tree.rotateL(&p)
+         tree.treeRotateL(&p)
          tree.demote(p.l)
       } else {
-         tree.rotateRL(&p)
+         tree.treeRotateRL(&p)
          tree.promote(p)
          tree.demote(p.l)
          tree.demote(p.r)
@@ -239,8 +239,8 @@ func (tree *AVLBottomUp) Delete(i Position) (x Data) {
 }
 
 func (tree *AVLBottomUp) delete(p *Node, s Size, i Position, x *Data) *Node {
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
 
    if i == sl {
       *x = p.x
@@ -382,7 +382,7 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
          //    Promote the parent once, demote the right subtree once, and
          //    demote the left subtree twice. This restores the rank invariant.
          //
-         tree.rotateRL(&p)
+         tree.treeRotateRL(&p)
          tree.promote(p)
          tree.demote(p.r)
          tree.demote(p.l)
@@ -449,7 +449,7 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
          //                          1       1
          //                        ╭─┴─╮     ╰─╮
          //                        0   0       0
-         tree.rotateL(&p)
+         tree.treeRotateL(&p)
          tree.demote(p.l)
          tree.demote(p.l)
          return p
@@ -500,7 +500,7 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
          //                  0       1               0
          //                          ╰─╮
          //                            0
-         tree.rotateL(&p)
+         tree.treeRotateL(&p)
          tree.promote(p)
          tree.demote(p.l)
          return p
@@ -516,18 +516,18 @@ func (tree *AVLBottomUp) balanceDeleteR(p *Node) *Node {
    }
    if tree.isThreeChild(p, p.r) {
       if tree.isTwoChild(p.l, p.l.l) {
-         tree.rotateLR(&p)
+         tree.treeRotateLR(&p)
          tree.promote(p)
          tree.demote(p.l)
          tree.demote(p.r)
          tree.demote(p.r)
       } else {
          if tree.isTwoChild(p.l, p.l.r) {
-            tree.rotateR(&p)
+            tree.treeRotateR(&p)
             tree.demote(p.r)
             tree.demote(p.r)
          } else {
-            tree.rotateR(&p)
+            tree.treeRotateR(&p)
             tree.promote(p)
             tree.demote(p.r)
          }
@@ -581,7 +581,7 @@ func (tree *AVLBottomUp) buildL(l, p, r *Node, sl Size) *Node {
       return p
    }
    tree.persist(&r)
-   r.s = r.sizeL() + sl + 1
+   r.s = sizeL(r) + sl + 1
    r.l = tree.buildL(l, p, r.l, sl)
    return tree.balanceInsertL(r)
 }
@@ -596,14 +596,14 @@ func (tree *AVLBottomUp) buildR(l, p, r *Node, sl Size) *Node {
       return p
    }
    tree.persist(&l)
-   l.r = tree.buildR(l.r, p, r, l.sizeR(sl))
+   l.r = tree.buildR(l.r, p, r, sizeR(l, sl))
    return tree.balanceInsertR(l)
 }
 
 // Constructs a balanced tree with root p where all nodes of l are to the left
 // of p and all nodes in r are to the right of p.
 func (tree *AVLBottomUp) build(l, p, r *Node, sl Size) *Node {
-   assert(sl == l.size())
+   assert(sl == size(l))
    if tree.rank(l) < tree.rank(r) {
       return tree.buildL(l, p, r, sl)
    } else {
@@ -623,7 +623,7 @@ func (tree *AVLBottomUp) joinL(l, r *Node, sl Size) (p *Node) {
       return tree.build(l, p, tree.deleteMin(r, &p), sl)
    }
    tree.persist(&r)
-   r.s = r.sizeL() + sl
+   r.s = sizeL(r) + sl
    r.l = tree.joinL(l, r.l, sl)
    return tree.balanceInsertL(r)
 }
@@ -633,7 +633,7 @@ func (tree *AVLBottomUp) joinR(l, r *Node, sl Size) (p *Node) {
       return tree.build(tree.deleteMax(l, &p), p, r, sl - 1)
    }
    tree.persist(&l)
-   l.r = tree.joinR(l.r, r, l.sizeR(sl))
+   l.r = tree.joinR(l.r, r, sizeR(l, sl))
    return tree.balanceInsertR(l)
 }
 
@@ -664,17 +664,17 @@ func (tree *AVLBottomUp) Join(other list.List) list.List {
 // Splits the tree of `p` into two trees `l` and `r` at position `i`, such that
 // the resulting size of `l` is equal to `i`.
 func (tree *AVLBottomUp) split(p *Node, i, s Size) (l, r *Node) {
-   assert(s == p.size())
+   assert(s == size(p))
    if p == nil {
       return
    }
    tree.persist(&p)
-   if i <= (*p).sizeL() {
-      l, r = tree.split(p.l, i, p.sizeL())
-         r = tree.build(r, p, p.r, p.sizeL() - i)
+   if i <= sizeL(p) {
+      l, r = tree.split(p.l, i, sizeL(p))
+         r = tree.build(r, p, p.r, sizeL(p) - i)
    } else {
-      l, r = tree.split(p.r, i - (p.sizeL() + 1), p.sizeR(s))
-         l = tree.build(p.l, p, l, p.sizeL())
+      l, r = tree.split(p.r, i - (sizeL(p) + 1), sizeR(p, s))
+         l = tree.build(p.l, p, l, sizeL(p))
    }
    return l, r
 }

@@ -26,8 +26,8 @@ func (tree WBSTTopDown) verifyBalance(p *Node, s Size) {
    if s < 3 {
       return
    }
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
 
    invariant(tree.isBalanced(sl, sr))
    invariant(tree.isBalanced(sr, sl))
@@ -37,7 +37,7 @@ func (tree WBSTTopDown) verifyBalance(p *Node, s Size) {
 }
 
 func (tree WBSTTopDown) verifyHeight(root *Node, size Size) {
-   invariant(root.height() <= tree.maxHeight(size))
+   invariant(height(root) <= tree.maxHeight(size))
 }
 
 func (tree WBSTTopDown) Verify() {
@@ -55,8 +55,8 @@ func (tree *WBSTTopDown) insert(p **Node, s Size, i Position, x Data) {
       }
       tree.persist(p)
 
-      sl := (*p).sizeL()
-      sr := (*p).sizeR(s)
+      sl := sizeL(*p)
+      sr := sizeR(*p, s)
 
       assert(tree.isBalanced(sr, sl))
       assert(tree.isBalanced(sl, sr))
@@ -69,26 +69,26 @@ func (tree *WBSTTopDown) insert(p **Node, s Size, i Position, x Data) {
             tree.pathL(&p, &s)
          } else {
             if i <= (*p).l.s {
-               if tree.singleRotation((*p).l.sizeL()+1, (*p).l.sizeR(sl)) {
+               if tree.singleRotation(sizeL((*p).l)+1, sizeR((*p).l, sl)) {
                   //
                   // LL SINGLE
                   //
-                  tree.rotateR(p)
+                  tree.treeRotateR(p)
                   tree.pathL(&p, &s)
                } else {
                   //
                   // LL DOUBLE
                   //
-                  tree.rotateLR(p)
+                  tree.treeRotateLR(p)
                   tree.pathL(&p, &s)
                   tree.pathL(&p, &s)
                }
             } else {
-               if tree.singleRotation((*p).l.sizeL(), (*p).l.sizeR(sl)+1) {
+               if tree.singleRotation(sizeL((*p).l), sizeR((*p).l, sl)+1) {
                   //
                   // LR SINGLE
                   //
-                  tree.rotateR(p)
+                  tree.treeRotateR(p)
                   tree.pathR(&p, &s, &i)
                   tree.pathL(&p, &s)
                } else {
@@ -96,14 +96,14 @@ func (tree *WBSTTopDown) insert(p **Node, s Size, i Position, x Data) {
                      //
                      // LRL DOUBLE
                      //
-                     tree.rotateLR(p)
+                     tree.treeRotateLR(p)
                      tree.pathL(&p, &s)
                      tree.pathR(&p, &s, &i)
                   } else {
                      //
                      // LRR DOUBLE
                      //
-                     tree.rotateLR(p)
+                     tree.treeRotateLR(p)
                      tree.pathR(&p, &s, &i)
                      tree.pathL(&p, &s)
                   }
@@ -119,26 +119,26 @@ func (tree *WBSTTopDown) insert(p **Node, s Size, i Position, x Data) {
             continue
          }
          if i > (*p).s+(*p).r.s+1 {
-            if tree.singleRotation((*p).r.sizeR(sr)+1, (*p).r.sizeL()) {
+            if tree.singleRotation(sizeR((*p).r, sr)+1, sizeL((*p).r)) {
                //
                // RR SINGLE
                //
-               tree.rotateL(p)
+               tree.treeRotateL(p)
                tree.pathR(&p, &s, &i)
             } else {
                //
                // RR DOUBLE
                //
-               tree.rotateRL(p)
+               tree.treeRotateRL(p)
                tree.pathR(&p, &s, &i)
                tree.pathR(&p, &s, &i)
             }
          } else {
-            if tree.singleRotation((*p).r.sizeR(sr), (*p).r.sizeL()+1) {
+            if tree.singleRotation(sizeR((*p).r, sr), sizeL((*p).r)+1) {
                //
                // RL SINGLE
                //
-               tree.rotateL(p)
+               tree.treeRotateL(p)
                tree.pathL(&p, &s)
                tree.pathR(&p, &s, &i)
             } else {
@@ -146,14 +146,14 @@ func (tree *WBSTTopDown) insert(p **Node, s Size, i Position, x Data) {
                   //
                   // RLR DOUBLE
                   //
-                  tree.rotateRL(p)
+                  tree.treeRotateRL(p)
                   tree.pathR(&p, &s, &i)
                   tree.pathL(&p, &s)
                } else {
                   //
                   // RLL DOUBLE
                   //
-                  tree.rotateRL(p)
+                  tree.treeRotateRL(p)
                   tree.pathL(&p, &s)
                   tree.pathR(&p, &s, &i)
                }
@@ -165,7 +165,7 @@ func (tree *WBSTTopDown) insert(p **Node, s Size, i Position, x Data) {
 
 func (tree *WBSTTopDown) delete(p **Node, s Size, i Position, x **Node) {
    assert(i < s)
-   assert(s == (*p).size())
+   assert(s == size((*p)))
    for {
       sl := (*p).s
       sr := s - (*p).s - 1
@@ -194,14 +194,14 @@ func (tree *WBSTTopDown) delete(p **Node, s Size, i Position, x **Node) {
                //
                // L SINGLE
                //
-               tree.rotateL(p)
+               tree.treeRotateL(p)
                tree.deleteL(&p, &s)
                tree.deleteL(&p, &s)
             } else {
                //
                // L DOUBLE
                //
-               tree.rotateRL(p)
+               tree.treeRotateRL(p)
                tree.deleteL(&p, &s)
                tree.deleteL(&p, &s)
             }
@@ -217,14 +217,14 @@ func (tree *WBSTTopDown) delete(p **Node, s Size, i Position, x **Node) {
                //
                // R SINGLE
                //
-               tree.rotateR(p)
+               tree.treeRotateR(p)
                tree.deleteR(&p, &s, &i)
                tree.deleteR(&p, &s, &i)
             } else {
                //
                // R DOUBLE
                //
-               tree.rotateLR(p)
+               tree.treeRotateLR(p)
                tree.deleteR(&p, &s, &i)
                tree.deleteR(&p, &s, &i)
             }
@@ -235,17 +235,17 @@ func (tree *WBSTTopDown) delete(p **Node, s Size, i Position, x **Node) {
 
 func (tree *WBSTTopDown) rebalanceR(p **Node, sr Size) {
    if tree.singleRotation(sr-(*p).r.s-1, (*p).r.s) {
-      tree.rotateL(p)
+      tree.treeRotateL(p)
    } else {
-      tree.rotateRL(p)
+      tree.treeRotateRL(p)
    }
 }
 
 func (tree *WBSTTopDown) rebalanceL(p **Node, sl Size) {
    if tree.singleRotation((*p).l.s, sl-(*p).l.s-1) { // R SINGLE
-      tree.rotateR(p)
+      tree.treeRotateR(p)
    } else { // R DOUBLE
-      tree.rotateLR(p)
+      tree.treeRotateLR(p)
    }
 }
 

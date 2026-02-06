@@ -34,15 +34,15 @@ func (tree *AVLTopDown) insert(p **Node, i Position, x Data) {
    a := p
    j := i
    for {
-      if i <= (*p).sizeL() {
-         (*p).s = (*p).sizeL() + 1
+      if i <= sizeL(*p) {
+         (*p).s = sizeL(*p) + 1
          p = &(*p).l
          if *p == nil {
             *p = tree.allocate(Node{x: x})
             break
          }
       } else {
-         i = i - ((*p).sizeL() + 1)
+         i = i - (sizeL(*p) + 1)
          p = &(*p).r
          if *p == nil {
             *p = tree.allocate(Node{x: x})
@@ -57,10 +57,10 @@ func (tree *AVLTopDown) insert(p **Node, i Position, x Data) {
    }
    for q := *a; q != *p; {
       tree.promote(q)
-      if j <= q.sizeL() {
+      if j <= sizeL(q) {
          q = q.l
       } else {
-         j = j - (q.sizeL() + 1)
+         j = j - (sizeL(q) + 1)
          q = q.r
       }
    }
@@ -74,25 +74,25 @@ func (tree *AVLTopDown) balance(p *Node) *Node {
    }
    if tree.isThreeChild(p, p.l) {
       if tree.isTwoChild(p.r, p.r.r) {
-         tree.rotateRL(&p)
+         tree.treeRotateRL(&p)
          tree.promote(p)
          tree.demote(p.r)
          tree.demote(p.l)
          tree.demote(p.l)
       } else {
-         tree.rotateL(&p)
+         tree.treeRotateL(&p)
          tree.demote(p.l)
          tree.demote(p.l)
       }
    } else if tree.isThreeChild(p, p.r) {
       if tree.isTwoChild(p.l, p.l.l) {
-         tree.rotateLR(&p)
+         tree.treeRotateLR(&p)
          tree.promote(p)
          tree.demote(p.l)
          tree.demote(p.r)
          tree.demote(p.r)
       } else {
-         tree.rotateR(&p)
+         tree.treeRotateR(&p)
          tree.demote(p.r)
          tree.demote(p.r)
       }

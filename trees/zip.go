@@ -97,7 +97,7 @@ func (tree *Zip) rank(p *Node) uint64 {
 }
 
 func (tree *Zip) zip(l, r *Node, sl Size) (root *Node) {
-   assert(sl == l.size())
+   assert(sl == size(l))
    p := &root
    for {
       if l == nil {
@@ -111,7 +111,7 @@ func (tree *Zip) zip(l, r *Node, sl Size) (root *Node) {
 
       if tree.rank(l) >= tree.rank(r) {
          tree.persist(&l)
-         sl = sl - l.s - 1 //l.sizeR(sl)
+         sl = sl - l.s - 1 //sizeR(l, sl)
          *p = l
          p = &l.r
          l = *p

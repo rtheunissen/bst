@@ -71,7 +71,7 @@ func (tree *RedBlackTopDown) insert(p **Node, i Position, x Data) {
             if (*p).l.l == nil {
                tree.attachLL(*p, x)
                if tree.isRed((*p).l, (*p).l.l) {
-                  tree.rotateR(p)
+                  tree.treeRotateR(p)
                }
                return
             }
@@ -86,7 +86,7 @@ func (tree *RedBlackTopDown) insert(p **Node, i Position, x Data) {
                 tree.pathLeft(&p)
                 continue
             }
-            tree.rotateR(p)
+            tree.treeRotateR(p)
             tree.pathLeft(&p)
             tree.promote(*p)
             continue
@@ -98,7 +98,7 @@ func (tree *RedBlackTopDown) insert(p **Node, i Position, x Data) {
             if (*p).l.r == nil {
                tree.attachLR(*p, x)
                if tree.isRed((*p).l, (*p).l.r) { // or is p.l.rank == 0 ?
-                  tree.rotateLR(p)
+                  tree.treeRotateLR(p)
                }
                return
             }
@@ -113,7 +113,7 @@ func (tree *RedBlackTopDown) insert(p **Node, i Position, x Data) {
                 tree.promote(*p)
                 continue
             }
-            tree.rotateLR(p)
+            tree.treeRotateLR(p)
             tree.promote(*p)
             if i <= (*p).s {
                tree.pathLeft(&p) // LRL
@@ -139,7 +139,7 @@ func (tree *RedBlackTopDown) insert(p **Node, i Position, x Data) {
             if (*p).r.r == nil {
                tree.attachRR(*p, x)
                if tree.isRed((*p).r, (*p).r.r) { // or is p.r.rank == 0 ?
-                  tree.rotateL(p)
+                  tree.treeRotateL(p)
                }
                return
             }
@@ -154,7 +154,7 @@ func (tree *RedBlackTopDown) insert(p **Node, i Position, x Data) {
                 tree.promote(*p)
                 continue
             }
-            tree.rotateL(p)
+            tree.treeRotateL(p)
             tree.pathRight(&p, &i)
             tree.promote(*p)
             continue
@@ -165,7 +165,7 @@ func (tree *RedBlackTopDown) insert(p **Node, i Position, x Data) {
             if (*p).r.l == nil {
                tree.attachRL(*p, x)
                if tree.isRed((*p).r, (*p).r.l) { // or is p.l.rank == 0 ?
-                  tree.rotateRL(p)
+                  tree.treeRotateRL(p)
                }
                return
             }
@@ -180,7 +180,7 @@ func (tree *RedBlackTopDown) insert(p **Node, i Position, x Data) {
                 tree.promote(*p)
                 continue
             }
-            tree.rotateRL(p)
+            tree.treeRotateRL(p)
             tree.promote(*p)
             if i > (*p).s {
                tree.pathRight(&p, &i) // RLR

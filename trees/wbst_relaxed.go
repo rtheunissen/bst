@@ -52,8 +52,8 @@ func (tree *WBSTRelaxed) insert(p **Node, s Size, i Position, x Data) {
       tree.persist(p)
       height++
 
-      sl := (*p).sizeL()
-      sr := (*p).sizeR(s)
+      sl := sizeL(*p)
+      sr := sizeR(*p, s)
       if i <= sl {
          if unbalancedNode == nil && !tree.isBalanced(sr, sl + 1) {
             unbalancedNode = p
@@ -83,12 +83,12 @@ func (tree *WBSTRelaxed) balance(p *Node, s Size) *Node {
    if s < 4 {
       return p
    }
-   if !tree.isBalanced(p.sizeL(), p.sizeR(s)) ||
-      !tree.isBalanced(p.sizeR(s), p.sizeL()) {
+   if !tree.isBalanced(sizeL(p), sizeR(p, s)) ||
+      !tree.isBalanced(sizeR(p, s), sizeL(p)) {
       p = tree.partition(p, s >> 1)
    }
-   p.l = tree.balance(p.l, p.sizeL())
-   p.r = tree.balance(p.r, p.sizeR(s))
+   p.l = tree.balance(p.l, sizeL(p))
+   p.r = tree.balance(p.r, sizeR(p, s))
    return p
 }
 

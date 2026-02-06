@@ -12,7 +12,7 @@ type Balancer interface {
 }
 
 func partition(p *Node, i uint64) *Node {
-   assert(i < p.size())
+   assert(i < size(p))
    // measurement(&partitionCount, 1)
 
    n := Node{s: i}
@@ -49,8 +49,8 @@ func (balancer Median) balance(p *Node, s Size) *Node {
    if !balancer.isBalanced(p, s) {
       p = partition(p, s >> 1)
    }
-   p.l = balancer.balance(p.l, p.sizeL())
-   p.r = balancer.balance(p.r, p.sizeR(s))
+   p.l = balancer.balance(p.l, sizeL(p))
+   p.r = balancer.balance(p.r, sizeR(p, s))
    return p
 }
 
@@ -68,15 +68,15 @@ func (balancer Median) verify(p *Node, s Size) {
    if p == nil {
       return
    }
-   invariant(utility.Distance(int(p.sizeL()), int(p.sizeR(s))) <= 1)
+   invariant(utility.Distance(int(sizeL(p)), int(sizeR(p, s))) <= 1)
 
-   balancer.verify(p.l, p.sizeL())
-   balancer.verify(p.r, p.sizeR(s))
+   balancer.verify(p.l, sizeL(p))
+   balancer.verify(p.r, sizeR(p, s))
 }
 
 func (Median) isBalanced(p *Node, s Size) bool {
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
    return sl + 1 >= sr &&
           sr + 1 >= sl
 }
@@ -90,8 +90,8 @@ func (balancer Height) balance(p *Node, s Size) *Node {
    if !balancer.isBalanced(p, s) {
       p = partition(p, s >> 1)
    }
-   p.l = balancer.balance(p.l, p.sizeL())
-   p.r = balancer.balance(p.r, p.sizeR(s))
+   p.l = balancer.balance(p.l, sizeL(p))
+   p.r = balancer.balance(p.r, sizeR(p, s))
    return p
 }
 
@@ -101,8 +101,8 @@ func (balancer Height) Restore(tree Tree) Tree {
 }
 
 func (Height) isBalanced(p *Node, s Size) bool {
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
    return utility.GreaterThanOrEqualToMSB(sl + 1, sr) &&
           utility.GreaterThanOrEqualToMSB(sr + 1, sl)
 }
@@ -114,13 +114,13 @@ func (balancer Height) Verify(tree Tree) {
 // A node is height-balanced when the difference between the height of its
 // subtrees is no greater than 1, and both subtrees are also height-balanced.
 //
-// invariant(p.height() <= FloorLog2(s))
+// invariant(height(p) <= FloorLog2(s))
 func (balancer Height) verify(p *Node, s Size) (height int) {
    if p == nil {
       return
    }
-   heightL := balancer.verify(p.l, p.sizeL())
-   heightR := balancer.verify(p.r, p.sizeR(s))
+   heightL := balancer.verify(p.l, sizeL(p))
+   heightR := balancer.verify(p.r, sizeR(p, s))
 
    invariant(utility.Distance(heightL, heightR) <= 1)
 
@@ -136,14 +136,14 @@ func (balancer Log) balance(p *Node, s Size) *Node {
    if !balancer.balanced(p, s) {
       p = partition(p, s >> 1)
    }
-   p.l = balancer.balance(p.l, p.sizeL())
-   p.r = balancer.balance(p.r, p.sizeR(s))
+   p.l = balancer.balance(p.l, sizeL(p))
+   p.r = balancer.balance(p.r, sizeR(p, s))
    return p
 }
 
 func (balancer Log) balanced(p *Node, s Size) bool {
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
    return utility.GreaterThanOrEqualToMSB(sl + 1, (sr + 1) >> 1) &&
           utility.GreaterThanOrEqualToMSB(sr + 1, (sl + 1) >> 1)
 }
@@ -162,8 +162,8 @@ func (balancer Log) verify(p *Node, s Size) {
    if p == nil {
       return
    }
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
 
    invariant(utility.Distance(int(utility.Log2(sl + 1)), int(utility.Log2(sr + 1))) <= 1)
 
@@ -181,11 +181,11 @@ func (balancer Weight) balance(p *Node, s Size) *Node {
    if s <= 3 {
       return p
    }
-   if !balancer.isBalanced(p.sizeL(), p.sizeR(s)) {
+   if !balancer.isBalanced(sizeL(p), sizeR(p, s)) {
       p = partition(p, s >> 1)
    }
-   p.l = balancer.balance(p.l, p.sizeL())
-   p.r = balancer.balance(p.r, p.sizeR(s))
+   p.l = balancer.balance(p.l, sizeL(p))
+   p.r = balancer.balance(p.r, sizeR(p, s))
    return p
 }
 
@@ -207,8 +207,8 @@ func (balancer Weight) verify(p *Node, s Size) {
    if p == nil {
       return
    }
-   sl := p.sizeL()
-   sr := p.sizeR(s)
+   sl := sizeL(p)
+   sr := sizeR(p, s)
 
    invariant((sl + 1) >= (sr + 1) / 2)
    invariant((sr + 1) >= (sl + 1) / 2)
@@ -235,16 +235,16 @@ func (balancer Cost) balance(p *Node, s Size) *Node {
    if !balancer.isBalanced(p, s) {
       p = partition(p, s >> 1)
    }
-   p.l = balancer.balance(p.l, p.sizeL())
-   p.r = balancer.balance(p.r, p.sizeR(s))
+   p.l = balancer.balance(p.l, sizeL(p))
+   p.r = balancer.balance(p.r, sizeR(p, s))
    return p
 }
 
 func (Cost) isBalanced(p *Node, s Size) bool {
-   if p.sizeL() >= p.sizeR(s) {
-     return p.sizeR(s) >= p.l.sizeL() && p.sizeR(s) >= p.l.sizeR(p.sizeL())
+   if sizeL(p) >= sizeR(p, s) {
+     return sizeR(p, s) >= sizeL(p.l) && sizeR(p, s) >= sizeR(p.l, sizeL(p))
    } else {
-     return p.sizeL() >= p.r.sizeR(p.sizeR(s)) && p.sizeL() >= p.r.sizeL()
+     return sizeL(p) >= sizeR(p.r, sizeR(p, s)) && sizeL(p) >= sizeL(p.r)
    }
 }
 
@@ -256,14 +256,14 @@ func (balancer Cost) verify(p *Node, s Size) (height int) {
    if p == nil {
       return
    }
-   invariant(p.l == nil || p.sizeR(s) >= p.l.sizeL())
-   invariant(p.l == nil || p.sizeR(s) >= p.l.sizeR(p.sizeL()))
+   invariant(p.l == nil || sizeR(p, s) >= sizeL(p.l))
+   invariant(p.l == nil || sizeR(p, s) >= sizeR(p.l, sizeL(p)))
 
-   invariant(p.r == nil || p.sizeL() >= p.r.sizeL())
-   invariant(p.r == nil || p.sizeL() >= p.r.sizeR(p.sizeR(s)))
+   invariant(p.r == nil || sizeL(p) >= sizeL(p.r))
+   invariant(p.r == nil || sizeL(p) >= sizeR(p.r, sizeR(p, s)))
 
-   heightL := balancer.verify(p.l, p.sizeL())
-   heightR := balancer.verify(p.r, p.sizeR(s))
+   heightL := balancer.verify(p.l, sizeL(p))
+   heightR := balancer.verify(p.r, sizeR(p, s))
 
    height = 1 + max(heightL, heightR)
 
@@ -276,7 +276,7 @@ type DSW struct {
 }
 
 func (balancer DSW) Verify(tree Tree) {
-   invariant(tree.root.height() == int(utility.Log2(tree.size)))
+   invariant(height(tree.root) == int(utility.Log2(tree.size)))
 }
 
 func (balancer DSW) Restore(tree Tree) Tree {
@@ -289,7 +289,7 @@ func (balancer DSW) toVine(p *Node) (vine *Node) {
    l := &n
    for p != nil {
       for p.l != nil {
-         p = p.rotateR()
+         p = rotateR(p)
       }
       l.r = p
       l = l.r
@@ -313,7 +313,7 @@ func (balancer DSW) compress(p *Node, k Size) *Node {
    l := &n
    n.r = p
    for ; k > 0; k-- {
-      l.r = p.rotateL()
+      l.r = rotateL(p)
       l = l.r
       p = l.r
    }
@@ -356,12 +356,12 @@ func (tree Tree) Randomize(access number.Distribution) Tree {
 }
 
 func (tree Tree) randomize(access number.Distribution, p *Node, s Size) *Node {
-   assert(p.size() == s)
+   assert(size(p) == s)
    if p == nil {
       return nil
    }
    p = tree.partition(p, access.LessThan(s))
-   p.l = tree.randomize(access, p.l, p.sizeL())
-   p.r = tree.randomize(access, p.r, p.sizeR(s))
+   p.l = tree.randomize(access, p.l, sizeL(p))
+   p.r = tree.randomize(access, p.r, sizeR(p, s))
    return p
 }

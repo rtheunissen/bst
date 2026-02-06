@@ -44,14 +44,14 @@ func (MaximumPathLength) Reset()  {
 }
 
 func (MaximumPathLength) Measure(tree BinaryTree) any {
-   return tree.Root().MaximumPathLength()
+   return nodeMaximumPathLength(tree.Root())
 }
 
 type AveragePathLength struct {
 }
 
 func (accumulator *AveragePathLength) Measure(tree BinaryTree) any {
-   return tree.Root().AveragePathLength()
+   return nodeAveragePathLength(tree.Root())
 }
 func (AveragePathLength) Reset()  {
 }
