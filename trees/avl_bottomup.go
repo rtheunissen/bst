@@ -23,7 +23,6 @@ import (
 // instead of ranks to use only 1 bit for the balancing information, if needed.
 //
 type AVLBottomUp struct {
-   AVL
    Tree
 }
 
@@ -37,7 +36,7 @@ func (tree *AVLBottomUp) Clone() list.List {
 
 func (tree *AVLBottomUp) Verify() {
    tree.verifySize(tree.root, tree.size)
-   tree.AVL.verifyRanks(tree.root, tree.size)
+   verifyAVLRanks(tree.root, tree.size)
 }
 
 func (tree *AVLBottomUp) Insert(i Position, x Data) {
@@ -74,7 +73,7 @@ func (tree *AVLBottomUp) balanceInsertL(p *Node) *Node {
    // It is only the case of a 0-child that is invalid, so the first check is to
    // see if the left subtree is a 0-child, otherwise balancing is not required.
    //
-   if !tree.isZeroChild(p, p.l) {
+   if !isZeroChild(p, p.l) {
       return p
    }
    // The left subtree is now a 0-child, so we would like to make it a 1-child.
@@ -99,8 +98,8 @@ func (tree *AVLBottomUp) balanceInsertL(p *Node) *Node {
    // right subtree is currently a 1-child becoming a 2-child, which results
    // in the parent becoming a 1,2-node, restoring the rank invariant.
    //
-   if tree.isOneChild(p, p.r) {
-      tree.promote(p)
+   if isOneChild(p, p.r) {
+      promote(p)
       return p
    }
    // The parent is a 0,2-node because we could not promote it without creating
@@ -201,31 +200,31 @@ func (tree *AVLBottomUp) balanceInsertL(p *Node) *Node {
    //                            0   0       0
    //
    //
-   if tree.isTwoChild(p.l, p.l.r) {
+   if isTwoChild(p.l, p.l.r) {
       tree.treeRotateR(&p)
-      tree.demote(p.r)
+      demote(p.r)
       return p
    }
-   assert(tree.isOneChild(p.l, p.l.r))
+   assert(isOneChild(p.l, p.l.r))
    tree.treeRotateLR(&p)
-   tree.promote(p)
-   tree.demote(p.l)
-   tree.demote(p.r)
+   promote(p)
+   demote(p.l)
+   demote(p.r)
    return p
 }
 
 func (tree *AVLBottomUp) balanceInsertR(p *Node) *Node {
-   if tree.isZeroChild(p, p.r) {
-      if tree.isOneChild(p, p.l) {
-         tree.promote(p)
-      } else if tree.isTwoChild(p.r, p.r.l) {
+   if isZeroChild(p, p.r) {
+      if isOneChild(p, p.l) {
+         promote(p)
+      } else if isTwoChild(p.r, p.r.l) {
          tree.treeRotateL(&p)
-         tree.demote(p.l)
+         demote(p.l)
       } else {
          tree.treeRotateRL(&p)
-         tree.promote(p)
-         tree.demote(p.l)
-         tree.demote(p.r)
+         promote(p)
+         demote(p.l)
+         demote(p.r)
       }
    }
    return p
@@ -287,15 +286,15 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
    //        ╭─╯
    //     →  0
    //
-   if tree.isTwoTwo(p) {
-      tree.demote(p)
+   if isTwoTwo(p) {
+      demote(p)
       return p
    }
    //
    // Otherwise, it is possible that the left subtree was a 2-child before the
    // deletion, which would make it a 3-child if the deletion decreased height.
    //
-   if tree.isThreeChild(p, p.l) {
+   if isThreeChild(p, p.l) {
       //
       //                                3
       //                        ╭───────┴───────╮
@@ -308,7 +307,7 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
       // In this case, the right subtree must be a 1-child because the node was
       // previously a 2,1-node and the 2-node is now a 3-node.
       //
-      assert(tree.isOneChild(p, p.r))
+      assert(isOneChild(p, p.r))
       //
       // Demoting the parent is not possible because that would make the right
       // subtree a 0-child. Consider that the 3,1-node situation means that the
@@ -338,7 +337,7 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
       // sibling is then the subtree with the greater height because its rank is
       // closer to its parent.
       //
-      if tree.isTwoChild(p.r, p.r.r) {
+      if isTwoChild(p.r, p.r.r) {
          //
          //                             3
          //                     ╭───────┴───────╮
@@ -348,8 +347,8 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
          //                               ╭─╯
          //                               0
          //
-         assert(tree.isOneChild(p, p.r))
-         assert(tree.isOneChild(p.r, p.r.l))
+         assert(isOneChild(p, p.r))
+         assert(isOneChild(p.r, p.r.l))
          //
          // We get a valid AVL structure by first rotating the right subtree
          // to the right, and then rotating the parent left.
@@ -383,10 +382,10 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
          //    demote the left subtree twice. This restores the rank invariant.
          //
          tree.treeRotateRL(&p)
-         tree.promote(p)
-         tree.demote(p.r)
-         tree.demote(p.l)
-         tree.demote(p.l)
+         promote(p)
+         demote(p.r)
+         demote(p.l)
+         demote(p.l)
          return p
       }
       //
@@ -394,8 +393,8 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
       // given that it is not a 2-child, which allows the left subtree of the
       // right subtree to be either a 1-child or a 2-child.
       //
-      assert(tree.isThreeChild(p, p.l))
-      assert(tree.isOneChild(p.r, p.r.r))
+      assert(isThreeChild(p, p.l))
+      assert(isOneChild(p.r, p.r.r))
       //
       //                              3
       //                      ╭───────┴───────╮
@@ -410,7 +409,7 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
       // indicates that it either has the same or greater height than its
       // sibling, the left subtree of the right subtree of the parent.
       //
-      if tree.isTwoChild(p.r, p.r.l) {
+      if isTwoChild(p.r, p.r.l) {
          //
          //                              3
          //                      ╭───────┴───────╮
@@ -450,13 +449,13 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
          //                        ╭─┴─╮     ╰─╮
          //                        0   0       0
          tree.treeRotateL(&p)
-         tree.demote(p.l)
-         tree.demote(p.l)
+         demote(p.l)
+         demote(p.l)
          return p
 
       } else {
-         assert(tree.isOneChild(p.r, p.r.l))
-         assert(tree.isOneChild(p.r, p.r.r))
+         assert(isOneChild(p.r, p.r.l))
+         assert(isOneChild(p.r, p.r.r))
          //
          //                              3
          //                      ╭───────┴───────╮
@@ -501,8 +500,8 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
          //                          ╰─╮
          //                            0
          tree.treeRotateL(&p)
-         tree.promote(p)
-         tree.demote(p.l)
+         promote(p)
+         demote(p.l)
          return p
       }
    }
@@ -510,26 +509,26 @@ func (tree *AVLBottomUp) balanceDeleteL(p *Node) *Node {
 }
 
 func (tree *AVLBottomUp) balanceDeleteR(p *Node) *Node {
-   if tree.isTwoTwo(p) {
-      tree.demote(p)
+   if isTwoTwo(p) {
+      demote(p)
       return p
    }
-   if tree.isThreeChild(p, p.r) {
-      if tree.isTwoChild(p.l, p.l.l) {
+   if isThreeChild(p, p.r) {
+      if isTwoChild(p.l, p.l.l) {
          tree.treeRotateLR(&p)
-         tree.promote(p)
-         tree.demote(p.l)
-         tree.demote(p.r)
-         tree.demote(p.r)
+         promote(p)
+         demote(p.l)
+         demote(p.r)
+         demote(p.r)
       } else {
-         if tree.isTwoChild(p.l, p.l.r) {
+         if isTwoChild(p.l, p.l.r) {
             tree.treeRotateR(&p)
-            tree.demote(p.r)
-            tree.demote(p.r)
+            demote(p.r)
+            demote(p.r)
          } else {
             tree.treeRotateR(&p)
-            tree.promote(p)
-            tree.demote(p.r)
+            promote(p)
+            demote(p.r)
          }
       }
    }
@@ -572,12 +571,12 @@ func (tree *AVLBottomUp) deleteMax(p *Node, max **Node) *Node {
 // then `p`,all the nodes currently in that subtree.
 //
 func (tree *AVLBottomUp) buildL(l, p, r *Node, sl Size) *Node {
-   assert(tree.rank(r) >= tree.rank(l))
-   if tree.rankDifference(r, l) <= 1 {
+   assert(rank(r) >= rank(l))
+   if rankDifference(r, l) <= 1 {
       p.l = l
       p.r = r
       p.s = sl
-      p.y = uint64(tree.rank(r) + 1)
+      p.y = uint64(rank(r) + 1)
       return p
    }
    tree.persist(&r)
@@ -587,12 +586,12 @@ func (tree *AVLBottomUp) buildL(l, p, r *Node, sl Size) *Node {
 }
 
 func (tree *AVLBottomUp) buildR(l, p, r *Node, sl Size) *Node {
-   assert(tree.rank(l) >= tree.rank(r))
-   if tree.rankDifference(l, r) <= 1 {
+   assert(rank(l) >= rank(r))
+   if rankDifference(l, r) <= 1 {
       p.l = l
       p.r = r
       p.s = sl
-      p.y = uint64(tree.rank(l) + 1)
+      p.y = uint64(rank(l) + 1)
       return p
    }
    tree.persist(&l)
@@ -604,7 +603,7 @@ func (tree *AVLBottomUp) buildR(l, p, r *Node, sl Size) *Node {
 // of p and all nodes in r are to the right of p.
 func (tree *AVLBottomUp) build(l, p, r *Node, sl Size) *Node {
    assert(sl == size(l))
-   if tree.rank(l) < tree.rank(r) {
+   if rank(l) < rank(r) {
       return tree.buildL(l, p, r, sl)
    } else {
       return tree.buildR(l, p, r, sl)
@@ -619,7 +618,7 @@ func (tree *AVLBottomUp) build(l, p, r *Node, sl Size) *Node {
 // along the same path anyway.
 //
 func (tree *AVLBottomUp) joinL(l, r *Node, sl Size) (p *Node) {
-   if tree.rankDifference(r, l) <= 1 {
+   if rankDifference(r, l) <= 1 {
       return tree.build(l, p, tree.deleteMin(r, &p), sl)
    }
    tree.persist(&r)
@@ -629,7 +628,7 @@ func (tree *AVLBottomUp) joinL(l, r *Node, sl Size) (p *Node) {
 }
 
 func (tree *AVLBottomUp) joinR(l, r *Node, sl Size) (p *Node) {
-   if tree.rankDifference(l, r) <= 1 {
+   if rankDifference(l, r) <= 1 {
       return tree.build(tree.deleteMax(l, &p), p, r, sl - 1)
    }
    tree.persist(&l)
@@ -642,7 +641,7 @@ func (tree *AVLBottomUp) joinR(l, r *Node, sl Size) (p *Node) {
 func (tree *AVLBottomUp) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
+   if rank(l) < rank(r) || (rank(l) == rank(r) && sl <= sr) {
       return tree.joinL(l, r, sl)
    } else {
       return tree.joinR(l, r, sl)

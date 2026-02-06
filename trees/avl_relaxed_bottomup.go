@@ -4,12 +4,11 @@ import "github.com/rtheunissen/bst/types/list"
 
 type AVLRelaxedBottomUp struct {
    AVLBottomUp
-   AVLRelaxed
 }
 
 func (tree AVLRelaxedBottomUp) Verify() {
    tree.verifySize(tree.root, tree.size)
-   tree.verifyRanks(tree.root)
+   verifyAVLRelaxedRanks(tree.root)
 }
 
 func (AVLRelaxedBottomUp) New() list.List {
@@ -29,11 +28,11 @@ func (tree *AVLRelaxedBottomUp) Delete(i Position) Data {
 }
 
 func (tree AVLRelaxedBottomUp) buildL(l *Node, p *Node, r *Node, sl Size) (root *Node) {
-   if tree.rank(l) - tree.rank(r) <= 1 {
+   if rank(l) - rank(r) <= 1 {
       p.l = l
       p.r = r
       p.s = sl
-      p.y = uint64(tree.rank(l) + 1)
+      p.y = uint64(rank(l) + 1)
       return p
    }
    tree.persist(&l)
@@ -42,11 +41,11 @@ func (tree AVLRelaxedBottomUp) buildL(l *Node, p *Node, r *Node, sl Size) (root 
 }
 
 func (tree AVLRelaxedBottomUp) buildR(l *Node, p *Node, r *Node, sl Size) (root *Node) {
-   if tree.rank(r) - tree.rank(l) <= 1 {
+   if rank(r) - rank(l) <= 1 {
       p.l = l
       p.r = r
       p.s = sl
-      p.y = uint64(tree.rank(r) + 1)
+      p.y = uint64(rank(r) + 1)
       return p
    }
    tree.persist(&r)
@@ -56,7 +55,7 @@ func (tree AVLRelaxedBottomUp) buildR(l *Node, p *Node, r *Node, sl Size) (root 
 }
 
 func (tree *AVLRelaxedBottomUp) build(l, p, r *Node, sl Size) *Node {
-   if tree.rank(l) <= tree.rank(r) {
+   if rank(l) <= rank(r) {
       return tree.buildR(l, p, r, sl)
    } else {
       return tree.buildL(l, p, r, sl)
@@ -66,7 +65,7 @@ func (tree *AVLRelaxedBottomUp) build(l, p, r *Node, sl Size) *Node {
 func (tree AVLRelaxedBottomUp) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
+   if rank(l) < rank(r) || (rank(l) == rank(r) && sl <= sr) {
       return tree.build(l, tree.Tree.deleteMin(&r), r, sl)
    } else {
       return tree.build(l, tree.Tree.deleteMax(&l), r, sl-1)

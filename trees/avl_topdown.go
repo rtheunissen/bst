@@ -50,13 +50,13 @@ func (tree *AVLTopDown) insert(p **Node, i Position, x Data) {
          }
       }
       tree.persist(p)
-      if !tree.isOneOne(*p) {
+      if !isOneOne(*p) {
          a = p
          j = i
       }
    }
    for q := *a; q != *p; {
-      tree.promote(q)
+      promote(q)
       if j <= sizeL(q) {
          q = q.l
       } else {
@@ -68,33 +68,33 @@ func (tree *AVLTopDown) insert(p **Node, i Position, x Data) {
 }
 
 func (tree *AVLTopDown) balance(p *Node) *Node {
-   if tree.isTwoTwo(p) {
-      tree.demote(p)
+   if isTwoTwo(p) {
+      demote(p)
       return p
    }
-   if tree.isThreeChild(p, p.l) {
-      if tree.isTwoChild(p.r, p.r.r) {
+   if isThreeChild(p, p.l) {
+      if isTwoChild(p.r, p.r.r) {
          tree.treeRotateRL(&p)
-         tree.promote(p)
-         tree.demote(p.r)
-         tree.demote(p.l)
-         tree.demote(p.l)
+         promote(p)
+         demote(p.r)
+         demote(p.l)
+         demote(p.l)
       } else {
          tree.treeRotateL(&p)
-         tree.demote(p.l)
-         tree.demote(p.l)
+         demote(p.l)
+         demote(p.l)
       }
-   } else if tree.isThreeChild(p, p.r) {
-      if tree.isTwoChild(p.l, p.l.l) {
+   } else if isThreeChild(p, p.r) {
+      if isTwoChild(p.l, p.l.l) {
          tree.treeRotateLR(&p)
-         tree.promote(p)
-         tree.demote(p.l)
-         tree.demote(p.r)
-         tree.demote(p.r)
+         promote(p)
+         demote(p.l)
+         demote(p.r)
+         demote(p.r)
       } else {
          tree.treeRotateR(&p)
-         tree.demote(p.r)
-         tree.demote(p.r)
+         demote(p.r)
+         demote(p.r)
       }
    }
    return p

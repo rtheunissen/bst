@@ -3,14 +3,13 @@ package trees
 import "github.com/rtheunissen/bst/types/list"
 
 type AVLWeakBottomUp struct {
-   AVLWeak
    AVLBottomUp
 }
 
 func (tree AVLWeakBottomUp) Verify() {
    tree.verifySize(tree.root, tree.size)
-   tree.AVLWeak.verifyRanks(tree.root)
-   tree.AVLWeak.verifyHeight(tree.root, tree.size)
+   verifyAVLWeakRanks(tree.root)
+   verifyAVLWeakHeight(tree.root, tree.size)
 }
 
 func (AVLWeakBottomUp) New() list.List {
@@ -59,71 +58,71 @@ func (tree *AVLWeakBottomUp) Insert(i Position, x Data) {
 }
 
 func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
-   if isLeaf(p) && tree.isTwoTwo(p) {
-      tree.demote(p)
+   if isLeaf(p) && isTwoTwo(p) {
+      demote(p)
       return p
    }
-   if tree.isThreeChild(p, p.r) {
-      if tree.isTwoChild(p, p.l) {
-         tree.demote(p)
+   if isThreeChild(p, p.r) {
+      if isTwoChild(p, p.l) {
+         demote(p)
 
-      } else if tree.isTwoTwo(p.l) {
-         tree.demote(p.l)
-         tree.demote(p)
+      } else if isTwoTwo(p.l) {
+         demote(p.l)
+         demote(p)
 
-      } else if tree.isOneChild(p.l, p.l.l) {
+      } else if isOneChild(p.l, p.l.l) {
          tree.treeRotateR(&p)
-         tree.promote(p)
-         tree.demote(p.r)
+         promote(p)
+         demote(p.r)
 
-         assert(tree.isTwoChild(p, p.l))
-         assert(tree.isOneChild(p, p.r))
+         assert(isTwoChild(p, p.l))
+         assert(isOneChild(p, p.r))
 
          if p.r.l == nil {
-            assert(tree.isTwoTwo(p.r))
-            tree.demote(p.r)
+            assert(isTwoTwo(p.r))
+            demote(p.r)
          }
       } else {
          tree.treeRotateLR(&p)
-         tree.promote(p)
-         tree.promote(p)
-         tree.demote(p.l)
-         tree.demote(p.r)
-         tree.demote(p.r)
+         promote(p)
+         promote(p)
+         demote(p.l)
+         demote(p.r)
+         demote(p.r)
 
-         assert(tree.isTwoChild(p, p.l))
-         assert(tree.isTwoChild(p, p.r))
+         assert(isTwoChild(p, p.l))
+         assert(isTwoChild(p, p.r))
       }
-   } else if tree.isThreeChild(p, p.l) {
-      if tree.isTwoChild(p, p.r) {
-         tree.demote(p)
+   } else if isThreeChild(p, p.l) {
+      if isTwoChild(p, p.r) {
+         demote(p)
 
-      } else if tree.isTwoTwo(p.r) {
-         tree.demote(p.r)
-         tree.demote(p)
+      } else if isTwoTwo(p.r) {
+         demote(p.r)
+         demote(p)
 
-      } else if tree.isOneChild(p.r, p.r.r) {
+      } else if isOneChild(p.r, p.r.r) {
          tree.treeRotateL(&p)
-         tree.promote(p)
-         tree.demote(p.l)
+         promote(p)
+         demote(p.l)
 
-         assert(tree.isOneChild(p, p.l))
-         assert(tree.isTwoChild(p, p.r))
+         assert(isOneChild(p, p.l))
+         assert(isTwoChild(p, p.r))
 
          if p.l.r == nil {
-            assert(tree.isTwoTwo(p.l))
-            tree.demote(p.l)
+            assert(isTwoTwo(p.l))
+            demote(p.l)
          }
       } else {
          tree.treeRotateRL(&p)
-         tree.promote(p)
-         tree.promote(p)
-         tree.demote(p.l)
-         tree.demote(p.l)
-         tree.demote(p.r)
+         promote(p)
+         promote(p)
+         demote(p.l)
+         demote(p.l)
+         demote(p.r)
 
-         assert(tree.isTwoChild(p, p.l))
-         assert(tree.isTwoChild(p, p.r))
+         assert(isTwoChild(p, p.l))
+         assert(isTwoChild(p, p.r))
       }
    }
    return p
@@ -173,12 +172,12 @@ func (tree AVLWeakBottomUp) extractMax(p *Node, max **Node) *Node {
 // then `p`,all the nodes currently in that subtree.
 //
 func (tree *AVLWeakBottomUp) buildL(l, p, r *Node, sl Size) *Node {
-   assert(tree.rank(r) >= tree.rank(l))
-   if tree.rankDifference(r, l) <= 1 {
+   assert(rank(r) >= rank(l))
+   if rankDifference(r, l) <= 1 {
       p.l = l
       p.r = r
       p.s = sl
-      p.y = uint64(tree.rank(r) + 1)
+      p.y = uint64(rank(r) + 1)
       return p
    }
    tree.persist(&r)
@@ -189,12 +188,12 @@ func (tree *AVLWeakBottomUp) buildL(l, p, r *Node, sl Size) *Node {
 
 // Symmetric
 func (tree *AVLWeakBottomUp) buildR(l, p, r *Node, sl Size) *Node {
-   assert(tree.rank(l) >= tree.rank(r))
-   if tree.rankDifference(l, r) <= 1 {
+   assert(rank(l) >= rank(r))
+   if rankDifference(l, r) <= 1 {
       p.l = l
       p.r = r
       p.s = sl
-      p.y = uint64(tree.rank(l) + 1)
+      p.y = uint64(rank(l) + 1)
       return p
    }
    tree.persist(&l)
@@ -205,7 +204,7 @@ func (tree *AVLWeakBottomUp) buildR(l, p, r *Node, sl Size) *Node {
 // Constructs a balanced tree with root p where all nodes of l are to the left
 // of p and all nodes in r are to the right of p.
 func (tree *AVLWeakBottomUp) build(l, p, r *Node, sl Size) *Node {
-   if tree.rank(l) < tree.rank(r) {
+   if rank(l) < rank(r) {
       return tree.buildL(l, p, r, sl)
    } else {
       return tree.buildR(l, p, r, sl)
@@ -215,7 +214,7 @@ func (tree *AVLWeakBottomUp) build(l, p, r *Node, sl Size) *Node {
 func (tree AVLWeakBottomUp) join(l, r *Node, sl, sr Size) (p *Node) {
   if l == nil { return r }
   if r == nil { return l }
-  if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
+  if rank(l) < rank(r) || (rank(l) == rank(r) && sl <= sr) {
      return tree.build(l, p, tree.extractMin(r, &p), sl)
   } else {
      return tree.build(tree.extractMax(l, &p), p, r, sl-1)

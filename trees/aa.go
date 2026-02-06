@@ -27,7 +27,6 @@ import (
 //
 type AA struct {
    Tree
-   RankBalanced
 }
 
 func (AA) New() list.List {
@@ -41,17 +40,17 @@ func (tree *AA) Clone() list.List {
 }
 
 func (tree AA) skew(p **Node) {
-   if *p != nil && tree.isZeroChild(*p, (*p).l) {
+   if *p != nil && isZeroChild(*p, (*p).l) {
       tree.treeRotateR(p)
    }
 }
 
 func (tree AA) aaSplit(p **Node) {
    if *p != nil && (*p).r != nil &&
-      tree.isZeroChild(*p, (*p).r) &&
-      tree.isZeroChild((*p).r, (*p).r.r) {
+      isZeroChild(*p, (*p).r) &&
+      isZeroChild((*p).r, (*p).r.r) {
       tree.treeRotateL(p)
-      tree.promote(*p)
+      promote(*p)
    }
 }
 
@@ -78,12 +77,12 @@ func (tree *AA) Insert(i Position, x Data) {
 }
 
 func (tree AA) decreaseLevel(p *Node) {
-   rl := tree.rank(p.l)
-   rr := tree.rank(p.r)
+   rl := rank(p.l)
+   rr := rank(p.r)
 
    shouldBe := 1 + min(rl, rr)
 
-   if shouldBe < tree.rank(p) {
+   if shouldBe < rank(p) {
       p.y = uint64(shouldBe)
       if shouldBe < rr {
          tree.persist(&p.r)
@@ -167,8 +166,8 @@ func (tree *AA) Delete(i Position) (x Data) {
 }
 
 func (tree *AA) build(l, p, r *Node, sl Size) *Node {
-   rl := tree.rank(l)
-   rr := tree.rank(r)
+   rl := rank(l)
+   rr := rank(r)
    if utility.Distance(rl, rr) <= 1 {
       p.l = l
       p.r = r
@@ -191,7 +190,7 @@ func (tree *AA) build(l, p, r *Node, sl Size) *Node {
 func (tree *AA) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
+   if rank(l) < rank(r) || (rank(l) == rank(r) && sl <= sr) {
       return tree.build(l, p, tree.aaDeleteMin(r, &p), sl)
    } else {
       return tree.build(tree.aaDeleteMax(l, &p), p, r, sl - 1)
@@ -242,17 +241,17 @@ func (tree AA) verifyRanks(p *Node) {
       return
    }
    if isLeaf(p) {
-      invariant(tree.rank(p) == 0)
+      invariant(rank(p) == 0)
    }
    // All rank differences are positive (no left 0-children allowed).
-   invariant(tree.rank(p) > tree.rank(p.l))
+   invariant(rank(p) > rank(p.l))
 
    // Right child may be a 0-child or 1-child.
-   invariant(tree.isZeroChild(p, p.r) || tree.isOneChild(p, p.r))
+   invariant(isZeroChild(p, p.r) || isOneChild(p, p.r))
 
    // No two consecutive right 0-children.
-   if tree.isZeroChild(p, p.r) {
-      invariant(!tree.isZeroChild(p.r, p.r.r))
+   if isZeroChild(p, p.r) {
+      invariant(!isZeroChild(p.r, p.r.r))
    }
 
    tree.verifyRanks(p.l)

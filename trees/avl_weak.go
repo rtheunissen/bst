@@ -4,33 +4,29 @@ import (
    "github.com/rtheunissen/bst/utility"
 )
 
-type AVLWeak struct {
-   RankBalanced
-}
-
-func (tree AVLWeak) verifyHeight(root *Node, size Size) {
+func verifyAVLWeakHeight(root *Node, size Size) {
    if root == nil {
       return
    }
-   height := height(root)
-   invariant(tree.rank(root) >= height || height == 0)
-   invariant(tree.rank(root) <= 2*height)
-   invariant(tree.rank(root) <= 2*int(utility.Log2(size)))
+   h := height(root)
+   invariant(rank(root) >= h || h == 0)
+   invariant(rank(root) <= 2*h)
+   invariant(rank(root) <= 2*int(utility.Log2(size)))
 }
 
-func (tree AVLWeak) verifyRanks(p *Node) {
+func verifyAVLWeakRanks(p *Node) {
    if p == nil {
       return
    }
    if isLeaf(p) {
-      invariant(tree.rank(p) == 0)
+      invariant(rank(p) == 0)
    }
-   invariant(tree.rank(p) > tree.rank(p.l))
-   invariant(tree.rank(p) > tree.rank(p.r))
+   invariant(rank(p) > rank(p.l))
+   invariant(rank(p) > rank(p.r))
 
-   invariant(tree.isOneChild(p, p.l) || tree.isTwoChild(p, p.l))
-   invariant(tree.isOneChild(p, p.r) || tree.isTwoChild(p, p.r))
+   invariant(isOneChild(p, p.l) || isTwoChild(p, p.l))
+   invariant(isOneChild(p, p.r) || isTwoChild(p, p.r))
 
-   tree.verifyRanks(p.l)
-   tree.verifyRanks(p.r)
+   verifyAVLWeakRanks(p.l)
+   verifyAVLWeakRanks(p.r)
 }

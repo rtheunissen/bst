@@ -52,14 +52,14 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
   //
   // "Otherwise, promote the root if it is 1,1."
   //
-  if tree.isOneOne(*p) {
-     tree.promote(*p)
+  if isOneOne(*p) {
+     promote(*p)
   }
   // "This establishes the invariant for the main loop for the algorithm:
   //  *p is a non-nil node that is not a 1,1-node."
   //
   for {
-     assert(!tree.isOneOne(*p))
+     assert(!isOneOne(*p))
 
      // "From *p, take one step down the search path..."
      //
@@ -80,16 +80,16 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
         //
         // "If the next node on the search path is not a 1,1-node, continue."
         //
-        if !tree.isOneOne((*p).l) {
+        if !isOneOne((*p).l) {
            tree.pathLeft(&p)
            continue
         }
         // "If the next node on the search path is not a 1-child, promote it,
         //  then continue to the next step."
         //
-        if !tree.isOneChild(*p, (*p).l) {
+        if !isOneChild(*p, (*p).l) {
            tree.pathLeft(&p)
-           tree.promote(*p)
+           promote(*p)
            continue
         }
         // "In the remaining cases, the next node is a 1,1-node and a 1-child."
@@ -108,8 +108,8 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            if (*p).l.l == nil {
               tree.attachLL(*p, x)
               tree.treeRotateR(p)
-              tree.promote(*p)
-              tree.demote((*p).r)
+              promote(*p)
+              demote((*p).r)
               return
            }
            //
@@ -121,7 +121,7 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            //
            // "If this node is not a 1,1-node, continue with both search steps."
            //
-           if !tree.isOneOne((*p).l.l) {
+           if !isOneOne((*p).l.l) {
               tree.pathLeft(&p)
               tree.pathLeft(&p)
               continue
@@ -130,10 +130,10 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            //  a 0-child, then do a rotate or double rotate step to make all
            //  rank differences positive."
            tree.treeRotateR(p)
-           tree.promote(*p)
-           tree.demote((*p).r)
+           promote(*p)
+           demote((*p).r)
            tree.pathLeft(&p)
-           tree.promote(*p)
+           promote(*p)
            continue
 
         } else {
@@ -151,14 +151,14 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            if (*p).l.r == nil {
               tree.attachLR(*p, x)
               tree.treeRotateLR(p)
-              tree.promote(*p)
-              tree.demote((*p).r)
+              promote(*p)
+              demote((*p).r)
               return
            }
            //
            // "If this node is not a 1,1-node, continue with both search steps."
            //
-           if !tree.isOneOne((*p).l.r) {
+           if !isOneOne((*p).l.r) {
               tree.pathLeft(&p)
               tree.pathRight(&p, &i)
               continue
@@ -168,9 +168,9 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            //  rank differences positive."
            //
            tree.treeRotateLR(p)
-           tree.promote(*p)
-           tree.promote(*p)
-           tree.demote((*p).r)
+           promote(*p)
+           promote(*p)
+           demote((*p).r)
            //
            // "If a double rotation is done, take one further step down the
            //  search path after the rotation. Ths completes the step."
@@ -191,13 +191,13 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            tree.attachR(*p, x)
            return
         }
-        if !tree.isOneOne((*p).r) {
+        if !isOneOne((*p).r) {
            tree.pathRight(&p, &i)
            continue
         }
-        if !tree.isOneChild(*p, (*p).r) {
+        if !isOneChild(*p, (*p).r) {
            tree.pathRight(&p, &i)
-           tree.promote(*p)
+           promote(*p)
            continue
         }
 
@@ -208,20 +208,20 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            if (*p).r.r == nil {
               tree.attachRR(*p, x)
               tree.treeRotateL(p)
-              tree.promote(*p)
-              tree.demote((*p).l)
+              promote(*p)
+              demote((*p).l)
               return
            }
-           if !tree.isOneOne((*p).r.r) {
+           if !isOneOne((*p).r.r) {
               tree.pathRight(&p, &i)
               tree.pathRight(&p, &i)
               continue
            }
            tree.treeRotateL(p)
-           tree.promote(*p)
-           tree.demote((*p).l)
+           promote(*p)
+           demote((*p).l)
            tree.pathRight(&p, &i)
-           tree.promote(*p)
+           promote(*p)
            continue
 
         } else {
@@ -231,19 +231,19 @@ func (tree *AVLWeakTopDown) insert(p **Node, i Position, x Data) {
            if (*p).r.l == nil {
               tree.attachRL(*p, x)
               tree.treeRotateRL(p)
-              tree.demote((*p).l)
-              tree.promote(*p)
+              demote((*p).l)
+              promote(*p)
               return
            }
-           if !tree.isOneOne((*p).r.l) {
+           if !isOneOne((*p).r.l) {
               tree.pathRight(&p, &i)
               tree.pathLeft(&p)
               continue
            }
            tree.treeRotateRL(p)
-           tree.promote(*p)
-           tree.promote(*p)
-           tree.demote((*p).l)
+           promote(*p)
+           promote(*p)
+           demote((*p).l)
 
            if i > (*p).s {
               tree.pathRight(&p, &i) // RLR
@@ -270,7 +270,7 @@ func (tree *AVLWeakTopDown) Delete(i Position) (x Data) {
 func (tree AVLWeakTopDown) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
+   if rank(l) < rank(r) || (rank(l) == rank(r) && sl <= sr) {
       return tree.build(l, tree.deleteMin(&r), r, sl)
    } else {
       return tree.build(l, tree.deleteMax(&l, sl), r, sl-1)
@@ -325,53 +325,53 @@ func (tree AVLWeakTopDown) Split(i Position) (list.List, list.List) {
 }
 
 func (tree AVLWeakTopDown) rebalanceOnDelete(p *Node) *Node {
-   if tree.isThreeChild(p, p.r) {
-      if tree.isOneChild(p.l, p.l.l) {
+   if isThreeChild(p, p.r) {
+      if isOneChild(p.l, p.l.l) {
          tree.treeRotateR(&p)
-         tree.promote(p)
-         tree.demote(p.r)
+         promote(p)
+         demote(p.r)
 
-         assert(tree.isTwoChild(p, p.l))
-         assert(tree.isOneChild(p, p.r))
+         assert(isTwoChild(p, p.l))
+         assert(isOneChild(p, p.r))
 
          if p.r.l == nil {
-            assert(tree.isTwoTwo(p.r))
-            tree.demote(p.r)
+            assert(isTwoTwo(p.r))
+            demote(p.r)
          }
       } else {
          tree.treeRotateLR(&p)
-         tree.promote(p)
-         tree.promote(p)
-         tree.demote(p.l)
-         tree.demote(p.r)
-         tree.demote(p.r)
+         promote(p)
+         promote(p)
+         demote(p.l)
+         demote(p.r)
+         demote(p.r)
 
-         assert(tree.isTwoChild(p, p.l))
-         assert(tree.isTwoChild(p, p.r))
+         assert(isTwoChild(p, p.l))
+         assert(isTwoChild(p, p.r))
       }
-   } else if tree.isThreeChild(p, p.l) {
-      if tree.isOneChild(p.r, p.r.r) {
+   } else if isThreeChild(p, p.l) {
+      if isOneChild(p.r, p.r.r) {
          tree.treeRotateL(&p)
-         tree.promote(p)
-         tree.demote(p.l)
+         promote(p)
+         demote(p.l)
 
-         assert(tree.isOneChild(p, p.l))
-         assert(tree.isTwoChild(p, p.r))
+         assert(isOneChild(p, p.l))
+         assert(isTwoChild(p, p.r))
 
          if p.l.r == nil {
-            assert(tree.isTwoTwo(p.l))
-            tree.demote(p.l)
+            assert(isTwoTwo(p.l))
+            demote(p.l)
          }
       } else {
          tree.treeRotateRL(&p)
-         tree.promote(p)
-         tree.promote(p)
-         tree.demote(p.l)
-         tree.demote(p.l)
-         tree.demote(p.r)
+         promote(p)
+         promote(p)
+         demote(p.l)
+         demote(p.l)
+         demote(p.r)
 
-         assert(tree.isTwoChild(p, p.l))
-         assert(tree.isTwoChild(p, p.r))
+         assert(isTwoChild(p, p.l))
+         assert(isTwoChild(p, p.r))
       }
    }
    return p
@@ -385,8 +385,8 @@ func (tree AVLWeakTopDown) rebalanceAfterDissolve(g **Node, p **Node) {
    //  into a 2,2 leaf, violating the rank rule. In this case we begin
    //  by demoting the parent, which may make it a 3-child."
    //
-   if isLeaf(*p) && tree.isTwoTwo(*p) {
-      tree.demote(*p)
+   if isLeaf(*p) && isTwoTwo(*p) {
+      demote(*p)
    }
    *g = tree.rebalanceOnDelete(*g)
    *p = tree.rebalanceOnDelete(*p)
@@ -399,20 +399,20 @@ func (tree AVLWeakTopDown) rebalanceAfterDissolve(g **Node, p **Node) {
 //   in the latter, and rebalancing top-down from the safe node."
 //
 func (tree AVLWeakTopDown) resetSafeNode(p *Node) bool {
-   if tree.isTwoTwo(p) {
-      tree.demote(p)
+   if isTwoTwo(p) {
+      demote(p)
       return true
-   } else if tree.isTwoChild(p, p.l) && tree.isTwoTwo(p.r) {
-      assert(tree.isOneChild(p, p.r))
+   } else if isTwoChild(p, p.l) && isTwoTwo(p.r) {
+      assert(isOneChild(p, p.r))
       tree.persist(&p.r)
-      tree.demote(p)
-      tree.demote(p.r)
+      demote(p)
+      demote(p.r)
       return true
-   } else if tree.isTwoChild(p, p.r) && tree.isTwoTwo(p.l) {
-      assert(tree.isOneChild(p, p.l))
+   } else if isTwoChild(p, p.r) && isTwoTwo(p.l) {
+      assert(isOneChild(p, p.l))
       tree.persist(&p.l)
-      tree.demote(p)
-      tree.demote(p.l)
+      demote(p)
+      demote(p.l)
       return true
    }
    return false // Could not reset the safe node.

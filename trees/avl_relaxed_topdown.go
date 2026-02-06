@@ -4,7 +4,6 @@ import "github.com/rtheunissen/bst/types/list"
 
 type AVLRelaxedTopDown struct {
    AVLWeakTopDown
-   AVLRelaxed
 }
 
 func (AVLRelaxedTopDown) New() list.List {
@@ -19,7 +18,7 @@ func (tree *AVLRelaxedTopDown) Clone() list.List {
 
 func (tree AVLRelaxedTopDown) Verify() {
    tree.verifySize(tree.root, tree.size)
-   tree.verifyRanks(tree.root)
+   verifyAVLRelaxedRanks(tree.root)
 }
 
 func (tree *AVLRelaxedTopDown) Delete(i Position) Data {
@@ -27,11 +26,11 @@ func (tree *AVLRelaxedTopDown) Delete(i Position) Data {
 }
 
 func (tree AVLRelaxedTopDown) buildL(l *Node, p *Node, r *Node, sl Size) (root *Node) {
-   if tree.rank(l) - tree.rank(r) <= 1 {
+   if rank(l) - rank(r) <= 1 {
       p.l = l
       p.r = r
       p.s = sl
-      p.y = uint64(tree.rank(l) + 1)
+      p.y = uint64(rank(l) + 1)
       return p
    }
    tree.persist(&l)
@@ -40,11 +39,11 @@ func (tree AVLRelaxedTopDown) buildL(l *Node, p *Node, r *Node, sl Size) (root *
 }
 
 func (tree AVLRelaxedTopDown) buildR(l *Node, p *Node, r *Node, sl Size) (root *Node) {
-   if tree.rank(r) - tree.rank(l) <= 1 {
+   if rank(r) - rank(l) <= 1 {
       p.l = l
       p.r = r
       p.s = sl
-      p.y = uint64(tree.rank(r) + 1)
+      p.y = uint64(rank(r) + 1)
       return p
    }
    tree.persist(&r)
@@ -54,7 +53,7 @@ func (tree AVLRelaxedTopDown) buildR(l *Node, p *Node, r *Node, sl Size) (root *
 }
 
 func (tree *AVLRelaxedTopDown) build(l, p, r *Node, sl Size) *Node {
-   if tree.rank(l) <= tree.rank(r) {
+   if rank(l) <= rank(r) {
       return tree.buildR(l, p, r, sl)
    } else {
       return tree.buildL(l, p, r, sl)
@@ -64,7 +63,7 @@ func (tree *AVLRelaxedTopDown) build(l, p, r *Node, sl Size) *Node {
 func (tree AVLRelaxedTopDown) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
+   if rank(l) < rank(r) || (rank(l) == rank(r) && sl <= sr) {
       return tree.build(l, tree.Tree.deleteMin(&r), r, sl)
    } else {
       return tree.build(l, tree.Tree.deleteMax(&l), r, sl-1)

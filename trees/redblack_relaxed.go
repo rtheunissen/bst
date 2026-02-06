@@ -1,26 +1,22 @@
 package trees
 
-type RedBlackRelaxed struct {
-  RankBalanced
+func verifyRedBlackRelaxedHeight(p *Node) {
+   invariant(height(p) <= 2 * rank(p) + 1)
 }
 
-func (tree RedBlackRelaxed) verifyHeight(p *Node) {
-   invariant(height(p) <= 2 * tree.rank(p) + 1)
-}
-
-func (tree RedBlackRelaxed) verifyRanks(p *Node) {
+func verifyRedBlackRelaxedRanks(p *Node) {
   if p == nil {
      return
   }
-  invariant(tree.rank(p) >= tree.rank(p.l))
-  invariant(tree.rank(p) >= tree.rank(p.r))
+  invariant(rank(p) >= rank(p.l))
+  invariant(rank(p) >= rank(p.r))
 
    // No parent of a 0-child is a 0-child.
-   invariant(!tree.isZeroChild(p, p.l) || !tree.isZeroChild(p.l, p.l.l))
-   invariant(!tree.isZeroChild(p, p.l) || !tree.isZeroChild(p.l, p.l.r))
-   invariant(!tree.isZeroChild(p, p.r) || !tree.isZeroChild(p.r, p.r.l))
-   invariant(!tree.isZeroChild(p, p.r) || !tree.isZeroChild(p.r, p.r.r))
+   invariant(!isZeroChild(p, p.l) || !isZeroChild(p.l, p.l.l))
+   invariant(!isZeroChild(p, p.l) || !isZeroChild(p.l, p.l.r))
+   invariant(!isZeroChild(p, p.r) || !isZeroChild(p.r, p.r.l))
+   invariant(!isZeroChild(p, p.r) || !isZeroChild(p.r, p.r.r))
 
-  tree.verifyRanks(p.l)
-  tree.verifyRanks(p.r)
+  verifyRedBlackRelaxedRanks(p.l)
+  verifyRedBlackRelaxedRanks(p.r)
 }

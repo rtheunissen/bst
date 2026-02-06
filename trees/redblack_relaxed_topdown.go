@@ -4,13 +4,12 @@ import "github.com/rtheunissen/bst/types/list"
 
 type RedBlackRelaxedTopDown struct {
    RedBlackTopDown
-   RedBlackRelaxed
 }
 
 func (tree RedBlackRelaxedTopDown) Verify() {
    tree.Tree.verifySize(tree.root, tree.size)
-   tree.RedBlackRelaxed.verifyRanks(tree.root)
-   tree.RedBlackRelaxed.verifyHeight(tree.root)
+   verifyRedBlackRelaxedRanks(tree.root)
+   verifyRedBlackRelaxedHeight(tree.root)
 }
 
 func (RedBlackRelaxedTopDown) New() list.List {
@@ -42,7 +41,7 @@ func (tree *RedBlackRelaxedTopDown) Update(i Size, x Data) {
 func (tree RedBlackRelaxedTopDown) join(l, r *Node, sl, sr Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
-   if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
+   if rank(l) < rank(r) || (rank(l) == rank(r) && sl <= sr) {
       return tree.build(l, tree.RedBlackTopDown.Tree.deleteMin(&r), r, sl)
    } else {
       return tree.build(l, tree.RedBlackTopDown.Tree.deleteMax(&l), r, sl-1)

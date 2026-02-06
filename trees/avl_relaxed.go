@@ -1,20 +1,16 @@
 package trees
 
-type AVLRelaxed struct {
-   RankBalanced
-}
-
-func (tree AVLRelaxed) verifyRanks(p *Node) {
+func verifyAVLRelaxedRanks(p *Node) {
   if p == nil {
      return
   }
   // The height of a relaxed AVL tree is no greater than its rank.
-  invariant(tree.rank(p) >= height(p))
+  invariant(rank(p) >= height(p))
 
   // Every rank difference is positive.
-  invariant(tree.rank(p) > tree.rank(p.l))
-  invariant(tree.rank(p) > tree.rank(p.r))
+  invariant(rank(p) > rank(p.l))
+  invariant(rank(p) > rank(p.r))
 
-  tree.verifyRanks(p.l)
-  tree.verifyRanks(p.r)
+  verifyAVLRelaxedRanks(p.l)
+  verifyAVLRelaxedRanks(p.r)
 }

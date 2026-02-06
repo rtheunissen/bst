@@ -4,55 +4,51 @@ import (
 	"math"
 )
 
-type RedBlack struct {
-   RankBalanced
+func isRed(parent, child *Node) bool {
+   return isZeroChild(parent, child)
 }
 
-func (tree RedBlack) isRed(parent, child *Node) bool {
-   return tree.isZeroChild(parent, child)
+func isRedRed(parent *Node) bool {
+   return isZeroZero(parent)
 }
 
-func (tree RedBlack) isRedRed(parent *Node) bool {
-   return tree.isZeroZero(parent)
+func isBlack(parent, child *Node) bool {
+   return isOneChild(parent, child)
 }
 
-func (tree RedBlack) isBlack(parent, child *Node) bool {
-   return tree.isOneChild(parent, child)
-}
-
-func (tree RedBlack) verifyHeight(p *Node, s Size) int {
+func verifyRedBlackHeight(p *Node, s Size) int {
    if p == nil {
       return -1
    }
-   l := tree.verifyHeight(p.l, sizeL(p))
-   r := tree.verifyHeight(p.r, sizeR(p, s))
+   l := verifyRedBlackHeight(p.l, sizeL(p))
+   r := verifyRedBlackHeight(p.r, sizeR(p, s))
    h := max(l, r) + 1
    
-   invariant(h <= 2 * tree.rank(p) + 1)
+   invariant(h <= 2 * rank(p) + 1)
    invariant(h <= 2 * int(math.Log2(float64(s))))
    return h
 }
 
-func (tree RedBlack) verifyRanks(p *Node) {
+func verifyRedBlackRanks(p *Node) {
    if p == nil {
       return
    }
    if isLeaf(p) {
-      invariant(tree.rank(p) == 0)
+      invariant(rank(p) == 0)
    }
-   invariant(tree.rank(p) >= tree.rank(p.l))
-   invariant(tree.rank(p) >= tree.rank(p.r))
+   invariant(rank(p) >= rank(p.l))
+   invariant(rank(p) >= rank(p.r))
 
    // All rank differences are 0 or 1.
-   invariant(tree.isZeroChild(p, p.l) || tree.isOneChild(p, p.l))
-   invariant(tree.isZeroChild(p, p.r) || tree.isOneChild(p, p.r))
+   invariant(isZeroChild(p, p.l) || isOneChild(p, p.l))
+   invariant(isZeroChild(p, p.r) || isOneChild(p, p.r))
 
    // No parent of a 0-child is a 0-child.
-   invariant(!tree.isZeroChild(p, p.l) || !tree.isZeroChild(p.l, p.l.l))
-   invariant(!tree.isZeroChild(p, p.l) || !tree.isZeroChild(p.l, p.l.r))
-   invariant(!tree.isZeroChild(p, p.r) || !tree.isZeroChild(p.r, p.r.l))
-   invariant(!tree.isZeroChild(p, p.r) || !tree.isZeroChild(p.r, p.r.r))
+   invariant(!isZeroChild(p, p.l) || !isZeroChild(p.l, p.l.l))
+   invariant(!isZeroChild(p, p.l) || !isZeroChild(p.l, p.l.r))
+   invariant(!isZeroChild(p, p.r) || !isZeroChild(p.r, p.r.l))
+   invariant(!isZeroChild(p, p.r) || !isZeroChild(p.r, p.r.r))
 
-   tree.verifyRanks(p.l)
-   tree.verifyRanks(p.r)
+   verifyRedBlackRanks(p.l)
+   verifyRedBlackRanks(p.r)
 }
