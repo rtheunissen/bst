@@ -1,125 +1,162 @@
-GO = GOEXPERIMENT=arenas go
+CC ?= cc
+CFLAGS_COMMON = -Wall -Wextra -Wno-unused-parameter -Wno-unused-function
+CFLAGS_DEBUG = -O0 -g -DDEBUG -DPERSISTENT $(CFLAGS_COMMON)
+CFLAGS_RELEASE = -O2 -march=native $(CFLAGS_COMMON)
+CORE = c/tree.c c/random.c c/distributions.c \
+       c/splay.c c/randomized.c c/zip.c \
+       c/treap_bottomup.c c/treap_topdown.c c/treap_fingertree.c \
+       c/conc.c c/llrb.c c/aa.c \
+       c/avl_bottomup.c c/avl_topdown.c \
+       c/avl_weak_bottomup.c c/avl_weak_topdown.c \
+       c/avl_relaxed_bottomup.c c/avl_relaxed_topdown.c \
+       c/redblack_bottomup.c c/redblack_topdown.c \
+       c/redblack_relaxed_bottomup.c c/redblack_relaxed_topdown.c \
+       c/wbst_bottomup.c c/wbst_topdown.c c/wbst_relaxed.c \
+       c/lbst_bottomup.c c/lbst_topdown.c c/lbst_relaxed.c
 
-sh:
-	docker compose run --interactive --tty --rm sh
+BALANCERS := Median Height Weight Log Cost DSW
+SMOKE_OUTPUT ?= /private/tmp/bst-benchmark-smoke
+SMOKE_SCALE ?= 128
+SMOKE_STEPS ?= 256
+SMOKE_SAMPLES ?= 4
+SMOKE_ITERATIONS ?= 1
+SMOKE_DURATION_MS ?= 1
+SMOKE_ARENA ?= 100000
 
-# Disables assertions to avoid slowdown, then runs the animation builder.
-animation: assertions-off measurements-off animate
+.PHONY: \
+	sh test test-debug bench bench-persistent compare measurements measurements-persistent quickbench quickbench-bin \
+	operation-benchmarks operation-non-persistent-benchmarks operation-persistent-benchmarks \
+	operation-measurements operation-non-persistent-measurements operation-persistent-measurements \
+	balancers-bench balancer-benchmarks balancers-measure balancer-measurements \
+	benchmark-smoke animation animate benchmark-index-tool \
+	figures balancer-plots operation-plots optimize polytope delete \
+	benchmark-index article-index math index docs prepare publish
 
-# Run the test suite.
-test: assertions-on persistence-on measurements-off
-	${GO} test -count 1 ./trees
+test: $(CORE) c/balancers.c c/test.c
+	$(CC) $(CFLAGS_RELEASE) -DPERSISTENT -o c/test_bin $(CORE) c/balancers.c c/test.c -lm
+	./c/test_bin
 
-# Runs the test suite and collects code coverage.
-coverage: assertions-off measurements-off
-	${GO} test ./trees -coverprofile "coverage.out"
-	go tool cover -html="coverage.out" -o "coverage.html"
-	open coverage.html
+test-debug: $(CORE) c/balancers.c c/test.c
+	$(CC) $(CFLAGS_DEBUG) -o c/test_bin $(CORE) c/balancers.c c/test.c -lm
+	./c/test_bin
 
-animate: assertions-off measurements-off
-	${GO} run main/animate/animate.go
+bench: $(CORE) c/bench.c
+	$(CC) $(CFLAGS_RELEASE) -o c/bench_bin $(CORE) c/bench.c -lm
 
-animate-wasm:
-	docker run \
-		--rm \
-		--env "GOPATH=/go" \
-		--volume "GOPATH:/go" \
-		--volume .:/bst \
-		--workdir /bst \
-		--network host \
-		--user "":"" \
-			tinygo/tinygo:0.29.0 tinygo build \
-				-no-debug \
-				-gc=leaking \
-				-target wasm \
-				-o /bst/main/animate/wasm/animate.wasm \
-				   /bst/main/animate/wasm/
+bench-persistent: $(CORE) c/bench.c
+	$(CC) $(CFLAGS_RELEASE) -DPERSISTENT -o c/bench_bin $(CORE) c/bench.c -lm
 
-assertions-on:
-	${GO} run main/replace/replace.go -dir "./trees" -find "// assert(" -replace "assert("
+operation-benchmarks-Insert: bench
+	./c/bench_bin -operation Insert
 
-assertions-off:
-	${GO} run main/replace/replace.go -dir "./trees" -find "  assert(" -replace "  // assert("
+operation-benchmarks-InsertDelete: bench
+	./c/bench_bin -operation InsertDelete
 
-measurements-on:
-	${GO} run main/replace/replace.go -dir "./trees" -find "// measurement(" -replace "measurement("
+operation-benchmarks-InsertPersistent: bench-persistent
+	./c/bench_bin -operation InsertPersistent
 
-measurements-off:
-	${GO} run main/replace/replace.go -dir "./trees" -find "  measurement(" -replace "  // measurement("
+operation-benchmarks-InsertDeletePersistent: bench-persistent
+	./c/bench_bin -operation InsertDeletePersistent
 
-persistence-on:
-	${GO} run main/replace/replace.go -dir "./trees" -find "// tree.persist("       -replace "tree.persist("
-	${GO} run main/replace/replace.go -dir "./trees" -find "// tree.share("         -replace "tree.share("
-	${GO} run main/replace/replace.go -dir "./trees" -find "// defer tree.release(" -replace "defer tree.release("
+operation-non-persistent-benchmarks: \
+	operation-benchmarks-Insert \
+	operation-benchmarks-InsertDelete
 
-persistence-off:
-	${GO} run main/replace/replace.go -dir "./trees" -find "  tree.persist("       -replace "  // tree.persist("
-	${GO} run main/replace/replace.go -dir "./trees" -find "  tree.share("         -replace "  // tree.share("
-	${GO} run main/replace/replace.go -dir "./trees" -find "  defer tree.release(" -replace "  // defer tree.release("
-
-sandbox:
-	@${GO} run main/sandbox/sandbox.go
-
-##
-# BALANCERS
-#
-
-BALANCERS := \
-	Median \
-	Height \
-	Weight \
-	Log \
-	Cost \
-	DSW \
-
-balancer-measurements-%:
-	${GO} run docs/benchmarks/main/balancers/measurements.go -strategy $*
-
-balancer-measurements: assertions-off measurements-on
-	$(MAKE) -j $(foreach balancer,$(BALANCERS),balancer-measurements-$(balancer))
-
-balancer-benchmarks: assertions-off measurements-off
-	${GO} run docs/benchmarks/main/balancers/benchmarks.go
-
-
-##
-# OPERATIONS
-#
-
-NON_PERSISTENT_OPERATIONS := \
-	Insert \
-	InsertDelete \
-
-PERSISTENT_OPERATIONS := \
-	InsertPersistent \
-	InsertDeletePersistent \
-
-operation-benchmarks-%:
-	${GO} run docs/benchmarks/main/operations/benchmarks.go -operation $*
-
-operation-measurements-%:
-	${GO} run docs/benchmarks/main/operations/measurements.go -operation $*
-
-operation-non-persistent-benchmarks: assertions-off persistence-off measurements-off
-	$(MAKE) $(foreach operation,$(NON_PERSISTENT_OPERATIONS),operation-benchmarks-$(operation))
-
-operation-non-persistent-measurements: assertions-off persistence-off measurements-on
-	$(MAKE) $(foreach operation,$(NON_PERSISTENT_OPERATIONS),operation-measurements-$(operation))
-
-operation-persistent-benchmarks: assertions-off persistence-on measurements-off
-	$(MAKE) $(foreach operation,$(PERSISTENT_OPERATIONS),operation-benchmarks-$(operation))
-
-operation-persistent-measurements: assertions-off persistence-on measurements-on
-	$(MAKE) $(foreach operation,$(PERSISTENT_OPERATIONS),operation-measurements-$(operation))
+operation-persistent-benchmarks: \
+	operation-benchmarks-InsertPersistent \
+	operation-benchmarks-InsertDeletePersistent
 
 operation-benchmarks: \
 	operation-non-persistent-benchmarks \
 	operation-persistent-benchmarks
 
+compare: $(CORE) c/compare.c
+	$(CC) $(CFLAGS_RELEASE) -DPERSISTENT -o c/compare_bin $(CORE) c/compare.c -lm
+	./c/compare_bin > c/compare.txt
+	@echo "Comparison output written to c/compare.txt"
+
+measurements: $(CORE) c/measurements.c
+	$(CC) $(CFLAGS_RELEASE) -DMEASUREMENTS -o c/measurements_bin $(CORE) c/measurements.c -lm
+
+measurements-persistent: $(CORE) c/measurements.c
+	$(CC) $(CFLAGS_RELEASE) -DPERSISTENT -DMEASUREMENTS -o c/measurements_persistent_bin $(CORE) c/measurements.c -lm
+
+operation-measurements-InsertPersistent: measurements-persistent
+	./c/measurements_persistent_bin -operation InsertPersistent
+
+operation-measurements-InsertDeletePersistent: measurements-persistent
+	./c/measurements_persistent_bin -operation InsertDeletePersistent
+
+operation-measurements-Insert: measurements
+	./c/measurements_bin -operation Insert
+
+operation-measurements-InsertDelete: measurements
+	./c/measurements_bin -operation InsertDelete
+
+operation-non-persistent-measurements: \
+	operation-measurements-Insert \
+	operation-measurements-InsertDelete
+
+operation-persistent-measurements: \
+	operation-measurements-InsertPersistent \
+	operation-measurements-InsertDeletePersistent
+
 operation-measurements: \
 	operation-non-persistent-measurements \
 	operation-persistent-measurements
 
+quickbench-bin: $(CORE) c/quickbench.c
+	$(CC) $(CFLAGS_RELEASE) -o c/quickbench_bin $(CORE) c/quickbench.c -lm
+
+quickbench: quickbench-bin
+	./c/quickbench_bin
+
+balancers-bench: $(CORE) c/balancers.c c/balancers_bench.c
+	$(CC) $(CFLAGS_RELEASE) -o c/balancers_bench_bin $(CORE) c/balancers.c c/balancers_bench.c -lm
+
+balancer-benchmarks: balancers-bench
+	./c/balancers_bench_bin
+
+balancers-measure: $(CORE) c/balancers.c c/balancers_measure.c
+	$(CC) $(CFLAGS_RELEASE) -DMEASUREMENTS -o c/balancers_measure_bin $(CORE) c/balancers.c c/balancers_measure.c -lm
+
+balancer-measurements-%: balancers-measure
+	./c/balancers_measure_bin -strategy $*
+
+balancer-measurements: balancers-measure
+	$(MAKE) -j $(foreach balancer,$(BALANCERS),balancer-measurements-$(balancer))
+
+benchmark-smoke:
+	$(MAKE) bench
+	./c/bench_bin -operation Insert -scale $(SMOKE_SCALE) -steps $(SMOKE_STEPS) -samples $(SMOKE_SAMPLES) -iterations $(SMOKE_ITERATIONS) -arena $(SMOKE_ARENA) -output-dir $(SMOKE_OUTPUT)
+	./c/bench_bin -operation InsertDelete -scale $(SMOKE_SCALE) -steps $(SMOKE_STEPS) -samples $(SMOKE_SAMPLES) -iterations $(SMOKE_ITERATIONS) -arena $(SMOKE_ARENA) -output-dir $(SMOKE_OUTPUT)
+	$(MAKE) bench-persistent
+	./c/bench_bin -operation InsertPersistent -scale $(SMOKE_SCALE) -steps $(SMOKE_STEPS) -samples $(SMOKE_SAMPLES) -iterations $(SMOKE_ITERATIONS) -arena $(SMOKE_ARENA) -output-dir $(SMOKE_OUTPUT)
+	./c/bench_bin -operation InsertDeletePersistent -scale $(SMOKE_SCALE) -steps $(SMOKE_STEPS) -samples $(SMOKE_SAMPLES) -iterations $(SMOKE_ITERATIONS) -arena $(SMOKE_ARENA) -output-dir $(SMOKE_OUTPUT)
+	$(MAKE) measurements
+	./c/measurements_bin -operation Insert -scale $(SMOKE_SCALE) -steps $(SMOKE_STEPS) -samples $(SMOKE_SAMPLES) -arena $(SMOKE_ARENA) -output-dir $(SMOKE_OUTPUT)
+	./c/measurements_bin -operation InsertDelete -scale $(SMOKE_SCALE) -steps $(SMOKE_STEPS) -samples $(SMOKE_SAMPLES) -arena $(SMOKE_ARENA) -output-dir $(SMOKE_OUTPUT)
+	$(MAKE) measurements-persistent
+	./c/measurements_persistent_bin -operation InsertPersistent -scale $(SMOKE_SCALE) -steps $(SMOKE_STEPS) -samples $(SMOKE_SAMPLES) -arena $(SMOKE_ARENA) -output-dir $(SMOKE_OUTPUT)
+	./c/measurements_persistent_bin -operation InsertDeletePersistent -scale $(SMOKE_SCALE) -steps $(SMOKE_STEPS) -samples $(SMOKE_SAMPLES) -arena $(SMOKE_ARENA) -output-dir $(SMOKE_OUTPUT)
+	$(MAKE) balancers-bench
+	./c/balancers_bench_bin -scale $(SMOKE_SCALE) -samples $(SMOKE_SAMPLES) -duration-ms $(SMOKE_DURATION_MS) -output-dir $(SMOKE_OUTPUT)
+	$(MAKE) balancers-measure
+	./c/balancers_measure_bin -scale $(SMOKE_SCALE) -samples $(SMOKE_SAMPLES) -iterations $(SMOKE_ITERATIONS) -output-dir $(SMOKE_OUTPUT)
+	$(MAKE) quickbench-bin
+	./c/quickbench_bin -scale $(SMOKE_SCALE) -steps $(SMOKE_STEPS) -arena $(SMOKE_ARENA)
+
+animate: $(CORE) c/animate.c
+	$(CC) $(CFLAGS_RELEASE) -DPERSISTENT -o c/animate_bin $(CORE) c/animate.c -lm
+	./c/animate_bin
+
+animation: animate
+
+benchmark-index-tool: c/benchmark_index.c
+	$(CC) $(CFLAGS_RELEASE) -o c/benchmark_index_bin c/benchmark_index.c
+
+sh:
+	docker compose run --interactive --tty --rm sh
 
 ##
 # FIGURES
@@ -176,11 +213,12 @@ polytope:
 delete:
 	gnuplot docs/plots/figures/delete/delete.gnuplot > "docs/plots/figures/delete/delete.svg"
 
-benchmark-index:
-	${GO} run docs/benchmarks/index.go
+benchmark-index: benchmark-index-tool
+	./c/benchmark_index_bin
 
 article-index:
-	${GO} run index.go
+	@test -f index.html
+	@echo "index.html is checked in as the article output."
 
 math:
 	sh docs/katex/render.sh
@@ -189,7 +227,7 @@ index: benchmark-index article-index
 
 docs: figures math optimize index
 
-prepare: docs assertions-on measurements-on persistence-on
+prepare: docs
 
 publish: prepare
 	git add .

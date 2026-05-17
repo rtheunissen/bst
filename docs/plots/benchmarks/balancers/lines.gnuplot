@@ -1,7 +1,7 @@
 load "docs/plots/benchmarks/balancers/graph.gnuplot"
 load "docs/plots/functions.gnuplot"
 
-SVG = sprintf("docs/benchmarks/svg/balancers/%s/%s__%s.svg", GROUP, MEASUREMENT, SMOOTH)
+SVG = sprintf("%s/balancers/%s/%s__%s.svg", SVG_ROOT, GROUP, MEASUREMENT, SMOOTH)
 system mkdir(SVG)
 set output SVG
 print SVG
@@ -23,7 +23,7 @@ plot for [i=1:words(@GROUP)] $TABLE \
 
 do for [DISTRIBUTION in DISTRIBUTIONS] {
 
-    SVG = sprintf("docs/benchmarks/svg/balancers/%s/%s/%s__%s.svg", GROUP, DISTRIBUTION, MEASUREMENT, SMOOTH)
+    SVG = sprintf("%s/balancers/%s/%s/%s__%s.svg", SVG_ROOT, GROUP, DISTRIBUTION, MEASUREMENT, SMOOTH)
     system mkdir(SVG)
     set output SVG
     print SVG

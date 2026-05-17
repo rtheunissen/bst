@@ -1,5 +1,8 @@
 load "docs/plots/colors.gnuplot"
 
+if (!exists("DATA_ROOT")) DATA_ROOT = "docs/benchmarks/data"
+if (!exists("SVG_ROOT")) SVG_ROOT = "docs/benchmarks/svg"
+
 ##################################################################
 #
 #           BALANCERS
@@ -52,7 +55,7 @@ do for [GROUP in GROUPS] {
     set xrange [0.5:*]
     set format y2 "%.2f"
 
-    DATA = "docs/benchmarks/data/balancers/measurements"
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -80,7 +83,7 @@ do for [GROUP in GROUPS] {
     set xrange [0.5:*]
     set format y2 "%.2f"
 
-    DATA = "docs/benchmarks/data/balancers/measurements"
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -109,7 +112,7 @@ do for [GROUP in GROUPS] {
     set xrange [0.5:*]
     set format y2 "%.2f"
 
-    DATA = "docs/benchmarks/data/balancers/measurements"
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -134,7 +137,7 @@ do for [GROUP in GROUPS] {
     set xrange [0.5:*]
     set format y2 "%.0f"
 
-    DATA = "docs/benchmarks/data/balancers/measurements"
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -160,7 +163,7 @@ do for [GROUP in GROUPS] {
     set xrange [0.5:*]
     set format y2 "%.2f"
 
-    DATA = "docs/benchmarks/data/balancers/measurements"
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -186,7 +189,7 @@ do for [GROUP in GROUPS] {
     set xrange [0.5:*]
     set format y2 "%.2f"
 
-    DATA = "docs/benchmarks/data/balancers/measurements"
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -211,7 +214,7 @@ do for [GROUP in GROUPS] {
     set xrange [0.5:*]
     set format y2 "%.0f"
 
-    DATA = "docs/benchmarks/data/balancers/benchmarks"
+    DATA = sprintf("%s/balancers/benchmarks", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -236,7 +239,7 @@ do for [GROUP in GROUPS] {
     set xrange [0:*]
     set format y2 "%.2f"
 
-    DATA = "docs/benchmarks/data/balancers/benchmarks"
+    DATA = sprintf("%s/balancers/benchmarks", DATA_ROOT)
 
     SMOOTH = "cumulative"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"

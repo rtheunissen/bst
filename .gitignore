@@ -7,3 +7,18 @@ _*
 *.test
 coverage.html
 .vscode
+.serena/
+c/test_bin
+c/bench_bin
+c/compare_bin
+c/measurements_bin
+c/measurements_persistent_bin
+c/quickbench_bin
+c/balancers_bench_bin
+c/balancers_measure_bin
+c/benchmark_index_bin
+c/animate_bin
+c/compare.txt
+c/*.dSYM/
+# CocoIndex Code (ccc)
+/.cocoindex_code/

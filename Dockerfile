@@ -1,3 +1,3 @@
-FROM golang:1.22-alpine
+FROM alpine:3.20
 
-RUN apk add make gnuplot npm
+RUN apk add build-base make gnuplot npm

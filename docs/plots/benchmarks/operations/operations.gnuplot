@@ -1,5 +1,8 @@
 load "docs/plots/colors.gnuplot"
 
+if (!exists("DATA_ROOT")) DATA_ROOT = "docs/benchmarks/data"
+if (!exists("SVG_ROOT")) SVG_ROOT = "docs/benchmarks/svg"
+
 ##################################################################
 #
 #           STRATEGIES
@@ -162,7 +165,7 @@ do for [GROUP in GROUPS] {
         set xlabel "Operations / 10^6"
         set ylabel "{/:Bold Allocations } / log_2(Size)"
 
-        DATA = sprintf("docs/benchmarks/data/operations/measurements/%s", OPERATION)
+        DATA = sprintf("%s/operations/measurements/%s", DATA_ROOT, OPERATION)
 
         x = "column('Position')/(column('Scale')/10)"
         y = "column('Allocations')/column('Step')/log2(column('Size'))"
@@ -196,7 +199,7 @@ do for [GROUP in GROUPS] {
         x = "column('Position')/(column('Scale')/10)"
         y = "column('MaximumPathLength')/log2(column('Size'))"
 
-        DATA = sprintf("docs/benchmarks/data/operations/measurements/%s", OPERATION)
+        DATA = sprintf("%s/operations/measurements/%s", DATA_ROOT, OPERATION)
 
         set xrange [0.5:*]
         set format y2 "%.2f"
@@ -220,7 +223,7 @@ do for [GROUP in GROUPS] {
         set xlabel "Operations / 10^6"
         set ylabel "log_2({/:Bold Maximum Path Length } / log_2(Size))"
 
-        DATA = sprintf("docs/benchmarks/data/operations/measurements/%s", OPERATION)
+        DATA = sprintf("%s/operations/measurements/%s", DATA_ROOT, OPERATION)
 
         set logscale y2 2
 
@@ -252,7 +255,7 @@ do for [GROUP in GROUPS] {
         set xlabel "Operations / 10^6"
         set ylabel "{/:Bold Average Path Length } / log_2(Size)"
 
-        DATA = sprintf("docs/benchmarks/data/operations/measurements/%s", OPERATION)
+        DATA = sprintf("%s/operations/measurements/%s", DATA_ROOT, OPERATION)
 
         set xrange [0.5:*]
         set format y2 "%.3f"
@@ -280,7 +283,7 @@ do for [GROUP in GROUPS] {
         set xlabel "Operations / 10^6"
         set ylabel "log_2({/:Bold Average Path Length } / log_2(Size))"
 
-        DATA = sprintf("docs/benchmarks/data/operations/measurements/%s", OPERATION)
+        DATA = sprintf("%s/operations/measurements/%s", DATA_ROOT, OPERATION)
 
         set logscale y2 2
 
@@ -314,7 +317,7 @@ do for [GROUP in GROUPS] {
         x = "column('Position')/(column('Scale')/10)"
         y = "column('Rotations')/column('Step')"
 
-        DATA = sprintf("docs/benchmarks/data/operations/measurements/%s", OPERATION)
+        DATA = sprintf("%s/operations/measurements/%s", DATA_ROOT, OPERATION)
 
         set xrange [0.5:*]
         set format y2 "%.2f"
@@ -344,7 +347,7 @@ do for [GROUP in GROUPS] {
         set xrange [0.5:*]
         set format y2 "%.2f"
 
-        DATA = sprintf("docs/benchmarks/data/operations/benchmarks/%s", OPERATION)
+        DATA = sprintf("%s/operations/benchmarks/%s", DATA_ROOT, OPERATION)
 
         NORMAL = "sbezier"
         SMOOTH = "mcsplines"
@@ -362,7 +365,7 @@ do for [GROUP in GROUPS] {
 
         MEASUREMENT = 'Duration'
 
-        DATA = sprintf("docs/benchmarks/data/operations/benchmarks/%s", OPERATION)
+        DATA = sprintf("%s/operations/benchmarks/%s", DATA_ROOT, OPERATION)
 
         set xlabel "Operations / 10^6"
         set ylabel "{/:Bold Total Duration } in seconds"

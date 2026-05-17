@@ -12,7 +12,7 @@ if (words(@GROUP)) > 6 {
     set tmargin 5
 }
 
-SVG = sprintf("docs/benchmarks/svg/operations/%s/%s/%s__%s.svg", GROUP, OPERATION, MEASUREMENT, SMOOTH)
+SVG = sprintf("%s/operations/%s/%s/%s__%s.svg", SVG_ROOT, GROUP, OPERATION, MEASUREMENT, SMOOTH)
 system mkdir(SVG)
 set output SVG
 print SVG
@@ -32,7 +32,7 @@ plot for [i=1:words(@GROUP)] $TABLE \
 
 do for [DISTRIBUTION in DISTRIBUTIONS] {
 
-    SVG = sprintf("docs/benchmarks/svg/operations/%s/%s/%s/%s__%s.svg", GROUP, OPERATION, DISTRIBUTION, MEASUREMENT, SMOOTH)
+    SVG = sprintf("%s/operations/%s/%s/%s/%s__%s.svg", SVG_ROOT, GROUP, OPERATION, DISTRIBUTION, MEASUREMENT, SMOOTH)
     system mkdir(SVG)
     set output SVG
     print SVG
