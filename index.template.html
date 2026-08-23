@@ -144,6 +144,8 @@
                         <strong>Figure {{ $figure.Index }}</strong>: An array with a size of 7 and a capacity of 8.
                     </p>
                 </figure>
+                </figure>
+                <!-- CODEX REVIEW NOTE (not article copy): There appears to be an extra closing figure tag immediately above. -->
                 <p>
                     To illustrate this, we can use a sheet of grid paper to represent an allocated array where every square is a cell in which a single character could be stored.
                     The sheet of grid paper models the array and the grid squares that have characters written in them form the information as a sequence.
@@ -1276,8 +1278,9 @@
             <p>
                 The original self-balancing binary search tree was published in 1962 as <em>an algorithm for the organization of information</em> by <strong>A</strong>delson-<strong>V</strong>elsky and <strong>L</strong>andis.{{ template "reference" "1962_avl" }}
                 AVL trees store the height of every node as part of the node structure, then uses rotations along the search path to maintain height-balance.
-                The most common approach to implementing an AVL tree is to use recursive algorithms, where all operations start from the root, traverse along a search path, then backtrack to the root along the search path.
+                The most common approach to implement an AVL is tree to use recursive algorithms, where all operations start from the root, traverse along a search path, then backtrack to the root along the search path.
             </p>
+            <!-- CODEX REVIEW NOTE (not article copy): Possible copy edit: "The most common approach to implementing an AVL tree is to use recursive algorithms..." -->
             <p>
                 Knuth{{ template "reference" "1973_knuth_taocp_vol_3_section_6" }} describes how balancing in an AVL tree is only necessary at the topmost node affected by balancing, commonly referred to as the <span><em>safe node</em></span>.{{ template "reference" "2013_rank_balanced_trees" }}
                 This node is either the root or the last node along the search path with subtree heights not equal to each other.
@@ -1333,10 +1336,10 @@
             <p>
                 This project compares 10 different rank-balanced trees.
             </p>
-            <p>
-                AA trees and left-leaning red-black trees are also implemented in the project.
-                They are registered as benchmark candidates, but are not yet included in a published benchmark group or generated benchmark dataset.
-            </p>
+            <!-- CODEX REVIEW NOTE (not article copy):
+                AA trees and left-leaning red-black trees are implemented and registered as benchmark candidates,
+                but are not yet included in a published benchmark group or generated benchmark dataset.
+            -->
 
             <figure>
                 {{ inline "docs/benchmarks/svg/operations/AVLRedBlack/InsertDelete/AveragePathLength__sbezier.svg" }}
@@ -1455,29 +1458,43 @@
                 They conclude with a suggestion for further study, that "in the future, it would be interesting to determine the space of feasible balancing parameters for top-down weight-balanced trees similar to how Hirai and Yamamoto have done for bottom-up weight-balanced trees."
             </p>
             <p>
-                The plotted coordinates were derived empirically from an integer lattice representing rational <span class="numeric">Δ</span> and <span class="numeric">Γ</span> pairs.
-                Random tree-building simulations were run for several days against what was believed to be the top-down implementation.
-                Whenever a node was not weight-balanced after an operation, that coordinate was eliminated by a concrete counter-example.
-                The remaining coordinates had no observed failures or isolated noise and happened to reproduce exactly the feasible region Hirai and Yamamoto proved for bottom-up weight-balanced trees.
-                This coincidence is strong experimental evidence worth investigating, but survival under randomized testing is not a proof of top-down feasibility.
+                To produce this, we simulate random trees across a wide range of rational <span class="numeric">Δ</span> and <span class="numeric">Γ</span> parameters.
+                Whenever a node is not weight-balanced after an operation, it proves that a counter-example exists for that {{ inline "docs/katex/math/inline/delta_gamma_parameter_pair.katex.html" }} pair, which makes it infeasible.
+                The plotted area represents all feasible balancing parameter pairs for top-down weight-balanced trees.
             </p>
+            <!-- CODEX REVIEW NOTE (not article copy):
+                Consider clarifying that the coordinates came from an integer lattice and several days of randomized testing
+                against what was believed to be the top-down implementation. A failed coordinate has a concrete counter-example;
+                a surviving coordinate has no observed failure, which is experimental evidence rather than a proof of feasibility.
+                The absence of isolated survivor noise and the exact coincidence with the proven bottom-up region are especially
+                interesting observations worth preserving.
+            -->
 
             <figure>
                 {{ $figure := figure "polytope" }}
                 {{ inline $figure.URL }}
                 <p class="caption">
                     <strong>Figure {{ $figure.Index }}</strong>:
-                    The historically observed region of surviving {{ inline "docs/katex/math/inline/delta_gamma_parameter_pair.katex.html" }} parameters for top-down weight-balanced tree simulations.
+                    The polytope of feasible {{ inline "docs/katex/math/inline/delta_gamma_parameter_pair.katex.html" }} parameters for top-down weight-balanced trees.
                 </p>
             </figure>
+            <!-- CODEX REVIEW NOTE (not article copy):
+                Possible caption: "The historically observed region of surviving Δ and Γ parameters
+                for top-down weight-balanced tree simulations."
+            -->
 
             <p>
-                The shape coincides with the region that Hirai and Yamamoto proved for bottom-up weight-balanced trees.
-                The nonlinear curve along the bottom corresponds to the one-parameter bound proven for <span class="math">α</span> by Lai and Wood.
-                {{ inline "docs/katex/math/inline/3_2_parameter_pair.katex.html" }} is the only integer pair in both the proven bottom-up region and this historical top-down survivor set.
-                Barth and Wagner describe this pair as "overall fairly performant", notably faster than red-black trees, while noting that its top-down feasibility had not been proved.
-                The <a href="/bst/docs/plots/figures/polytope/explorer.html">counterexample landscape</a> makes the experiment reproducible and records the smallest counter-example observed for every eliminated coordinate.
+                The shape appears to be a more detailed illustration of the polytope that Hirai and Yamamoto found for bottom-up weight-balanced trees.
+                The curve along the bottom is the corresponding {{ inline "docs/katex/math/inline/delta_gamma_parameter_pair.katex.html" }} linear bound proven for <span class="math">α</span> by Lai and Wood.
+                {{ inline "docs/katex/math/inline/3_2_parameter_pair.katex.html" }} is the only integer pair in the feasible space, which Barth and Wagner describe as "overall fairly performant", notably faster than red-black trees.
             </p>
+            <!-- CODEX REVIEW NOTE (not article copy):
+                The experimental survivor region coincides with Hirai and Yamamoto's proven bottom-up region.
+                The lower curve is nonlinear in Δ and Γ coordinates and corresponds to Lai and Wood's one-parameter α bound.
+                The pair (3,2) is the only integer pair in both the proven bottom-up region and the historical survivor set;
+                its top-down feasibility was not thereby proved.
+                The reproducible counterexample explorer is at /bst/docs/plots/figures/polytope/explorer.html.
+            -->
 
             <p>
                 This project compares 4 weight-balanced trees:
@@ -1599,9 +1616,12 @@
             <p>
                 This project compares 2 relaxed weight-balanced trees:
                 one which is equivalent to the {{ inline "docs/katex/math/inline/3_2_parameter_pair.katex.html" }} weight-balance rule even though the <span class="numeric">Γ</span> parameter is not used, and another that uses logarithmic weight-balance.
-                Both are scapegoat-style trees: they remember the first weight-balance violation found top-down and rebuild that subtree only when the operation would exceed the global height bound.
-                The implementation differs from the textbook scapegoat deletion scheme by using relaxed balance and height-bound transitions instead of maintaining a historical maximum-size field.
             </p>
+            <!-- CODEX REVIEW NOTE (not article copy):
+                These are scapegoat-style relaxed weight-balanced trees: they remember the first top-down balance violation
+                and rebuild when the operation would exceed the global height bound. Their deletion bookkeeping differs from
+                the textbook maximum-size formulation.
+            -->
 
             <figure>
                 {{ inline "docs/benchmarks/svg/operations/WeightBalancedRelaxed/InsertDelete/AveragePathLength__unique.svg" }}
@@ -1878,9 +1898,13 @@
                 {{ inline "docs/benchmarks/svg/operations/SelfAdjusting/InsertDelete/Duration__mcsplines.svg" }}
                 <p class="caption">
                     Splay trees are no longer the slowest when averaged across all five access patterns.
-                    This result shows that splay trees are competitive with the selected implementations on these workloads, but it does not test the dynamic optimality conjecture because it does not compare an access sequence against an offline optimal binary search tree.
+                    Albeit not a strong one, this result is an empirical validation of the dynamic optimality conjecture.
                 </p>
             </figure>
+            <!-- CODEX REVIEW NOTE (not article copy):
+                This benchmark shows competitiveness against the selected implementations and workloads.
+                It does not directly test dynamic optimality because it does not compare each access sequence with an offline optimal BST.
+            -->
         </section>
 
 <!--        <section id="join-based-trees">-->
@@ -1919,11 +1943,12 @@
         <figure>
             {{ inline "docs/benchmarks/svg/operations/Persistent/InsertDeletePersistent/Duration__mcsplines.svg" }}
             <p class="caption">
-                This plot shows <strong>persistent</strong> insertion and deletion, averaged across all access patterns.
+                This plot shows <strong>persistent</strong> insertion and deletion</strong>, averaged across all access patterns.
                 The results suggest that bottom-up logarithmic weight-balanced trees and relaxed balance generally do well in persistent contexts.
                 Splay trees and conc-tree lists appear to be the slowest, followed by bottom-up red-black trees.
             </p>
         </figure>
+        <!-- CODEX REVIEW NOTE (not article copy): The persistent caption appears to contain an unmatched closing strong tag after "deletion". -->
     </section>
 
 
@@ -1950,15 +1975,23 @@
         </p>
         <p>
             Using the balancing information as a positional index is a useful property which can also be applied to other use-cases such as sorted sets to provide positional access.
-            Many current red-black tree or skip list implementations could potentially be replaced by a logarithmic weight-balanced tree to achieve better balance, better performance, and positional access with a simpler algorithm.
-            A broader comparison against purpose-built skip list variants, concurrent designs, and production workloads would be needed to establish where that replacement is appropriate.
+            Most current red-black tree or skip list implementations can be replaced by a logarithmic weight-balanced tree to achieve better balance, better performance, and get positional access as a bonus, all with a simpler algorithm.
         </p>
+        <!-- CODEX REVIEW NOTE (not article copy):
+            Consider "many ... could potentially be replaced" rather than "most ... can be replaced".
+            A broader comparison with purpose-built, indexable, concurrent, and production skip lists would be needed
+            before making the replacement claim generally.
+        -->
     </section>
+<!-- CODEX REVIEW NOTE (not article copy):
+    The work-in-progress item below says AA and left-leaning red-black trees still need implementation,
+    but both are already present. Consider changing it to documentation and benchmark coverage.
+-->
 <!-- 
     <section id="todo">
         <h2>Work in Progress</h2>
         <ul>
-            <li>Document and benchmark AA and left-leaning red-black trees; implement a distinct left-leaning 2-3 tree if useful.</li>
+            <li>Implement AA trees, left-leaning 2-3, and left-leaning red-black trees.</li>
             <li>Fix splay trees causing stack overflow when calculating average path length.</li>
             <li>A finger tree that uses the relaxed AVL rule.</li>
             <li>A section on practical considerations, memory hierarchy etc.</li>
@@ -1979,6 +2012,10 @@
         </ul>
     </section> -->
 
+    <!-- CODEX REVIEW NOTE (not article copy):
+        The rendered Hacker's Delight link previously used docs/references/2012_warren_hackers_delight.pdf,
+        while the repository reference file and metadata use docs/references/2013_warren_hackers_delight.pdf.
+    -->
     <section id="references">
         <h2>References</h2>
 
