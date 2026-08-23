@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Top-down weight-balanced tree parameter explorer</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --background: #fff;
+            --foreground: #171717;
+            --muted: #666;
+            --border: #bbb;
+            --survived: #00a86b;
+            --insert: #2962ff;
+            --delete: #ec6f1a;
+            --shape: #d336c8;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background: #111;
+                --foreground: #eee;
+                --muted: #aaa;
+                --border: #555;
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 1rem;
+            background: var(--background);
+            color: var(--foreground);
+            font: 15px/1.45 system-ui, sans-serif;
+        }
+        main { max-width: 1100px; margin: 0 auto; }
+        h1 { font: 600 1.4rem/1.2 system-ui, sans-serif; margin: 0 0 .35rem; }
+        p { color: var(--muted); margin: 0 0 1rem; }
+        .controls {
+            display: grid;
+            grid-template-columns: minmax(240px, 1fr) auto;
+            gap: 1rem;
+            align-items: end;
+            margin-bottom: .75rem;
+        }
+        label { display: grid; gap: .25rem; font-weight: 600; }
+        input[type="range"] { width: 100%; }
+        .legend { display: flex; flex-wrap: wrap; gap: .85rem; color: var(--muted); }
+        .legend span::before {
+            content: "";
+            display: inline-block;
+            width: .7rem;
+            height: .7rem;
+            border-radius: 50%;
+            margin-right: .3rem;
+            background: var(--color);
+        }
+        .plot {
+            position: relative;
+            border: 1px solid var(--border);
+            min-height: 620px;
+            touch-action: none;
+            user-select: none;
+        }
+        canvas { display: block; width: 100%; height: 620px; }
+        .detail {
+            position: absolute;
+            left: .75rem;
+            bottom: .75rem;
+            max-width: min(38rem, calc(100% - 1.5rem));
+            padding: .5rem .65rem;
+            background: color-mix(in srgb, var(--background) 92%, transparent);
+            border: 1px solid var(--border);
+            pointer-events: none;
+        }
+        .detail:empty { display: none; }
+        .status { margin-top: .6rem; color: var(--muted); }
+        .explanation { margin-top: 1.25rem; }
+        .explanation p { margin-bottom: .65rem; }
+        code { color: var(--foreground); }
+        @media (max-width: 650px) {
+            .controls { grid-template-columns: 1fr; }
+            .plot { min-height: 480px; }
+            canvas { height: 480px; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <h1>Top-down WBT counterexample landscape</h1>
+    <p>Drag to rotate, scroll to zoom, and point at a coordinate for the smallest counterexample observed. Surviving coordinates sit on the upper testing horizon.</p>
+    <div class="controls">
+        <label>
+            Coordinate morph:
+            <span id="morph-label">Δ, Γ — algorithm parameters</span>
+            <input id="morph" type="range" min="0" max="1" step="0.01" value="0">
+        </label>
+        <div class="legend" aria-label="Legend">
+            <span style="--color:var(--survived)">survived</span>
+            <span style="--color:var(--insert)">insert counterexample</span>
+            <span style="--color:var(--delete)">delete counterexample</span>
+            <span style="--color:var(--shape)">shape failure</span>
+        </div>
+    </div>
+    <div class="plot" id="plot">
+        <canvas id="canvas" aria-label="Interactive three-dimensional parameter landscape"></canvas>
+        <div class="detail" id="detail"></div>
+    </div>
+    <div class="status" id="status">Loading generated counterexamples…</div>
+    <section class="explanation">
+        <p><strong>Height is evidence depth, not a third balance parameter.</strong> Failed coordinates rise to <code>log₂(n + 1)</code>, where <code>n</code> is the smallest counterexample size observed; survivors rise to the experiment’s maximum tested size.</p>
+        <p>The endpoint morph uses <code>α = 1/(Δ + 1)</code> and <code>β = 1 − 1/Γ</code>. For <code>Δ &gt; 0</code> and <code>Γ &gt; 1</code>, this mapping is continuous and reversible, with <code>Δ = (1 − α)/α</code> and <code>Γ = 1/(1 − β)</code>. The endpoint therefore contains exactly the same parameter pairs and preserves their topology, but not distances, angles, area, or convexity. Intermediate slider positions are only an animation between the two exact coordinate charts.</p>
+    </section>
+</main>
+<script>
+(() => {
+    const canvas = document.getElementById("canvas");
+    const plot = document.getElementById("plot");
+    const detail = document.getElementById("detail");
+    const status = document.getElementById("status");
+    const morph = document.getElementById("morph");
+    const morphLabel = document.getElementById("morph-label");
+    const context = canvas.getContext("2d");
+    let points = [];
+    let projected = [];
+    let yaw = -0.72;
+    let pitch = 0.58;
+    let zoom = 1;
+    let dragging = false;
+    let previous = null;
+    let hovered = null;
+
+    const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const parse = text => {
+        const [header, ...rows] = text.trim().split(/\r?\n/);
+        const keys = header.split(",");
+        return rows.map(row => {
+            const values = row.split(",");
+            const point = Object.fromEntries(keys.map((key, index) => [key, values[index] || ""]));
+            for (const key of ["delta", "gamma", "counterexample_size", "position", "operation_index", "trial", "seed", "node_size", "left_size", "right_size", "depth", "tested_operations", "max_size"]) {
+                point[key] = Number(point[key] || 0);
+            }
+            point.alpha = 1 / (point.delta + 1);
+            point.beta = 1 - 1 / point.gamma;
+            return point;
+        });
+    };
+    const extent = (values, key) => {
+        const data = values.map(key);
+        return [Math.min(...data), Math.max(...data)];
+    };
+    const scale = (value, domain) => domain[0] === domain[1] ? 0 : (value - domain[0]) / (domain[1] - domain[0]) * 2 - 1;
+
+    function resize() {
+        const ratio = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = Math.max(1, Math.round(rect.width * ratio));
+        canvas.height = Math.max(1, Math.round(rect.height * ratio));
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        draw();
+    }
+
+    function rotate(point) {
+        const cy = Math.cos(yaw), sy = Math.sin(yaw);
+        const cp = Math.cos(pitch), sp = Math.sin(pitch);
+        const x1 = point.x * cy - point.z * sy;
+        const z1 = point.x * sy + point.z * cy;
+        const y1 = point.y * cp - z1 * sp;
+        const z2 = point.y * sp + z1 * cp;
+        return {x: x1, y: y1, z: z2};
+    }
+
+    function pointColor(point) {
+        if (point.status === "survived") return css("--survived");
+        if (point.kind && point.kind !== "weight-balance") return css("--shape");
+        return point.operation === "delete" ? css("--delete") : css("--insert");
+    }
+
+    function drawAxis(origin, end, label) {
+        context.strokeStyle = css("--border");
+        context.fillStyle = css("--foreground");
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(origin.x, origin.y);
+        context.lineTo(end.x, end.y);
+        context.stroke();
+        context.font = "12px system-ui";
+        context.fillText(label, end.x + 5, end.y - 3);
+    }
+
+    function project(normalized, width, height) {
+        const rotated = rotate(normalized);
+        const perspective = 1 / (1.8 - rotated.z * 0.22);
+        const unit = Math.min(width, height) * 0.35 * zoom;
+        return {
+            x: width / 2 + rotated.x * unit * perspective,
+            y: height / 2 - rotated.y * unit * perspective,
+            z: rotated.z,
+            perspective
+        };
+    }
+
+    function draw() {
+        const rect = canvas.getBoundingClientRect();
+        const width = rect.width, height = rect.height;
+        context.clearRect(0, 0, width, height);
+        if (!points.length) return;
+
+        const t = Number(morph.value);
+        morphLabel.textContent = t < 0.02
+            ? "Δ, Γ — algorithm parameters"
+            : t > 0.98
+                ? "α = 1/(Δ+1), β = 1−1/Γ — normalized proportions"
+                : "continuous visual interpolation between equivalent coordinate systems";
+
+        const originalX = extent(points, p => p.delta);
+        const originalY = extent(points, p => p.gamma);
+        const morphedX = extent(points, p => p.alpha);
+        const morphedY = extent(points, p => p.beta);
+        const horizon = Math.max(...points.map(p => p.max_size || 1));
+
+        projected = points.map(point => {
+            const x0 = scale(point.delta, originalX);
+            const y0 = scale(point.gamma, originalY);
+            const x1 = scale(point.alpha, morphedX);
+            const y1 = scale(point.beta, morphedY);
+            const observed = point.status === "survived" ? horizon : point.counterexample_size;
+            const z = scale(Math.log2(observed + 1), [0, Math.log2(horizon + 1)]);
+            const position = project({
+                x: x0 * (1 - t) + x1 * t,
+                y: y0 * (1 - t) + y1 * t,
+                z
+            }, width, height);
+            return {...position, point};
+        }).sort((a, b) => a.z - b.z);
+
+        const origin = project({x: -1, y: -1, z: -1}, width, height);
+        drawAxis(origin, project({x: 1.15, y: -1, z: -1}, width, height), t > .5 ? "α" : "Δ");
+        drawAxis(origin, project({x: -1, y: 1.15, z: -1}, width, height), t > .5 ? "β" : "Γ");
+        drawAxis(origin, project({x: -1, y: -1, z: 1.15}, width, height), "smallest observed counterexample size");
+
+        for (const item of projected) {
+            const radius = item.point === hovered ? 5.5 : Math.max(2.1, 3.1 * item.perspective);
+            context.beginPath();
+            context.arc(item.x, item.y, radius, 0, Math.PI * 2);
+            context.fillStyle = pointColor(item.point);
+            context.globalAlpha = item.point.status === "survived" ? .92 : .72;
+            context.fill();
+            context.globalAlpha = 1;
+        }
+    }
+
+    function selectAt(event) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        let nearest = null;
+        let distance = 11 * 11;
+        for (const item of projected) {
+            const dx = item.x - x, dy = item.y - y;
+            const candidate = dx * dx + dy * dy;
+            if (candidate < distance) {
+                distance = candidate;
+                nearest = item.point;
+            }
+        }
+        hovered = nearest;
+        if (!nearest) {
+            detail.textContent = "";
+        } else if (nearest.status === "survived") {
+            detail.innerHTML = `<strong>Δ=${nearest.delta}, Γ=${nearest.gamma}</strong> · survived ${nearest.tested_operations.toLocaleString()} operations per coordinate up to size ${nearest.max_size}.<br><code>α=${nearest.alpha.toFixed(5)}, β=${nearest.beta.toFixed(5)}</code>`;
+        } else if (nearest.kind === "algorithm-signal" || nearest.kind === "algorithm-exit") {
+            detail.innerHTML = `<strong>Δ=${nearest.delta}, Γ=${nearest.gamma}</strong> · the parameterized top-down operation could not complete safely at size ${nearest.counterexample_size}.<br><code>${nearest.operation || "operation"}(${nearest.position}), operation ${nearest.operation_index}, trial ${nearest.trial}, seed ${nearest.seed}, ${nearest.kind}</code>`;
+        } else {
+            detail.innerHTML = `<strong>Δ=${nearest.delta}, Γ=${nearest.gamma}</strong> · smallest observed failure at size ${nearest.counterexample_size}, after ${nearest.operation}(${nearest.position}) in trial ${nearest.trial}.<br><code>${nearest.kind}: node ${nearest.node_size}, left ${nearest.left_size}, right ${nearest.right_size}, depth ${nearest.depth}, seed ${nearest.seed}</code>`;
+        }
+        draw();
+    }
+
+    plot.addEventListener("pointerdown", event => {
+        dragging = true;
+        previous = {x: event.clientX, y: event.clientY};
+        plot.setPointerCapture(event.pointerId);
+    });
+    plot.addEventListener("pointermove", event => {
+        if (!dragging) {
+            selectAt(event);
+            return;
+        }
+        yaw += (event.clientX - previous.x) * 0.008;
+        pitch = Math.max(-1.35, Math.min(1.35, pitch + (event.clientY - previous.y) * 0.008));
+        previous = {x: event.clientX, y: event.clientY};
+        draw();
+    });
+    plot.addEventListener("pointerup", event => {
+        dragging = false;
+        plot.releasePointerCapture(event.pointerId);
+    });
+    plot.addEventListener("wheel", event => {
+        event.preventDefault();
+        zoom = Math.max(.55, Math.min(2.2, zoom * Math.exp(-event.deltaY * .001)));
+        draw();
+    }, {passive: false});
+    morph.addEventListener("input", draw);
+    new ResizeObserver(resize).observe(canvas);
+
+    fetch("topdown-counterexamples.csv")
+        .then(response => {
+            if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+            return response.text();
+        })
+        .then(text => {
+            points = parse(text);
+            const failed = points.filter(p => p.status === "failed").length;
+            status.textContent = `${points.length.toLocaleString()} coordinates · ${failed.toLocaleString()} eliminated · ${(points.length - failed).toLocaleString()} survived the recorded search`;
+            resize();
+        })
+        .catch(error => {
+            status.textContent = `Could not load generated data: ${error.message}`;
+        });
+})();
+</script>
+</body>
+</html>
