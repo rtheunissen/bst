@@ -1,176 +1,183 @@
 #include "treap_bottomup.h"
+#include "rank.h"
+#include "tree_list_adapter.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal operations
 // ─────────────────────────────────────────────────────────────────────────────
 
 static u64 treap_rank(node_t *p) {
-   if (p == NULL) return 0;
+   if (p == NULL) {
+      return 0;
+   }
    return p->y;
 }
 
-static node_t *treap_bu_join(node_t *l, node_t *r, u64 sl) {
+static node_t *treap_bu_join(node_t *l, node_t *r, u64 sl, u64 sr) {
+   tree_join_inputs_require(l, r, sl, sr);
+#ifdef DEBUG
+   tree_debug_require_join_inputs(l, r, sl, sr);
+#endif
    node_t *root = NULL;
    node_t **p = &root;
    for (;;) {
-      if (l == NULL) { *p = r; return root; }
-      if (r == NULL) { *p = l; return root; }
+      tree_sized_root_shape_require(l, sl);
+      tree_sized_root_shape_require(r, sr);
+      if (l == NULL) {
+         invariant(sl == 0);
+         *p = r;
+         return root;
+      }
+      if (r == NULL) {
+         invariant(sr == 0);
+         *p = l;
+         return root;
+      }
 
       if (treap_rank(l) >= treap_rank(r)) {
-         tree_persist(&l);
-        sl = sl - l->s - 1;
-        *p = l;
+         tree_persist_unshared(&l);
+         invariant(l->s < sl);
+         sl = sizeR(l, sl);
+         *p = l;
          p = &l->r;
          l = *p;
       } else {
-         tree_persist(&r);
-       r->s = r->s + sl;
-        *p = r;
+         tree_persist_unshared(&r);
+         invariant(r->s < sr);
+         sr = sizeL(r);
+         r->s = rank_after_prefix(sl, r);
+         *p = r;
          p = &r->l;
          r = *p;
       }
    }
 }
 
-static node_t *treap_bu_insert(treap_bottomup_t *tree, node_t *p, u64 i, u64 x) {
+static node_t *treap_bu_insert(treap_bottomup_t *tree, node_t *p, u64 size,
+                               u64 i, u64 x) {
+   invariant(tree != NULL);
+   u64 inserted_size = tree_insert_inputs_require(p, i, size);
    if (p == NULL) {
-      return tree_allocate((node_t){.x = x, .y = xoshiro256_uint64(&tree->source)});
+      invariant(i == 0);
+      return tree_allocate((node_t){
+          .x = x,
+          .y = xoshiro256_uint64(&tree->source),
+      });
    }
-   tree_persist(&p);
+   tree_persist_unshared(&p);
    if (i <= p->s) {
-      p->s = p->s + 1;
-      p->l = treap_bu_insert(tree, p->l, i, x);
-      if (p->l->y > p->y) {
-         treeRotateR(&p);
+      u64 child_size = sizeL(p);
+      node_t **l = insertL(p);
+      *l = treap_bu_insert(tree, *l, child_size, i, x);
+      if ((*l)->y > p->y) {
+         treeRotateRSized(&p, inserted_size);
       }
    } else {
-      p->r = treap_bu_insert(tree, p->r, i - p->s - 1, x);
-      if (p->r->y > p->y) {
-         treeRotateL(&p);
+      u64 child_size = sizeR(p, size);
+      node_t **r = insertR(p, &i);
+      *r = treap_bu_insert(tree, *r, child_size, i, x);
+      if ((*r)->y > p->y) {
+         treeRotateLSized(&p, inserted_size);
       }
    }
    return p;
 }
 
-static node_t *treap_bu_delete(node_t *p, u64 i, u64 *x) {
+typedef struct {
+   node_t *root;
+   u64 value;
+} treap_bu_delete_result_t;
+
+static treap_bu_delete_result_t treap_bu_delete(node_t *p, u64 size, u64 i) {
+   (void)tree_delete_inputs_require(p, i, size);
    if (i == p->s) {
-      *x = p->x;
+      u64 value = p->x;
       tree_share(p->l);
       tree_share(p->r);
-      node_t *result = treap_bu_join(p->l, p->r, p->s);
+      node_t *root = treap_bu_join(p->l, p->r, p->s, sizeR(p, size));
       tree_release(p);
-      return result;
+      return (treap_bu_delete_result_t){.root = root, .value = value};
    }
-   tree_persist(&p);
+   tree_persist_unshared(&p);
+   treap_bu_delete_result_t result;
    if (i < p->s) {
-      p->s = p->s - 1;
-      p->l = treap_bu_delete(p->l, i, x);
+      invariant(p->l != NULL);
+      u64 child_size = sizeL(p);
+      node_t **l = deleteL(p);
+      result = treap_bu_delete(*l, child_size, i);
+      *l = result.root;
    } else {
-      p->r = treap_bu_delete(p->r, i - p->s - 1, x);
+      invariant(p->r != NULL);
+      u64 child_size = sizeR(p, size);
+      node_t **r = deleteR(p, &i);
+      result = treap_bu_delete(*r, child_size, i);
+      *r = result.root;
    }
-   return p;
+   result.root = p;
+   return result;
 }
-
-static void treap_bu_verifyMaxRankHeap(node_t *p) {
-   if (p == NULL) return;
-   invariant(treap_rank(p) >= treap_rank(p->l));
-   invariant(treap_rank(p) >= treap_rank(p->r));
-   treap_bu_verifyMaxRankHeap(p->l);
-   treap_bu_verifyMaxRankHeap(p->r);
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // List vtable
 // ─────────────────────────────────────────────────────────────────────────────
 
-static list_t treap_bu_vt_new(const list_vtable_t *vt) {
-   treap_bottomup_t *t = (treap_bottomup_t *)calloc(1, sizeof(treap_bottomup_t));
-   xoshiro256_seed(&t->source, random_uint64());
-   return (list_t){.impl = t, .vt = vt};
-}
-
-static list_t treap_bu_vt_clone(list_t *self) {
-   treap_bottomup_t *orig = (treap_bottomup_t *)self->impl;
-   treap_bottomup_t *copy = (treap_bottomup_t *)malloc(sizeof(treap_bottomup_t));
-   tree_share(orig->tree.root);
-   *copy = *orig;
-   return (list_t){.impl = copy, .vt = self->vt};
-}
-
-static void treap_bu_vt_free(list_t *self) {
-   treap_bottomup_t *t = (treap_bottomup_t *)self->impl;
-   free_nodes(t->tree.root);
-   free(t);
-   self->impl = NULL;
-}
-
-static u64  treap_bu_vt_size(list_t *self) { return ((treap_bottomup_t *)self->impl)->tree.size; }
-static void treap_bu_vt_each(list_t *self, void (*visit)(u64, void *), void *ctx) { inorder(((treap_bottomup_t *)self->impl)->tree.root, visit, ctx); }
+TREE_LIST_COMMON_FUNCTIONS(treap_bottomup_t, treap_bu,
+                           xoshiro256_seed(&t->source, random_uint64()))
 
 static void treap_bu_vt_verify(list_t *self) {
+   list_require(self);
    treap_bottomup_t *t = (treap_bottomup_t *)self->impl;
-   tree_verify_size(t->tree.root, t->tree.size);
-   treap_bu_verifyMaxRankHeap(t->tree.root);
+   verifyMaxRankHeapSized(t->tree.root, t->tree.size, treap_rank);
 }
 
-static u64  treap_bu_vt_select(list_t *self, u64 i) { return tree_lookup(&((treap_bottomup_t *)self->impl)->tree, i); }
-static void treap_bu_vt_update(list_t *self, u64 i, u64 x) { tree_update_base(&((treap_bottomup_t *)self->impl)->tree, i, x); }
-
 static void treap_bu_vt_insert(list_t *self, u64 i, u64 x) {
+   list_require(self);
    treap_bottomup_t *t = (treap_bottomup_t *)self->impl;
-   assert_bst(i <= t->tree.size);
-   t->tree.root = treap_bu_insert(t, t->tree.root, i, x);
-   t->tree.size++;
+   u64 size = t->tree.size;
+   u64 inserted_size = tree_insert_inputs_require(t->tree.root, i, size);
+   t->tree.root = treap_bu_insert(t, t->tree.root, size, i, x);
+   tree_list_sized_inserted(&t->tree);
+   invariant(t->tree.size == inserted_size);
 }
 
 static u64 treap_bu_vt_delete(list_t *self, u64 i) {
+   list_require(self);
    treap_bottomup_t *t = (treap_bottomup_t *)self->impl;
-   assert_bst(i < t->tree.size);
-   u64 x;
-   t->tree.root = treap_bu_delete(t->tree.root, i, &x);
-   t->tree.size--;
-   return x;
+   u64 size = t->tree.size;
+   u64 deleted_size = tree_delete_inputs_require(t->tree.root, i, size);
+   treap_bu_delete_result_t result =
+       treap_bu_delete(t->tree.root, t->tree.size, i);
+   t->tree.root = result.root;
+   tree_list_sized_deleted(&t->tree);
+   invariant(t->tree.size == deleted_size);
+   return result.value;
 }
 
-static void treap_bu_vt_split(list_t *self, u64 i, list_t *out_l, list_t *out_r) {
+static void treap_bu_vt_split(list_t *self, u64 i, list_t *out_l,
+                              list_t *out_r) {
+   tree_list_require_split(self, i, out_l, out_r);
    treap_bottomup_t *t = (treap_bottomup_t *)self->impl;
-   assert_bst(i <= t->tree.size);
+   u64 size = t->tree.size;
+   u64 right_size = tree_split_inputs_require(t->tree.root, i, size);
    tree_share(t->tree.root);
-   node_t *l, *r;
-   tree_split_internal(t->tree.root, i, &l, &r);
-   treap_bottomup_t *sl = (treap_bottomup_t *)calloc(1, sizeof(treap_bottomup_t));
-   sl->tree = (tree_t){l, i}; sl->source = t->source;
-   treap_bottomup_t *sr = (treap_bottomup_t *)calloc(1, sizeof(treap_bottomup_t));
-   sr->tree = (tree_t){r, t->tree.size - i}; sr->source = t->source;
-   *out_l = (list_t){sl, self->vt};
-   *out_r = (list_t){sr, self->vt};
+   tree_split_result_t split = tree_split_roots_sized(t->tree.root, i, size);
+   TREE_LIST_SPLIT_RESULT_FIELD_PREPARED(treap_bottomup_t, size, source,
+                                         t->source, split.left, i, split.right,
+                                         right_size);
 }
 
 static list_t treap_bu_vt_join(list_t *self, list_t *other) {
+   tree_list_require_join(self, other);
    treap_bottomup_t *t = (treap_bottomup_t *)self->impl;
    treap_bottomup_t *that = (treap_bottomup_t *)other->impl;
-   tree_share(t->tree.root);
-   tree_share(that->tree.root);
-   treap_bottomup_t *result = (treap_bottomup_t *)calloc(1, sizeof(treap_bottomup_t));
-   result->tree.root = treap_bu_join(t->tree.root, that->tree.root, t->tree.size);
-   result->tree.size = t->tree.size + that->tree.size;
-   result->source = t->source;
-   return (list_t){result, self->vt};
+   tree_join_roots_t roots =
+       tree_list_prepare_join_roots(&t->tree, &that->tree);
+   node_t *root =
+       treap_bu_join(roots.left, roots.right, t->tree.size, that->tree.size);
+   TREE_LIST_JOIN_RESULT_FIELD(
+       treap_bottomup_t, source, t->source, root,
+       tree_list_join_size(t->tree.size, that->tree.size));
 }
 
-const list_vtable_t treap_bottomup_vtable = {
-   .name      = "TreapBottomUp",
-   .new_fn    = treap_bu_vt_new,
-   .clone_fn  = treap_bu_vt_clone,
-   .free_fn   = treap_bu_vt_free,
-   .size_fn   = treap_bu_vt_size,
-   .each_fn   = treap_bu_vt_each,
-   .verify_fn = treap_bu_vt_verify,
-   .select_fn = treap_bu_vt_select,
-   .update_fn = treap_bu_vt_update,
-   .insert_fn = treap_bu_vt_insert,
-   .delete_fn = treap_bu_vt_delete,
-   .split_fn  = treap_bu_vt_split,
-   .join_fn   = treap_bu_vt_join,
-};
+const list_vtable_t treap_bottomup_vtable =
+    TREE_LIST_VTABLE("TreapBottomUp", treap_bu);

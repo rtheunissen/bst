@@ -17,68 +17,82 @@
 //   ESC/Ctrl-C   exit
 //
 #include "bst.h"
+#include "cli.h"
 #include "list.h"
+#include "operations.h"
 #include "random.h"
 #include "distributions.h"
-#include "splay.h"
-#include "randomized.h"
-#include "zip.h"
-#include "treap_bottomup.h"
-#include "treap_topdown.h"
-#include "conc.h"
-#include "llrb.h"
-#include "aa.h"
-#include "avl_bottomup.h"
-#include "avl_topdown.h"
-#include "avl_weak_bottomup.h"
-#include "avl_weak_topdown.h"
-#include "avl_relaxed_bottomup.h"
-#include "avl_relaxed_topdown.h"
-#include "redblack_bottomup.h"
-#include "redblack_topdown.h"
-#include "redblack_relaxed_bottomup.h"
-#include "redblack_relaxed_topdown.h"
-#include "wbst_bottomup.h"
-#include "wbst_topdown.h"
-#include "wbst_relaxed.h"
-#include "lbst_bottomup.h"
-#include "lbst_topdown.h"
-#include "lbst_relaxed.h"
-#include "treap_fingertree.h"
+#include "tree_registry.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 #include <termios.h>
 #include <unistd.h>
 #include <sys/select.h>
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dynamic vectors
 // ─────────────────────────────────────────────────────────────────────────────
 
-typedef struct { int *data; int len; int cap; } vec_int_t;
-typedef struct { u64 *data; int len; int cap; } vec_u64_t;
+typedef struct {
+   int *data;
+   int len;
+   int cap;
+} vec_int_t;
+typedef struct {
+   u64 *data;
+   int len;
+   int cap;
+} vec_u64_t;
+
+static int vec_next_cap(int cap, size_t elem_size) {
+   invariant(cap >= 0);
+   u64 next = bst_array_next_cap((u64)cap, (u64)cap + 1, 64, elem_size);
+   invariant(next <= INT_MAX);
+   return (int)next;
+}
+
+static void *vec_resize_array(void *data, u64 count, size_t elem_size) {
+   return data == NULL ? bst_malloc_array(count, elem_size)
+                       : bst_realloc_array(data, count, elem_size);
+}
 
 static void vec_int_push(vec_int_t *v, int val) {
+   invariant(v != NULL);
+   invariant(v->len >= 0);
+   invariant(v->cap >= 0);
+   invariant(v->len <= v->cap);
    if (v->len >= v->cap) {
-      v->cap = v->cap ? v->cap * 2 : 64;
-      v->data = (int *)realloc(v->data, (size_t)v->cap * sizeof(int));
+      invariant(v->cap < INT_MAX);
+      int cap = vec_next_cap(v->cap, sizeof(v->data[0]));
+      int *data =
+          (int *)vec_resize_array(v->data, (u64)cap, sizeof(v->data[0]));
+      v->data = data;
+      v->cap = cap;
    }
+   invariant(v->len < v->cap);
    v->data[v->len++] = val;
 }
 
-static void vec_int_clear(vec_int_t *v) { v->len = 0; }
+static void vec_int_clear(vec_int_t *v) {
+   invariant(v != NULL);
+   v->len = 0;
+}
 
 static void vec_int_free(vec_int_t *v) {
+   invariant(v != NULL);
    free(v->data);
    v->data = NULL;
    v->len = v->cap = 0;
 }
 
 static void vec_int_reverse(vec_int_t *v) {
+   invariant(v != NULL);
+   invariant(v->len >= 0);
    for (int i = 0, j = v->len - 1; i < j; i++, j--) {
       int tmp = v->data[i];
       v->data[i] = v->data[j];
@@ -87,70 +101,111 @@ static void vec_int_reverse(vec_int_t *v) {
 }
 
 static void vec_u64_push(vec_u64_t *v, u64 val) {
+   invariant(v != NULL);
+   invariant(v->len >= 0);
+   invariant(v->cap >= 0);
+   invariant(v->len <= v->cap);
    if (v->len >= v->cap) {
-      v->cap = v->cap ? v->cap * 2 : 64;
-      v->data = (u64 *)realloc(v->data, (size_t)v->cap * sizeof(u64));
+      invariant(v->cap < INT_MAX);
+      int cap = vec_next_cap(v->cap, sizeof(v->data[0]));
+      u64 *data =
+          (u64 *)vec_resize_array(v->data, (u64)cap, sizeof(v->data[0]));
+      v->data = data;
+      v->cap = cap;
    }
+   invariant(v->len < v->cap);
    v->data[v->len++] = val;
 }
 
-static void vec_u64_clear(vec_u64_t *v) { v->len = 0; }
+static void vec_u64_clear(vec_u64_t *v) {
+   invariant(v != NULL);
+   v->len = 0;
+}
 
 static void vec_u64_free(vec_u64_t *v) {
+   invariant(v != NULL);
    free(v->data);
    v->data = NULL;
    v->len = v->cap = 0;
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Rendering helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 static void repeat_str(const char *s, int n) {
-   for (int i = 0; i < n; i++) fputs(s, stdout);
+   invariant(s != NULL);
+   invariant(n >= 0);
+   for (int i = 0; i < n; i++) {
+      fputs(s, stdout);
+   }
+}
+
+static int display_text_len(const char *text) {
+   invariant(text != NULL);
+   size_t len = strlen(text);
+   invariant(len <= (size_t)INT_MAX);
+   return (int)len;
 }
 
 static void pad_left(const char *text, int width) {
-   int len = (int)strlen(text);
-   for (int i = 0; i < width - len; i++) putchar(' ');
+   int len = display_text_len(text);
+   invariant(width >= len);
+   for (int i = 0; i < width - len; i++) {
+      putchar(' ');
+   }
    fputs(text, stdout);
 }
 
 static void pad_right(const char *text, int width) {
-   int len = (int)strlen(text);
+   int len = display_text_len(text);
+   invariant(width >= len);
    fputs(text, stdout);
-   for (int i = 0; i < width - len; i++) putchar(' ');
-}
-
-static void comma_sep(char *buf, size_t bufsz, u64 n) {
-   char tmp[32];
-   snprintf(tmp, sizeof(tmp), "%llu", (unsigned long long)n);
-   int len = (int)strlen(tmp);
-   int commas = (len - 1) / 3;
-   int total = len + commas;
-   if ((size_t)total >= bufsz) { snprintf(buf, bufsz, "%s", tmp); return; }
-   int j = total;
-   buf[j--] = '\0';
-   for (int i = len - 1, k = 0; i >= 0; i--, k++) {
-      if (k > 0 && k % 3 == 0) buf[j--] = ',';
-      buf[j--] = tmp[i];
+   for (int i = 0; i < width - len; i++) {
+      putchar(' ');
    }
 }
 
+static void format_row_number(char *buf, size_t bufsz, int row) {
+   invariant(buf != NULL);
+   invariant(bufsz > 0);
+   invariant(row >= 0);
+   int written = snprintf(buf, bufsz, "%d", row);
+   invariant(written >= 0);
+   invariant((size_t)written < bufsz);
+}
+
+static void comma_sep(char *buf, size_t bufsz, u64 n) {
+   invariant(buf != NULL);
+   invariant(bufsz > 0);
+   char tmp[32];
+   int written = snprintf(tmp, sizeof(tmp), "%llu", (unsigned long long)n);
+   invariant(written >= 0);
+   invariant((size_t)written < sizeof(tmp));
+   int len = written;
+   int commas = (len - 1) / 3;
+   int total = len + commas;
+   invariant((size_t)total < bufsz);
+   int j = total;
+   buf[j--] = '\0';
+   for (int i = len - 1, k = 0; i >= 0; i--, k++) {
+      if (k > 0 && k % 3 == 0) {
+         buf[j--] = ',';
+      }
+      buf[j--] = tmp[i];
+   }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tree analysis
 // ─────────────────────────────────────────────────────────────────────────────
 
-static tree_t *list_tree(list_t *l) {
-   return (tree_t *)l->impl;
-}
-
 static void exterior_heights(tree_t *tree, vec_int_t *out_l, vec_int_t *out_r) {
    vec_int_clear(out_l);
    vec_int_clear(out_r);
-   if (tree->root == NULL) return;
+   if (tree->root == NULL) {
+      return;
+   }
 
    for (node_t *l = tree->root->l; l != NULL; l = l->l) {
       vec_int_push(out_l, height(l));
@@ -164,7 +219,9 @@ static void exterior_heights(tree_t *tree, vec_int_t *out_l, vec_int_t *out_r) {
 static void interior_heights(tree_t *tree, vec_int_t *out_l, vec_int_t *out_r) {
    vec_int_clear(out_l);
    vec_int_clear(out_r);
-   if (tree->root == NULL) return;
+   if (tree->root == NULL) {
+      return;
+   }
 
    for (node_t *l = tree->root->l; l != NULL; l = l->l) {
       vec_int_push(out_l, height(l->r) + 1);
@@ -175,24 +232,102 @@ static void interior_heights(tree_t *tree, vec_int_t *out_l, vec_int_t *out_r) {
    vec_int_reverse(out_l);
 }
 
-static void count_nodes_per_level(node_t *p, vec_u64_t *counter, int level) {
-   if (p == NULL) return;
-   while (counter->len <= level) {
-      vec_u64_push(counter, 0);
+typedef struct {
+   node_t *node;
+   int level;
+} node_level_frame_t;
+
+enum {
+   NODE_LEVEL_STACK_INLINE_CAP = 128,
+};
+
+static void node_level_stack_push(node_level_frame_t **stack,
+                                  node_level_frame_t *inline_stack, u64 *len,
+                                  u64 *cap, node_t *node, int level) {
+   invariant(stack != NULL);
+   invariant(inline_stack != NULL);
+   invariant(len != NULL);
+   invariant(cap != NULL);
+   invariant(*stack != NULL);
+   invariant(*cap > 0);
+   invariant(*len <= *cap);
+   invariant(level >= 0);
+   if (node == NULL) {
+      return;
    }
-   counter->data[level]++;
-   count_nodes_per_level(p->l, counter, level + 1);
-   count_nodes_per_level(p->r, counter, level + 1);
+
+   if (*len == *cap) {
+      *stack = (node_level_frame_t *)stack_array_grow(
+          *stack, inline_stack, *len, cap, sizeof(**stack));
+   }
+
+   invariant(*len < *cap);
+   u64 index = *len;
+   *len = size_after_inserting_one(*len);
+   (*stack)[index] = (node_level_frame_t){.node = node, .level = level};
+}
+
+static node_level_frame_t node_level_stack_pop(node_level_frame_t *stack,
+                                               u64 *len) {
+   invariant(stack != NULL);
+   invariant(len != NULL);
+   invariant(*len > 0);
+   *len = size_after_removing_one(*len);
+   return stack[*len];
+}
+
+static void node_level_stack_dispose(node_level_frame_t *stack,
+                                     node_level_frame_t *inline_stack, u64 len,
+                                     u64 cap) {
+   invariant(stack != NULL);
+   invariant(inline_stack != NULL);
+   invariant(cap > 0);
+   invariant(len <= cap);
+   invariant(stack == inline_stack || cap > NODE_LEVEL_STACK_INLINE_CAP);
+   if (stack != inline_stack) {
+      free(stack);
+   }
+}
+
+static void count_nodes_per_level(node_t *root, vec_u64_t *counter) {
+   invariant(counter != NULL);
+
+   node_level_frame_t inline_stack[NODE_LEVEL_STACK_INLINE_CAP];
+   node_level_frame_t *stack = inline_stack;
+   u64 len = 0;
+   u64 cap = NODE_LEVEL_STACK_INLINE_CAP;
+
+   node_level_stack_push(&stack, inline_stack, &len, &cap, root, 0);
+   while (len > 0) {
+      node_level_frame_t frame = node_level_stack_pop(stack, &len);
+      node_t *node = frame.node;
+      int level = frame.level;
+
+      while (counter->len <= level) {
+         vec_u64_push(counter, 0);
+      }
+      counter->data[level] = size_after_inserting_one(counter->data[level]);
+
+      invariant(level < INT_MAX);
+      int child_level = level + 1;
+      node_level_stack_push(&stack, inline_stack, &len, &cap, node->r,
+                            child_level);
+      node_level_stack_push(&stack, inline_stack, &len, &cap, node->l,
+                            child_level);
+   }
+
+   node_level_stack_dispose(stack, inline_stack, len, cap);
 }
 
 static void nodes_per_level(tree_t *tree, vec_u64_t *out_l, vec_u64_t *out_r) {
    vec_u64_clear(out_l);
    vec_u64_clear(out_r);
-   if (tree->root == NULL) return;
-   count_nodes_per_level(tree->root->l, out_l, 0);
-   count_nodes_per_level(tree->root->r, out_r, 0);
+   if (tree->root == NULL) {
+      return;
+   }
+   count_nodes_per_level(tree->root->l, out_l);
+   count_nodes_per_level(tree->root->r, out_r);
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Histogram rendering (Exterior/Interior heights)
@@ -202,6 +337,9 @@ static int max_histogram_bar_width = 80;
 static int max_histogram_bar_width_so_far = 0;
 
 static void truncated_bar(const char *ch, int width) {
+   invariant(ch != NULL);
+   invariant(width >= 0);
+   invariant(max_histogram_bar_width >= 0);
    if (width > max_histogram_bar_width) {
       repeat_str(ch, max_histogram_bar_width);
       printf("···");
@@ -210,10 +348,8 @@ static void truncated_bar(const char *ch, int width) {
    }
 }
 
-static void render_histogram(const char *title,
-                             vec_int_t *series_l, vec_int_t *series_r,
-                             int h, int offset)
-{
+static void render_histogram(const char *title, vec_int_t *series_l,
+                             vec_int_t *series_r, int h, int offset) {
    // Viewport clipping
    int numberOfRowsL = series_l->len;
    int numberOfRowsR = series_r->len;
@@ -223,7 +359,8 @@ static void render_histogram(const char *title,
 
    // Compute visible slice of left series
    int l_start = MAX(0, MIN(numberOfRowsL, numberOfRowsL - capacityL));
-   int l_end_raw = MIN(numberOfRowsL - l_start, MAX(0, numberOfRowsL - l_start + capacityR));
+   int l_end_raw = MIN(numberOfRowsL - l_start,
+                       MAX(0, numberOfRowsL - l_start + capacityR));
    int l_end = l_start + l_end_raw;
 
    // Compute visible slice of right series
@@ -246,32 +383,39 @@ static void render_histogram(const char *title,
    printf("\n");
    printf(" ┌ %s\n", title);
 
-   for (int i = paddingTop; i >= 0; i--) {
+   for (int i = 0; i < paddingTop; i++) {
       printf(" │\n");
    }
    for (int i = l_start; i < l_end; i++) {
       int w = series_l->data[i];
-      if (w > max_histogram_bar_width_so_far) max_histogram_bar_width_so_far = w;
+      if (w > max_histogram_bar_width_so_far) {
+         max_histogram_bar_width_so_far = w;
+      }
       printf(" │");
       truncated_bar("░", w);
       printf("▏\n");
    }
    for (int i = r_start; i < r_end; i++) {
       int w = series_r->data[i];
-      if (w > max_histogram_bar_width_so_far) max_histogram_bar_width_so_far = w;
+      if (w > max_histogram_bar_width_so_far) {
+         max_histogram_bar_width_so_far = w;
+      }
       printf(" │");
       truncated_bar("▓", w);
       printf("▏\n");
    }
-   for (int i = paddingBot; i >= 0; i--) {
+   for (int i = 0; i < paddingBot; i++) {
       printf(" │\n");
    }
 
    printf(" └");
-   repeat_str("─", max_histogram_bar_width_so_far);
+   repeat_str("─",
+              MIN(max_histogram_bar_width_so_far, max_histogram_bar_width));
+   if (max_histogram_bar_width_so_far > max_histogram_bar_width) {
+      printf("···");
+   }
    printf("┤ %d\n", max_histogram_bar_width_so_far);
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Stacked histogram rendering (NodesPerLevel)
@@ -280,15 +424,17 @@ static void render_histogram(const char *title,
 static int max_stacked_height = 128;
 static int max_stacked_height_so_far = 0;
 
-static void render_stacked_histogram(const char *title,
-                                     vec_u64_t *series_l, vec_u64_t *series_r,
-                                     int display_width, int display_height)
-{
-   max_stacked_height_so_far = MAX(max_stacked_height_so_far, MAX(series_l->len, series_r->len));
-   if (display_height < max_stacked_height_so_far)
+static void render_stacked_histogram(const char *title, vec_u64_t *series_l,
+                                     vec_u64_t *series_r, int display_width,
+                                     int display_height) {
+   max_stacked_height_so_far =
+       MAX(max_stacked_height_so_far, MAX(series_l->len, series_r->len));
+   if (display_height < max_stacked_height_so_far) {
       display_height = max_stacked_height_so_far;
-   if (display_height > max_stacked_height)
+   }
+   if (display_height > max_stacked_height) {
       display_height = max_stacked_height;
+   }
 
    printf(" ┌ %s\n", title);
    printf(" │\n");
@@ -302,9 +448,11 @@ static void render_stacked_histogram(const char *title,
       if (row < series_r->len && series_r->data[row] > 0) {
          barWidthR = (int)(log2((double)series_r->data[row])) + 1;
       }
+      invariant(display_width >= barWidthL);
+      invariant(display_width >= barWidthR);
 
       char rownum[16];
-      snprintf(rownum, sizeof(rownum), "%d", row);
+      format_row_number(rownum, sizeof(rownum), row);
 
       printf(" │");
       pad_left(rownum, 4);
@@ -324,16 +472,19 @@ static void render_stacked_histogram(const char *title,
    printf(" └\n");
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Focus bar
 // ─────────────────────────────────────────────────────────────────────────────
 
 static void render_focus_bar(u64 focus, u64 total) {
-   if (total == 0) return;
+   if (total == 0) {
+      return;
+   }
    int w = (int)(log2((double)total)) + 1;
    int x = (int)((double)focus / (double)total * (double)w);
-   if (x > w) x = 0;
+   if (x >= w) {
+      x = w - 1;
+   }
    printf(" Access: ");
    repeat_str("░", x);
    repeat_str("▓", 1);
@@ -341,14 +492,12 @@ static void render_focus_bar(u64 focus, u64 total) {
    printf(" ");
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Details
 // ─────────────────────────────────────────────────────────────────────────────
 
 static void render_details(const char *strategy, const char *operation,
-                           const char *distribution, u64 size)
-{
+                           const char *distribution, u64 size) {
    const char *labels[] = {"Strategy", "Operation", "Distribution", "Size"};
    int max_len = 12; // "Distribution" length
    char sizebuf[32];
@@ -363,7 +512,6 @@ static void render_details(const char *strategy, const char *operation,
    printf("\n");
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Animation types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -371,89 +519,17 @@ static void render_details(const char *strategy, const char *operation,
 enum { ANIM_EXTERIOR_HEIGHTS, ANIM_INTERIOR_HEIGHTS, ANIM_NODES_PER_LEVEL };
 
 static const char *anim_type_names[] = {
-   "ExteriorHeights",
-   "InteriorHeights",
-   "NodesPerLevel",
+    "ExteriorHeights",
+    "InteriorHeights",
+    "NodesPerLevel",
 };
 static const int num_anim_types = 3;
 
 static const char *anim_type_titles[] = {
-   "Exterior heights along the spines",
-   "Interior heights along the spines",
-   "Number of nodes per level, log2",
+    "Exterior heights along the spines",
+    "Interior heights along the spines",
+    "Number of nodes per level, log2",
 };
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Operations
-// ─────────────────────────────────────────────────────────────────────────────
-
-typedef enum {
-   ANIM_OP_INSERT,
-   ANIM_OP_INSERT_PERSISTENT,
-   ANIM_OP_INSERT_DELETE,
-   ANIM_OP_INSERT_DELETE_PERSISTENT,
-} anim_op_type_t;
-
-typedef struct {
-   anim_op_type_t type;
-   const char *name;
-   u64 scale;
-   u64 total_steps;
-} anim_op_t;
-
-static const anim_op_t anim_ops[] = {
-   {ANIM_OP_INSERT,                  "Insert",                 1000000, 1000000},
-   {ANIM_OP_INSERT_PERSISTENT,       "InsertPersistent",       1000000, 1000000},
-   {ANIM_OP_INSERT_DELETE,           "InsertDelete",             10000, 1000000},
-   {ANIM_OP_INSERT_DELETE_PERSISTENT,"InsertDeletePersistent",   10000, 1000000},
-};
-static const int num_anim_ops = 4;
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tree and distribution tables
-// ─────────────────────────────────────────────────────────────────────────────
-
-static const list_vtable_t *anim_trees[] = {
-   &avl_bottomup_vtable,
-   &avl_topdown_vtable,
-   &avl_weak_topdown_vtable,
-   &avl_weak_bottomup_vtable,
-   &avl_relaxed_topdown_vtable,
-   &avl_relaxed_bottomup_vtable,
-   &redblack_bottomup_vtable,
-   &redblack_topdown_vtable,
-   &redblack_relaxed_bottomup_vtable,
-   &redblack_relaxed_topdown_vtable,
-   &wbst_bottomup_vtable,
-   &wbst_topdown_vtable,
-   &wbst_relaxed_vtable,
-   &lbst_bottomup_vtable,
-   &lbst_topdown_vtable,
-   &lbst_relaxed_vtable,
-   &treap_bottomup_vtable,
-   &treap_topdown_vtable,
-   &treap_fingertree_vtable,
-   &randomized_vtable,
-   &zip_vtable,
-   &splay_vtable,
-   &conc_vtable,
-   &llrb_vtable,
-   &aa_vtable,
-};
-static const int num_anim_trees = sizeof(anim_trees) / sizeof(anim_trees[0]);
-
-static const char *anim_dist_names[] = {
-   "Uniform", "Normal", "Skewed", "Zipf", "Minimum",
-   "Maximum", "Median", "Queue", "Ascending", "Descending",
-};
-static const dist_factory_fn anim_dist_factories[] = {
-   uniform_new, normal_new, skewed_new, zipf_new, minimum_new,
-   maximum_new, median_new, queue_new, ascending_new, descending_new,
-};
-static const int num_anim_dists = 10;
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Animation state
@@ -461,7 +537,7 @@ static const int num_anim_dists = 10;
 
 typedef struct {
    // Config
-   anim_op_t op;
+   operation_t op;
    const list_vtable_t *tree_vt;
    const char *dist_name;
    int anim_type;
@@ -485,65 +561,24 @@ typedef struct {
 } animation_t;
 
 static bool anim_valid(animation_t *a) {
-   switch (a->op.type) {
-   case ANIM_OP_INSERT:
-   case ANIM_OP_INSERT_PERSISTENT:
+   invariant(a != NULL);
+   operation_require(&a->op);
+   if (operation_inserts_only(&a->op)) {
       return list_size(&a->instance) < a->op.scale;
-   case ANIM_OP_INSERT_DELETE:
-   case ANIM_OP_INSERT_DELETE_PERSISTENT:
-      return a->step_count < a->op.total_steps;
    }
-   return false;
+   return a->step_count < a->op.steps;
 }
 
 static void anim_op_step(animation_t *a) {
-   a->step_count++;
-   a->frame_step++;
+   invariant(a != NULL);
+   invariant(a->step_count < UINT64_MAX);
+   invariant(a->frame_step < UINT64_MAX);
 
-   switch (a->op.type) {
-   case ANIM_OP_INSERT: {
-      u64 i = dist_less_than(a->dist, list_size(&a->instance) + 1);
-      list_insert(&a->instance, i, 0);
-      a->last_position = i;
-      break;
-   }
-   case ANIM_OP_INSERT_PERSISTENT: {
-      list_t clone = list_clone(&a->instance);
-      u64 i = dist_less_than(a->dist, list_size(&clone) + 1);
-      list_insert(&clone, i, 0);
-      list_free(&a->instance);
-      a->instance = clone;
-      a->last_position = i;
-      break;
-   }
-   case ANIM_OP_INSERT_DELETE: {
-      if (list_size(&a->instance) < a->op.scale || a->step_count % 2 == 0) {
-         u64 i = dist_less_than(a->dist, list_size(&a->instance) + 1);
-         list_insert(&a->instance, i, 0);
-         a->last_position = i;
-      } else {
-         u64 i = dist_less_than(a->dist, list_size(&a->instance));
-         list_delete(&a->instance, list_size(&a->instance) - i - 1);
-         a->last_position = i;
-      }
-      break;
-   }
-   case ANIM_OP_INSERT_DELETE_PERSISTENT: {
-      list_t clone = list_clone(&a->instance);
-      if (list_size(&clone) < a->op.scale || a->step_count % 2 == 0) {
-         u64 i = dist_less_than(a->dist, list_size(&clone) + 1);
-         list_insert(&clone, i, 0);
-         a->last_position = i;
-      } else {
-         u64 i = dist_less_than(a->dist, list_size(&clone));
-         list_delete(&clone, list_size(&clone) - i - 1);
-         a->last_position = i;
-      }
-      list_free(&a->instance);
-      a->instance = clone;
-      break;
-   }
-   }
+   a->frame_step = size_after_inserting_one(a->frame_step);
+   operation_step_t step =
+       operation_step(&a->op, a->instance, a->dist, &a->step_count);
+   a->instance = step.instance;
+   a->last_position = step.position;
 }
 
 //     1 to   100 : Render every step
@@ -566,6 +601,7 @@ static void anim_advance(animation_t *a) {
 }
 
 static void anim_update_analysis(animation_t *a) {
+   invariant(a != NULL);
    tree_t *tree = list_tree(&a->instance);
    switch (a->anim_type) {
    case ANIM_EXTERIOR_HEIGHTS:
@@ -577,10 +613,13 @@ static void anim_update_analysis(animation_t *a) {
    case ANIM_NODES_PER_LEVEL:
       nodes_per_level(tree, &a->counts[0], &a->counts[1]);
       break;
+   default:
+      bst_unreachable();
    }
 }
 
 static void anim_render(animation_t *a) {
+   invariant(a != NULL);
    // Clear screen
    printf("\x1b[2J\x1b[H");
 
@@ -588,39 +627,39 @@ static void anim_render(animation_t *a) {
    case ANIM_EXTERIOR_HEIGHTS:
    case ANIM_INTERIOR_HEIGHTS:
       printf("\n");
-      render_histogram(
-         anim_type_titles[a->anim_type],
-         &a->heights[0], &a->heights[1],
-         a->viewport_height, a->viewport_offset);
+      render_histogram(anim_type_titles[a->anim_type], &a->heights[0],
+                       &a->heights[1], a->viewport_height, a->viewport_offset);
       printf("\n");
       render_focus_bar(a->last_position, list_size(&a->instance));
       printf("\n");
-      render_details(a->tree_vt->name, a->op.name,
-                     a->dist_name, list_size(&a->instance));
+      render_details(a->tree_vt->name, a->op.name, a->dist_name,
+                     list_size(&a->instance));
       printf("\n");
       break;
    case ANIM_NODES_PER_LEVEL: {
       int w = list_size(&a->instance) > 0
-            ? (int)util_log2(list_size(&a->instance)) + 1
-            : 1;
+                  ? (int)util_log2(list_size(&a->instance)) + 1
+                  : 1;
       printf("\n");
-      render_stacked_histogram(
-         anim_type_titles[a->anim_type],
-         &a->counts[0], &a->counts[1],
-         w, a->viewport_height);
+      render_stacked_histogram(anim_type_titles[a->anim_type], &a->counts[0],
+                               &a->counts[1], w, a->viewport_height);
       printf("\n");
       render_focus_bar(a->last_position, list_size(&a->instance));
       printf("\n");
-      render_details(a->tree_vt->name, a->op.name,
-                     a->dist_name, list_size(&a->instance));
+      render_details(a->tree_vt->name, a->op.name, a->dist_name,
+                     list_size(&a->instance));
       printf("\n");
       break;
    }
+   default:
+      bst_unreachable();
    }
    fflush(stdout);
 }
 
 static void anim_free(animation_t *a) {
+   invariant(a != NULL);
+   list_free(&a->instance);
    vec_int_free(&a->heights[0]);
    vec_int_free(&a->heights[1]);
    vec_u64_free(&a->counts[0]);
@@ -628,59 +667,174 @@ static void anim_free(animation_t *a) {
    dist_destroy(a->dist);
 }
 
+static int viewport_offset_min(int height) {
+   invariant(height >= 0);
+   return -(height / 2);
+}
+
+static int viewport_offset_max(int height) {
+   invariant(height >= 0);
+   return height / 2;
+}
+
+static void anim_clamp_viewport_offset(animation_t *a) {
+   invariant(a != NULL);
+   invariant(a->viewport_height >= 0);
+   a->viewport_offset =
+       MAX(viewport_offset_min(a->viewport_height),
+           MIN(viewport_offset_max(a->viewport_height), a->viewport_offset));
+}
+
+static void anim_move_viewport_offset(animation_t *a, int delta) {
+   invariant(a != NULL);
+   invariant(delta == -1 || delta == 1);
+   anim_clamp_viewport_offset(a);
+   int min_offset = viewport_offset_min(a->viewport_height);
+   int max_offset = viewport_offset_max(a->viewport_height);
+   if (delta < 0 && a->viewport_offset > min_offset) {
+      a->viewport_offset--;
+   } else if (delta > 0 && a->viewport_offset < max_offset) {
+      a->viewport_offset++;
+   }
+}
+
+static void anim_increase_viewport_height(animation_t *a) {
+   invariant(a != NULL);
+   invariant(a->viewport_height >= 0);
+   if (a->viewport_height < INT_MAX) {
+      a->viewport_height++;
+   }
+   anim_clamp_viewport_offset(a);
+}
+
+static void anim_decrease_viewport_height(animation_t *a) {
+   invariant(a != NULL);
+   invariant(a->viewport_height >= 0);
+   if (a->viewport_height > 0) {
+      a->viewport_height--;
+   }
+   anim_clamp_viewport_offset(a);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Menu system (cooked terminal mode)
 // ─────────────────────────────────────────────────────────────────────────────
 
-static int choose_menu(const char *prompt, const char **options, int count) {
-   printf("\n\n");
-   for (int i = 0; i < count; i++) {
-      printf(" (%2d) \x1b[1m%s\x1b[22m\n", i + 1, options[i]);
-   }
-   printf("\n \x1b[7m%s:\x1b[27m ", prompt);
-   fflush(stdout);
-
-   int choice = 1;
-   if (scanf("%d", &choice) != 1) choice = 1;
-   // Clear the rest of the input line
-   int c;
-   while ((c = getchar()) != '\n' && c != EOF) {}
-   printf("\n");
-
-   if (choice < 1 || choice > count) {
-      return choose_menu(prompt, options, count);
-   }
-   return choice - 1;
+static const char **menu_options_alloc(int count) {
+   invariant(count > 0);
+   return (const char **)bst_malloc_array((u64)count, sizeof(const char *));
 }
 
+static void discard_line_tail(void) {
+   int c;
+   while ((c = getchar()) != '\n' && c != EOF) {
+   }
+}
+
+static int choose_menu(const char *prompt, const char **options, int count) {
+   invariant(prompt != NULL);
+   invariant(options != NULL);
+   invariant(count > 0);
+   char line[64];
+
+   for (;;) {
+      printf("\n\n");
+      for (int i = 0; i < count; i++) {
+         printf(" (%2d) \x1b[1m%s\x1b[22m\n", i + 1, options[i]);
+      }
+      printf("\n \x1b[7m%s:\x1b[27m ", prompt);
+      fflush(stdout);
+
+      if (fgets(line, sizeof(line), stdin) == NULL) {
+         return -1;
+      }
+      bool complete_line = strchr(line, '\n') != NULL;
+      if (!complete_line) {
+         discard_line_tail();
+      }
+      printf("\n");
+
+      int choice = 0;
+      if (complete_line && cli_parse_choice_line(line, count, &choice)) {
+         return choice;
+      }
+   }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Terminal raw mode and key reading
 // ─────────────────────────────────────────────────────────────────────────────
 
 static struct termios orig_termios;
+static bool raw_mode_active = false;
+static bool raw_mode_atexit_registered = false;
+
+static bool require_interactive_terminal(void) {
+   if (!isatty(STDIN_FILENO)) {
+      fprintf(stderr, "animate requires stdin to be an interactive terminal\n");
+      return false;
+   }
+   if (!isatty(STDOUT_FILENO)) {
+      fprintf(stderr,
+              "animate requires stdout to be an interactive terminal\n");
+      return false;
+   }
+   return true;
+}
 
 static void disable_raw_mode(void) {
-   tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+   if (!raw_mode_active) {
+      return;
+   }
+   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) != 0) {
+      perror("tcsetattr");
+   }
+   raw_mode_active = false;
 }
 
 static void enable_raw_mode(void) {
-   tcgetattr(STDIN_FILENO, &orig_termios);
-   atexit(disable_raw_mode);
+   if (tcgetattr(STDIN_FILENO, &orig_termios) != 0) {
+      perror("tcgetattr");
+      exit(2);
+   }
+   if (!raw_mode_atexit_registered) {
+      if (atexit(disable_raw_mode) != 0) {
+         fprintf(stderr, "failed to register terminal restore hook\n");
+         exit(2);
+      }
+      raw_mode_atexit_registered = true;
+   }
    struct termios raw = orig_termios;
-   raw.c_lflag &= ~(ECHO | ICANON | ISIG);
+   raw.c_iflag &= ~(IXON);
+   raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
    raw.c_cc[VMIN] = 1;
    raw.c_cc[VTIME] = 0;
-   tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) {
+      perror("tcsetattr");
+      exit(2);
+   }
+   raw_mode_active = true;
 }
 
 static bool char_available(void) {
-   struct timeval tv = {0, 100000}; // 100ms
-   fd_set fds;
-   FD_ZERO(&fds);
-   FD_SET(STDIN_FILENO, &fds);
-   return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
+   for (;;) {
+      struct timeval tv = {0, 100000}; // 100ms
+      fd_set fds;
+      FD_ZERO(&fds);
+      FD_SET(STDIN_FILENO, &fds);
+      int ready = select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
+      if (ready > 0) {
+         return FD_ISSET(STDIN_FILENO, &fds);
+      }
+      if (ready == 0) {
+         return false;
+      }
+      if (errno == EINTR) {
+         continue;
+      }
+      perror("select");
+      exit(2);
+   }
 }
 
 typedef enum {
@@ -693,31 +847,71 @@ typedef enum {
    KEY_OTHER,
 } key_t;
 
+static bool read_key_byte(unsigned char *out) {
+   invariant(out != NULL);
+   for (;;) {
+      ssize_t n = read(STDIN_FILENO, out, 1);
+      if (n == 1) {
+         return true;
+      }
+      if (n == 0) {
+         return false;
+      }
+      if (errno == EINTR) {
+         continue;
+      }
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+         return false;
+      }
+      perror("read");
+      exit(2);
+   }
+}
+
 static key_t read_key(void) {
    unsigned char c;
-   if (read(STDIN_FILENO, &c, 1) != 1) return KEY_NONE;
+   if (!read_key_byte(&c)) {
+      return KEY_NONE;
+   }
 
    // ESC or Ctrl-C/D/Z/Q
-   if (c == 3 || c == 4 || c == 26 || c == 17) return KEY_EXIT;
+   if (c == 3 || c == 4 || c == 26 || c == 17) {
+      return KEY_EXIT;
+   }
 
    if (c == 27) { // ESC
-      if (!char_available()) return KEY_EXIT;
+      if (!char_available()) {
+         return KEY_EXIT;
+      }
       unsigned char seq[2];
-      if (read(STDIN_FILENO, &seq[0], 1) != 1) return KEY_EXIT;
-      if (seq[0] != '[') return KEY_EXIT;
-      if (!char_available()) return KEY_EXIT;
-      if (read(STDIN_FILENO, &seq[1], 1) != 1) return KEY_EXIT;
+      if (!read_key_byte(&seq[0])) {
+         return KEY_EXIT;
+      }
+      if (seq[0] != '[') {
+         return KEY_EXIT;
+      }
+      if (!char_available()) {
+         return KEY_EXIT;
+      }
+      if (!read_key_byte(&seq[1])) {
+         return KEY_EXIT;
+      }
       switch (seq[1]) {
-         case 'A': return KEY_ARROW_UP;
-         case 'B': return KEY_ARROW_DOWN;
-         case 'C': return KEY_ARROW_RIGHT;
-         case 'D': return KEY_ARROW_LEFT;
+      case 'A':
+         return KEY_ARROW_UP;
+      case 'B':
+         return KEY_ARROW_DOWN;
+      case 'C':
+         return KEY_ARROW_RIGHT;
+      case 'D':
+         return KEY_ARROW_LEFT;
+      default:
+         break;
       }
       return KEY_EXIT;
    }
    return KEY_OTHER;
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main
@@ -725,37 +919,71 @@ static key_t read_key(void) {
 
 int main(void) {
    random_seed(1);
+   if (!require_interactive_terminal()) {
+      return 2;
+   }
 
    // ── Menus (cooked mode) ──────────────────────────────────────────────
 
+   operation_t operations[operation_default_count];
+   int operation_count = operation_defaults(operations);
+
    // Choose operation
-   const char *op_names[4];
-   for (int i = 0; i < num_anim_ops; i++) op_names[i] = anim_ops[i].name;
-   int op_idx = choose_menu("Operation", op_names, num_anim_ops);
+   const char **op_names = menu_options_alloc(operation_count);
+   for (int i = 0; i < operation_count; i++) {
+      op_names[i] = operations[i].name;
+   }
+   int op_idx = choose_menu("Operation", op_names, operation_count);
+   free(op_names);
+   if (op_idx < 0) {
+      return 2;
+   }
 
    // Choose strategy
-   const char *tree_names[25];
-   for (int i = 0; i < num_anim_trees; i++) tree_names[i] = anim_trees[i]->name;
-   int tree_idx = choose_menu("Strategy", tree_names, num_anim_trees);
+   const char **tree_names = menu_options_alloc(tree_registry_count);
+   for (int i = 0; i < tree_registry_count; i++) {
+      list_vtable_require(tree_registry_all[i]);
+      tree_names[i] = tree_registry_all[i]->name;
+   }
+   int tree_idx = choose_menu("Strategy", tree_names, tree_registry_count);
+   free(tree_names);
+   if (tree_idx < 0) {
+      return 2;
+   }
 
    // Choose distribution
-   int dist_idx = choose_menu("Distribution", anim_dist_names, num_anim_dists);
+   const char **dist_options = menu_options_alloc(dist_animation_count);
+   for (int i = 0; i < dist_animation_count; i++) {
+      invariant(dist_animation[i] != NULL);
+      invariant(dist_animation[i]->name != NULL);
+      invariant(dist_animation[i]->factory != NULL);
+      dist_options[i] = dist_animation[i]->name;
+   }
+   int dist_idx =
+       choose_menu("Distribution", dist_options, dist_animation_count);
+   free(dist_options);
+   if (dist_idx < 0) {
+      return 2;
+   }
 
    // Choose animation type
    int anim_idx = choose_menu("Animation", anim_type_names, num_anim_types);
+   if (anim_idx < 0) {
+      return 2;
+   }
 
    // ── Set up arena ─────────────────────────────────────────────────────
 
    arena_t arena;
    arena_init(&arena, 2000000); // 2M nodes initially, grows as needed
-   global_arena = &arena;
+   arena_t *previous_arena = arena_install(&arena);
 
    // ── Initialize animation ─────────────────────────────────────────────
 
    animation_t anim = {0};
-   anim.op = anim_ops[op_idx];
-   anim.tree_vt = anim_trees[tree_idx];
-   anim.dist_name = anim_dist_names[dist_idx];
+   anim.op = operations[op_idx];
+   anim.tree_vt = tree_registry_all[tree_idx];
+   anim.dist_name = dist_animation[dist_idx]->name;
    anim.anim_type = anim_idx;
    anim.viewport_height = 40;
    anim.viewport_offset = 0;
@@ -765,7 +993,8 @@ int main(void) {
 
    // Create tree instance and distribution
    anim.instance = list_new(anim.tree_vt);
-   anim.dist = anim_dist_factories[dist_idx](random_uint64());
+   anim.dist = dist_create(dist_animation[dist_idx], random_uint64());
+   invariant(anim.dist != NULL);
 
    // ── Animation loop (raw mode) ────────────────────────────────────────
 
@@ -777,18 +1006,20 @@ int main(void) {
       key_t key = read_key();
       switch (key) {
       case KEY_ARROW_LEFT:
-         anim.viewport_offset = MAX(-anim.viewport_height / 2, anim.viewport_offset - 1);
+         anim_move_viewport_offset(&anim, -1);
          break;
       case KEY_ARROW_RIGHT:
-         anim.viewport_offset = MIN(+anim.viewport_height / 2, anim.viewport_offset + 1);
+         anim_move_viewport_offset(&anim, 1);
          break;
       case KEY_ARROW_UP:
-         anim.viewport_height++;
+         anim_increase_viewport_height(&anim);
          break;
       case KEY_ARROW_DOWN:
-         anim.viewport_height = MAX(0, anim.viewport_height - 1);
+         anim_decrease_viewport_height(&anim);
          break;
       case KEY_EXIT:
+         goto done;
+      case KEY_NONE:
          goto done;
       case KEY_OTHER:
       default:
@@ -804,7 +1035,7 @@ done:
    fflush(stdout);
 
    anim_free(&anim);
-   global_arena = NULL;
+   arena_restore(previous_arena);
    arena_destroy(&arena);
 
    return 0;

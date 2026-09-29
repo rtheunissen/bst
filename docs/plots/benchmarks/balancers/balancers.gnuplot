@@ -1,4 +1,5 @@
 load "docs/plots/colors.gnuplot"
+load "docs/plots/functions.gnuplot"
 
 if (!exists("DATA_ROOT")) DATA_ROOT = "docs/benchmarks/data"
 if (!exists("SVG_ROOT")) SVG_ROOT = "docs/benchmarks/svg"
@@ -49,13 +50,13 @@ do for [GROUP in GROUPS] {
     set xlabel "{Size × 10^6}"
     set ylabel "{/:Bold Partition Count} / Size"
 
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
+
     x = "column('Size')/(column('Scale')/10)"
     y = "column('PartitionCount')/column('Size')"
 
     set xrange [0.5:*]
     set format y2 "%.2f"
-
-    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -77,13 +78,13 @@ do for [GROUP in GROUPS] {
     set xlabel "{Size × 10^6}"
     set ylabel "{/:Bold Partition Depth} / Size"
 
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
+
     x = "column('Size')/(column('Scale')/10)"
     y = "column('PartitionDepth')/column('Size')"
 
     set xrange [0.5:*]
     set format y2 "%.2f"
-
-    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -106,13 +107,13 @@ do for [GROUP in GROUPS] {
     set xlabel "{Size × 10^6}"
     set ylabel "{/:Bold Partition Depth } / Partition Count"
 
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
+
     x = "column('Size')/(column('Scale')/10)"
     y = "column('PartitionDepth')/column('PartitionCount')"
 
     set xrange [0.5:*]
     set format y2 "%.2f"
-
-    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -131,13 +132,13 @@ do for [GROUP in GROUPS] {
     set xlabel "{Size × 10^6}"
     set ylabel "{/:Bold Rotations}"
 
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
+
     x = "column('Size')/(column('Scale')/10)"
     y = "column('Rotations')"
 
     set xrange [0.5:*]
     set format y2 "%.0f"
-
-    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -157,13 +158,13 @@ do for [GROUP in GROUPS] {
     set xlabel "Size × 10^6"
     set ylabel "{/:Bold Maximum Path Length } / log_2(Size)"
 
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
+
     x = "column('Size')/(column('Scale')/10)"
-    y = "column('MaximumPathLength')/log2(column('Size'))"
+    y = "column('MaximumPathLength')/path_log2_size(column('Size'))"
 
     set xrange [0.5:*]
     set format y2 "%.2f"
-
-    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -183,13 +184,13 @@ do for [GROUP in GROUPS] {
     set xlabel "Size × 10^6"
     set ylabel "{/:Bold Average Path Length } / log_2(Size)"
 
+    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
+
     x = "column('Size')/(column('Scale')/10)"
-    y = "column('AveragePathLength')/log2(column('Size'))"
+    y = "column('AveragePathLength')/path_log2_size(column('Size'))"
 
     set xrange [0.5:*]
     set format y2 "%.2f"
-
-    DATA = sprintf("%s/balancers/measurements", DATA_ROOT)
 
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
@@ -199,23 +200,23 @@ do for [GROUP in GROUPS] {
 
     ##################################################################
     #
-    #           DURATION
+    #           AVERAGE DURATION
     #
     ##################################################################
 
-    MEASUREMENT = "Duration"
+    MEASUREMENT = "AverageDuration"
 
     set xlabel "Size × 10^6"
-    set ylabel "{/:Bold Duration } in milliseconds / Size"
+    set ylabel "{/:Bold Average Duration } in nanoseconds / Size"
+
+    DATA = sprintf("%s/balancers/benchmarks", DATA_ROOT)
 
     x = "column('Size')/(column('Scale')/10)"
-    y = "column('Duration')/column('Size')"
+    y = "column('AverageDuration')/column('Size')"
 
     set xrange [0.5:*]
     set format y2 "%.0f"
 
-    DATA = sprintf("%s/balancers/benchmarks", DATA_ROOT)
-
     SMOOTH = "sbezier"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"
 
@@ -224,22 +225,22 @@ do for [GROUP in GROUPS] {
 
     ##################################################################
     #
-    #           DURATION (CUMULATIVE)
+    #           AVERAGE DURATION (CUMULATIVE)
     #
     ##################################################################
 
-    MEASUREMENT = "Duration"
+    MEASUREMENT = "CumulativeAverageDuration"
 
     set xlabel "Size × 10^6"
-    set ylabel "{/:Bold Total Duration } in seconds"
+    set ylabel "{/:Bold Cumulative Average Duration } in seconds"
+
+    DATA = sprintf("%s/balancers/benchmarks", DATA_ROOT)
 
     x = "column('Size')/(column('Scale')/10)"
-    y = "column('Duration')/1000/1000/1000"
+    y = "column('AverageDuration')/1000/1000/1000"
 
     set xrange [0:*]
     set format y2 "%.2f"
-
-    DATA = sprintf("%s/balancers/benchmarks", DATA_ROOT)
 
     SMOOTH = "cumulative"
     load "docs/plots/benchmarks/balancers/lines.gnuplot"

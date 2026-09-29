@@ -1,5 +1,6 @@
 #include "aa.h"
 #include "rank.h"
+#include "tree_list_adapter.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AA tree internals
@@ -13,38 +14,47 @@
 //           is itself a 0-child, rotate left and promote.
 // ─────────────────────────────────────────────────────────────────────────────
 
-static void aa_skew(node_t **p) {
+static void aa_skew(node_t **p, u64 size) {
+   invariant(p != NULL);
+   tree_sized_root_shape_require(*p, size);
    if (*p != NULL && isZeroChild(*p, (*p)->l)) {
-      treeRotateR(p);
+      treeRotateRSized(p, size);
    }
 }
 
-static void aa_split(node_t **p) {
-   if (*p != NULL && (*p)->r != NULL &&
-       isZeroChild(*p, (*p)->r) &&
+static void aa_split(node_t **p, u64 size) {
+   invariant(p != NULL);
+   tree_sized_root_shape_require(*p, size);
+   if (*p != NULL && (*p)->r != NULL && isZeroChild(*p, (*p)->r) &&
        isZeroChild((*p)->r, (*p)->r->r)) {
-      treeRotateL(p);
+      treeRotateLSized(p, size);
       promote(*p);
    }
 }
 
-static node_t *aa_insert(node_t *p, u64 i, u64 x) {
+static node_t *aa_insert(node_t *p, u64 size, u64 i, u64 x) {
+   u64 inserted_size = tree_insert_inputs_require(p, i, size);
    if (p == NULL) {
+      invariant(i == 0);
       return tree_allocate((node_t){.x = x});
    }
-   tree_persist(&p);
+   tree_persist_unshared(&p);
    if (i <= p->s) {
-      p->s = p->s + 1;
-      p->l = aa_insert(p->l, i, x);
+      u64 child_size = sizeL(p);
+      node_t **l = insertL(p);
+      *l = aa_insert(*l, child_size, i, x);
    } else {
-      p->r = aa_insert(p->r, i - p->s - 1, x);
+      u64 child_size = sizeR(p, size);
+      node_t **r = insertR(p, &i);
+      *r = aa_insert(*r, child_size, i, x);
    }
-   aa_skew(&p);
-   aa_split(&p);
+   aa_skew(&p, inserted_size);
+   aa_split(&p, inserted_size);
    return p;
 }
 
 static void aa_decreaseLevel(node_t *p) {
+   invariant(p != NULL);
    int rl = rank_of(p->l);
    int rr = rank_of(p->r);
 
@@ -53,148 +63,220 @@ static void aa_decreaseLevel(node_t *p) {
    if (shouldBe < rank_of(p)) {
       p->y = (u64)shouldBe;
       if (shouldBe < rr) {
-         tree_persist(&p->r);
+         tree_persist_unshared(&p->r);
          p->r->y = (u64)shouldBe;
       }
    }
 }
 
-static node_t *aa_fixAfterDelete(node_t *p) {
+static node_t *aa_fixAfterDelete(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
    aa_decreaseLevel(p);
-   aa_skew(&p);
+   aa_skew(&p, size);
    if (p->r != NULL) {
-      tree_persist(&p->r);
-      aa_skew(&p->r);
+      u64 right_size = sizeR(p, size);
+      tree_persist_unshared(&p->r);
+      aa_skew(&p->r, right_size);
       if (p->r->r != NULL) {
-         tree_persist(&p->r->r);
-         aa_skew(&p->r->r);
+         u64 right_right_size = sizeR(p->r, right_size);
+         tree_persist_unshared(&p->r->r);
+         aa_skew(&p->r->r, right_right_size);
       }
    }
-   aa_split(&p);
+   aa_split(&p, size);
    if (p->r != NULL) {
-      tree_persist(&p->r);
-      aa_split(&p->r);
+      u64 right_size = sizeR(p, size);
+      tree_persist_unshared(&p->r);
+      aa_split(&p->r, right_size);
    }
    return p;
 }
 
-static node_t *aa_deleteMin(node_t *p, node_t **min) {
-   tree_persist(&p);
+typedef struct {
+   node_t *root;
+   node_t *node;
+} aa_extract_result_t;
+
+static aa_extract_result_t aa_deleteMin(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
+   tree_persist_unshared(&p);
    if (p->l == NULL) {
       node_t *r = p->r;
       p->r = NULL;
-      *min = p;
-      return r;
+      return (aa_extract_result_t){.root = r, .node = p};
    }
-   p->s = p->s - 1;
-   p->l = aa_deleteMin(p->l, min);
-   return aa_fixAfterDelete(p);
+   invariant(p->s > 0);
+   u64 child_size = sizeL(p);
+   node_t **l = deleteL(p);
+   aa_extract_result_t result = aa_deleteMin(*l, child_size);
+   *l = result.root;
+   result.root = aa_fixAfterDelete(p, size_after_removing_one(size));
+   return result;
 }
 
-static node_t *aa_deleteMax(node_t *p, node_t **max) {
-   tree_persist(&p);
+static aa_extract_result_t aa_deleteMax(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
+   tree_persist_unshared(&p);
    if (p->r == NULL) {
       node_t *l = p->l;
       p->l = NULL;
-      *max = p;
-      return l;
+      return (aa_extract_result_t){.root = l, .node = p};
    }
-   p->r = aa_deleteMax(p->r, max);
-   return aa_fixAfterDelete(p);
+   u64 child_size = sizeR(p, size);
+   aa_extract_result_t result = aa_deleteMax(p->r, child_size);
+   p->r = result.root;
+   result.root = aa_fixAfterDelete(p, size_after_removing_one(size));
+   return result;
 }
 
-static node_t *aa_delete(node_t *p, u64 i, u64 *x) {
-   tree_persist(&p);
+typedef struct {
+   node_t *root;
+   u64 value;
+} aa_delete_result_t;
+
+static aa_delete_result_t aa_delete(node_t *p, u64 size, u64 i) {
+   u64 deleted_size = tree_delete_inputs_require(p, i, size);
+   tree_persist_unshared(&p);
+   u64 sl = sizeL(p);
+   u64 sr = sizeR(p, size);
+   aa_delete_result_t result;
    if (i < p->s) {
-      p->s = p->s - 1;
-      p->l = aa_delete(p->l, i, x);
+      invariant(p->l != NULL);
+      node_t **l = deleteL(p);
+      result = aa_delete(*l, sl, i);
+      *l = result.root;
    } else if (i > p->s) {
-      p->r = aa_delete(p->r, i - p->s - 1, x);
+      invariant(p->r != NULL);
+      node_t **r = deleteR(p, &i);
+      result = aa_delete(*r, sr, i);
+      *r = result.root;
    } else {
-      *x = p->x;
+      result.value = p->x;
       if (p->l == NULL && p->r == NULL) {
          tree_release(p);
-         return NULL;
+         return (aa_delete_result_t){.root = NULL, .value = result.value};
       }
       if (p->l == NULL) {
-         node_t *min = NULL;
-         p->r = aa_deleteMin(p->r, &min);
+         invariant(p->r != NULL);
+         aa_extract_result_t extracted = aa_deleteMin(p->r, sr);
+         p->r = extracted.root;
+         node_t *min = extracted.node;
+         invariant(min != NULL);
          p->x = min->x;
          tree_release(min);
       } else {
-         node_t *max = NULL;
-         p->l = aa_deleteMax(p->l, &max);
+         node_t **l = deleteL(p);
+         aa_extract_result_t extracted = aa_deleteMax(*l, sl);
+         *l = extracted.root;
+         node_t *max = extracted.node;
+         invariant(max != NULL);
          p->x = max->x;
-         p->s = p->s - 1;
          tree_release(max);
       }
    }
-   return aa_fixAfterDelete(p);
+   result.root = aa_fixAfterDelete(p, deleted_size);
+   return result;
 }
 
-static int aa_abs(int x) { return x < 0 ? -x : x; }
-
-static node_t *aa_build(node_t *l, node_t *p, node_t *r, u64 sl) {
+static node_t *aa_build(node_t *l, node_t *p, node_t *r, u64 sl, u64 sr) {
+   u64 size = tree_build_inputs_require(l, p, r, sl, sr);
+   tree_debug_require_size(l, sl);
+   tree_debug_require_size(r, sr);
    int rl = rank_of(l);
    int rr = rank_of(r);
-   if (aa_abs(rl - rr) <= 1) {
+   if (rank_distance(rl, rr) <= 1) {
       p->l = l;
       p->r = r;
       p->s = sl;
-      p->y = (u64)(MAX(rl, rr) + 1);
-      return aa_fixAfterDelete(p);
+      p->y = rank_above(MAX(rl, rr));
+      return aa_fixAfterDelete(p, size);
    }
    if (rl < rr) {
-      tree_persist(&r);
-      r->s = 1 + sl + r->s;
-      r->l = aa_build(l, p, r->l, sl);
-      return aa_fixAfterDelete(r);
+      invariant(r != NULL);
+      tree_persist_unshared(&r);
+      u64 right_left_size = sizeL(r);
+      r->s = tree_size_from_child_sizes(sl, right_left_size);
+      r->l = aa_build(l, p, r->l, sl, right_left_size);
+      return aa_fixAfterDelete(r, size);
    } else {
-      tree_persist(&l);
-      l->r = aa_build(l->r, p, r, sl - l->s - 1);
-      return aa_fixAfterDelete(l);
+      invariant(l != NULL);
+      invariant(l->s < sl);
+      tree_persist_unshared(&l);
+      u64 left_right_size = sizeR(l, sl);
+      l->r = aa_build(l->r, p, r, left_right_size, sr);
+      return aa_fixAfterDelete(l, size);
    }
 }
 
 static node_t *aa_join(node_t *l, node_t *r, u64 sl, u64 sr) {
-   node_t *p = NULL;
-   if (l == NULL) return r;
-   if (r == NULL) return l;
+   tree_join_inputs_require(l, r, sl, sr);
+#ifdef DEBUG
+   tree_debug_require_join_inputs(l, r, sl, sr);
+#endif
+   if (l == NULL) {
+      invariant(sl == 0);
+      return r;
+   }
+   if (r == NULL) {
+      invariant(sr == 0);
+      return l;
+   }
    if (rank_of(l) < rank_of(r) || (rank_of(l) == rank_of(r) && sl <= sr)) {
-      node_t *r2 = aa_deleteMin(r, &p);
-      return aa_build(l, p, r2, sl);
+      aa_extract_result_t extracted = aa_deleteMin(r, sr);
+      node_t *r2 = extracted.root;
+      node_t *p = extracted.node;
+      invariant(p != NULL);
+      return aa_build(l, p, r2, sl, size_after_removing_one(sr));
    } else {
-      node_t *l2 = aa_deleteMax(l, &p);
-      return aa_build(l2, p, r, sl - 1);
+      aa_extract_result_t extracted = aa_deleteMax(l, sl);
+      node_t *l2 = extracted.root;
+      node_t *p = extracted.node;
+      invariant(p != NULL);
+      invariant(sl > 0);
+      return aa_build(l2, p, r, rank_of_last(sl), sr);
    }
 }
 
-static void aa_split_op(node_t *p, u64 i, u64 s, node_t **out_l, node_t **out_r) {
-   if (p == NULL) {
-      *out_l = NULL;
-      *out_r = NULL;
-      return;
+static tree_split_result_t aa_split_impl(node_t *root, u64 split_size,
+                                         u64 size) {
+   (void)tree_split_inputs_require(root, split_size, size);
+   if (root == NULL) {
+      return (tree_split_result_t){.left = NULL, .right = NULL};
    }
-   tree_persist(&p);
+   tree_persist_unshared(&root);
 
-   u64 sl = p->s;
-   u64 sr = s - p->s - 1;
+   u64 left_size = sizeL(root);
+   u64 right_size = sizeR(root, size);
 
-   if (i <= p->s) {
-      node_t *l, *r;
-      aa_split_op(p->l, i, sl, &l, &r);
-      *out_l = l;
-      *out_r = aa_build(r, p, p->r, sl - i);
-   } else {
-      node_t *l, *r;
-      aa_split_op(p->r, i - sl - 1, sr, &l, &r);
-      *out_l = aa_build(p->l, p, l, sl);
-      *out_r = r;
+   if (split_size <= root->s) {
+      tree_split_result_t split = aa_split_impl(root->l, split_size, left_size);
+
+      u64 right_split_size = suffix_size_after_prefix(left_size, split_size);
+      return (tree_split_result_t){
+          .left = split.left,
+          .right = aa_build(split.right, root, root->r, right_split_size,
+                            right_size),
+      };
    }
+
+   u64 right_rank = rank_in_right_subtree(split_size, left_size);
+   tree_split_result_t split = aa_split_impl(root->r, right_rank, right_size);
+   return (tree_split_result_t){
+       .left = aa_build(root->l, root, split.left, left_size, right_rank),
+       .right = split.right,
+   };
 }
 
-static void aa_verifyRanks(node_t *p) {
-   if (p == NULL) return;
+static tree_split_result_t aa_split_op(node_t *root, u64 split_size, u64 size) {
+   (void)tree_split_inputs_require(root, split_size, size);
+   if (root != NULL) {
+      tree_debug_require_size(root, size);
+   }
+   return aa_split_impl(root, split_size, size);
+}
+
+static void aa_verifyRankNode(node_t *p, void *ctx) {
+   (void)ctx;
    if (isLeaf(p)) {
       invariant(rank_of(p) == 0);
    }
@@ -208,99 +290,68 @@ static void aa_verifyRanks(node_t *p) {
    if (isZeroChild(p, p->r)) {
       invariant(!isZeroChild(p->r, p->r->r));
    }
-
-   aa_verifyRanks(p->l);
-   aa_verifyRanks(p->r);
 }
 
+static void aa_verifyRanks(node_t *p, u64 size) {
+   invariant(tree_verify_size_each_node(p, size, aa_verifyRankNode, NULL) ==
+             size);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // List vtable
 // ─────────────────────────────────────────────────────────────────────────────
 
-static list_t aa_vt_new(const list_vtable_t *vt) {
-   aa_t *t = (aa_t *)calloc(1, sizeof(aa_t));
-   return (list_t){.impl = t, .vt = vt};
-}
-
-static list_t aa_vt_clone(list_t *self) {
-   aa_t *orig = (aa_t *)self->impl;
-   aa_t *copy = (aa_t *)malloc(sizeof(aa_t));
-   tree_share(orig->tree.root);
-   *copy = *orig;
-   return (list_t){.impl = copy, .vt = self->vt};
-}
-
-static void aa_vt_free(list_t *self) {
-   aa_t *t = (aa_t *)self->impl;
-   free_nodes(t->tree.root);
-   free(t);
-   self->impl = NULL;
-}
-
-static u64  aa_vt_size(list_t *self) { return ((aa_t *)self->impl)->tree.size; }
-static void aa_vt_each(list_t *self, void (*visit)(u64, void *), void *ctx) { inorder(((aa_t *)self->impl)->tree.root, visit, ctx); }
+TREE_LIST_SIMPLE_FUNCTIONS(aa_t, aa)
 
 static void aa_vt_verify(list_t *self) {
+   list_require(self);
    aa_t *t = (aa_t *)self->impl;
-   tree_verify_size(t->tree.root, t->tree.size);
-   aa_verifyRanks(t->tree.root);
+   aa_verifyRanks(t->tree.root, t->tree.size);
 }
 
-static u64  aa_vt_select(list_t *self, u64 i) { return tree_lookup(&((aa_t *)self->impl)->tree, i); }
-static void aa_vt_update(list_t *self, u64 i, u64 x) { tree_update_base(&((aa_t *)self->impl)->tree, i, x); }
-
 static void aa_vt_insert(list_t *self, u64 i, u64 x) {
+   list_require(self);
    aa_t *t = (aa_t *)self->impl;
-   assert_bst(i <= t->tree.size);
-   t->tree.root = aa_insert(t->tree.root, i, x);
-   t->tree.size++;
+   u64 size = t->tree.size;
+   u64 inserted_size = tree_insert_inputs_require(t->tree.root, i, size);
+   t->tree.root = aa_insert(t->tree.root, size, i, x);
+   tree_list_sized_inserted(&t->tree);
+   invariant(t->tree.size == inserted_size);
 }
 
 static u64 aa_vt_delete(list_t *self, u64 i) {
+   list_require(self);
    aa_t *t = (aa_t *)self->impl;
-   assert_bst(i < t->tree.size);
-   u64 x;
-   t->tree.root = aa_delete(t->tree.root, i, &x);
-   t->tree.size--;
-   return x;
+   u64 size = t->tree.size;
+   u64 deleted_size = tree_delete_inputs_require(t->tree.root, i, size);
+   aa_delete_result_t result = aa_delete(t->tree.root, size, i);
+   t->tree.root = result.root;
+   tree_list_sized_deleted(&t->tree);
+   invariant(t->tree.size == deleted_size);
+   return result.value;
 }
 
 static void aa_vt_split(list_t *self, u64 i, list_t *out_l, list_t *out_r) {
+   tree_list_require_split(self, i, out_l, out_r);
    aa_t *t = (aa_t *)self->impl;
-   assert_bst(i <= t->tree.size);
+   u64 size = t->tree.size;
+   u64 right_size = tree_split_inputs_require(t->tree.root, i, size);
    tree_share(t->tree.root);
-   node_t *l, *r;
-   aa_split_op(t->tree.root, i, t->tree.size, &l, &r);
-   aa_t *sl = (aa_t *)calloc(1, sizeof(aa_t)); sl->tree = (tree_t){l, i};
-   aa_t *sr = (aa_t *)calloc(1, sizeof(aa_t)); sr->tree = (tree_t){r, t->tree.size - i};
-   *out_l = (list_t){sl, self->vt};
-   *out_r = (list_t){sr, self->vt};
+   tree_split_result_t split = aa_split_op(t->tree.root, i, size);
+   TREE_LIST_SPLIT_RESULT_PREPARED(aa_t, size, split.left, i, split.right,
+                                   right_size);
 }
 
 static list_t aa_vt_join(list_t *self, list_t *other) {
+   tree_list_require_join(self, other);
    aa_t *t = (aa_t *)self->impl;
    aa_t *that = (aa_t *)other->impl;
-   tree_share(t->tree.root);
-   tree_share(that->tree.root);
-   aa_t *result = (aa_t *)calloc(1, sizeof(aa_t));
-   result->tree.root = aa_join(t->tree.root, that->tree.root, t->tree.size, that->tree.size);
-   result->tree.size = t->tree.size + that->tree.size;
-   return (list_t){result, self->vt};
+   tree_join_roots_t roots =
+       tree_list_prepare_join_roots(&t->tree, &that->tree);
+   node_t *root =
+       aa_join(roots.left, roots.right, t->tree.size, that->tree.size);
+   u64 joined_size = tree_list_join_size(t->tree.size, that->tree.size);
+   TREE_LIST_JOIN_RESULT(aa_t, root, joined_size);
 }
 
-const list_vtable_t aa_vtable = {
-   .name      = "AA",
-   .new_fn    = aa_vt_new,
-   .clone_fn  = aa_vt_clone,
-   .free_fn   = aa_vt_free,
-   .size_fn   = aa_vt_size,
-   .each_fn   = aa_vt_each,
-   .verify_fn = aa_vt_verify,
-   .select_fn = aa_vt_select,
-   .update_fn = aa_vt_update,
-   .insert_fn = aa_vt_insert,
-   .delete_fn = aa_vt_delete,
-   .split_fn  = aa_vt_split,
-   .join_fn   = aa_vt_join,
-};
+const list_vtable_t aa_vtable = TREE_LIST_VTABLE("AA", aa);

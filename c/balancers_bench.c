@@ -7,167 +7,172 @@
 //     - Output average duration per restore
 //
 // Usage:
-//   ./balancers_bench_bin [-scale N] [-samples N] [-duration-ms N]
+//   ./balancers_bench_bin [-balancer Median|Height|Weight|Log|Cost|DSW]
+//                         [-dist NAME]
+//                         [-scale N] [-samples N] [-duration-ms N]
 //                         [-output-dir PATH]
 //
 #include "bst.h"
-#include "list.h"
-#include "random.h"
+#include "balancer_runs.h"
+#include "balancer_registry.h"
+#include "benchmark_order.h"
+#include "benchmark_schema.h"
+#include "cli.h"
 #include "distributions.h"
-#include "splay.h"
-#include "balancers.h"
 #include "filesystem.h"
+#include "random.h"
+#include "sampling.h"
+#include "time_utils.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// High-resolution timing
-// ─────────────────────────────────────────────────────────────────────────────
-
-static u64 time_ns(void) {
-   struct timespec ts;
-   clock_gettime(CLOCK_MONOTONIC, &ts);
-   return (u64)ts.tv_sec * 1000000000ULL + (u64)ts.tv_nsec;
-}
-
-static u64 parse_u64(const char *value, const char *name) {
-   char *end = NULL;
-   unsigned long long parsed = strtoull(value, &end, 10);
-   if (!value[0] || (end && *end)) {
-      fprintf(stderr, "invalid %s: %s\n", name, value);
-      exit(2);
-   }
-   return (u64)parsed;
-}
-
-static int parse_int(const char *value, const char *name) {
-   u64 parsed = parse_u64(value, name);
-   if (parsed > 2147483647ULL) {
-      fprintf(stderr, "%s is too large: %s\n", name, value);
-      exit(2);
-   }
-   return (int)parsed;
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Balancer benchmark runner
 // ─────────────────────────────────────────────────────────────────────────────
 
-static const balancer_t *all_balancers[] = {
-   &balancer_median,
-   &balancer_height,
-   &balancer_weight,
-   &balancer_log,
-   &balancer_cost,
-   &balancer_dsw,
-};
-static const int num_balancers = sizeof(all_balancers) / sizeof(all_balancers[0]);
+static void run_balancer_benchmarks(const balancer_t *selected,
+                                    const char *dist_name, u64 scale,
+                                    u64 samples, u64 duration_ns,
+                                    const char *output_dir) {
+   invariant(output_dir != NULL);
+   invariant(output_dir[0] != '\0');
+   filesystem_require(duration_ns > 0, "balancer benchmark duration is zero");
+   if (selected) {
+      balancer_require(selected);
+   }
 
-static const char *bench_dist_names[] = {
-   "Uniform",
-};
-static const dist_factory_fn bench_dist_factories[] = {
-   uniform_new,
-};
-static const int num_bench_dists = 1;
+   sample_schedule_t schedule = balancer_run_sample_schedule(scale, samples);
+   scale = schedule.total;
+   samples = schedule.samples;
+   invariant(duration_ns > 0);
 
-static void run_balancer_benchmarks(int scale, int samples, u64 duration_ns, const char *output_dir) {
+   balancer_run_distribution_selection_t distributions;
+   balancer_run_distribution_selection_init_by_name(&distributions, dist_name);
 
-   if (scale < 1) scale = 1;
-   if (samples < 1) samples = 1;
-   if (samples > scale) samples = scale;
-   int step = scale / samples;
+   balancer_run_output_t *outputs = balancer_run_outputs_alloc();
+   int output_count = balancer_run_outputs_make(
+       outputs, balancer_registry_count, selected, output_dir, "benchmarks");
+   balancer_run_outputs_prepare_dirs(outputs, output_count);
 
-   for (int b = 0; b < num_balancers; b++) {
-      const balancer_t *balancer = all_balancers[b];
+   FILE **files =
+       (FILE **)bst_calloc_array((u64)output_count, sizeof(files[0]));
+   for (int b = 0; b < output_count; b++) {
+      balancer_run_output_t *output = &outputs[b];
+      const char *path = output->file.path;
+      balancer_require(output->balancer);
+      files[b] = staged_file_open_or_exit(&output->file, "w");
+      file_printf_or_exit(files[b], path, "%s\n",
+                          BENCHMARK_SCHEMA_BALANCER_BENCHMARK_HEADER);
+   }
 
-      // Create output file
-      char path[512];
-      path_format(path, sizeof(path),
-         "%s/balancers/benchmarks/%s",
-         output_dir, balancer->name);
+   arena_t arena;
+   arena_init(&arena, scale);
+   arena_t *previous_arena = arena_install(&arena);
+   arena_prewarm(&arena);
 
-      // Ensure directory exists
-      char dir[512];
-      path_format(dir, sizeof(dir), "%s/balancers/benchmarks", output_dir);
-      mkdir_p(dir);
+   // Every candidate sees the same deterministic randomized tree for its nth
+   // restore. Candidate order changes between rounds, but the workload does not.
+   splay_t instance;
+   splay_init(&instance);
 
-      FILE *file = fopen(path, "w");
-      if (!file) { perror(path); continue; }
+   u64 *iterations =
+       (u64 *)bst_calloc_array((u64)output_count, sizeof(iterations[0]));
+   u64 *restore_durations =
+       (u64 *)bst_calloc_array((u64)output_count, sizeof(restore_durations[0]));
 
-      // Header
-      fprintf(file, "Distribution Scale Size Iterations Duration\n");
+   u64 previous_position = 0;
+   for (u64 sample = 0; sample < samples; sample++) {
+      sample_schedule_point_t point =
+          sample_schedule_next_point(schedule, sample, previous_position);
+      u64 position = point.position;
+      previous_position = position;
 
-      // Build a splay tree incrementally
-      splay_t instance;
-      splay_init(&instance);
+      balancer_run_grow_splay_to(&instance, position);
 
-      for (int position = step; position <= scale; position += step) {
+      for (int d = 0; d < distributions.count; d++) {
+         const dist_spec_t *dist_spec = distributions.items[d];
+         dist_spec_require(dist_spec);
+         bst_array_zero(iterations, (u64)output_count, sizeof(iterations[0]));
+         bst_array_zero(restore_durations, (u64)output_count,
+                        sizeof(restore_durations[0]));
 
-         // Grow the tree
-         while (instance.tree.size < (u64)position) {
-            splay_insert(&instance, 0, 0);
-         }
+         int remaining = output_count;
+         u64 round = 0;
+         while (remaining > 0) {
+            for (int order = 0; order < output_count; order++) {
+               int b = benchmark_balanced_latin_square_index(output_count,
+                                                             round, order);
+               if (duration_reached(restore_durations[b], duration_ns)) {
+                  continue;
+               }
 
-         for (int d = 0; d < num_bench_dists; d++) {
+               const balancer_t *balancer = outputs[b].balancer;
+               iterations[b] = balancer_run_next_iteration(iterations[b]);
+               instance.tree = balancer_run_randomize_tree(
+                   instance.tree, dist_spec, "balancer-benchmarks",
+                   iterations[b]);
 
-            u64 start = time_ns();
-            int iterations = 0;
-            u64 restore_duration = 0;
+               u64 checkpoint = monotonic_time_ns();
+               instance.tree =
+                   balancer_run_restore_tree(balancer, instance.tree);
+               u64 elapsed = elapsed_time_ns_since_nonzero(checkpoint);
+               filesystem_require(
+                   !duration_sum_would_overflow(restore_durations[b], elapsed),
+                   "balancer benchmark duration total is too large");
+               restore_durations[b] =
+                   duration_sum(restore_durations[b], elapsed);
 
-            for (;;) {
-               iterations++;
-
-               // Randomize the tree
-               distribution_t *dist = bench_dist_factories[d]((u64)iterations);
-               instance.tree = tree_randomize(instance.tree, dist);
-               dist_destroy(dist);
-
-               // Time the restore
-               u64 checkpoint = time_ns();
-               instance.tree = balancer->restore(instance.tree);
-               restore_duration += time_ns() - checkpoint;
-
-               if (time_ns() - start > duration_ns) {
-                  break;
+               if (duration_reached(restore_durations[b], duration_ns)) {
+                  balancer_verify_tree(balancer, instance.tree);
+                  remaining--;
                }
             }
+            round = balancer_run_next_iteration(round);
+         }
 
-            u64 avg_ns = restore_duration / (u64)iterations;
+         for (int b = 0; b < output_count; b++) {
+            const balancer_run_output_t *output = &outputs[b];
+            const balancer_t *balancer = output->balancer;
+            const char *path = output->file.path;
+            invariant(instance.tree.size == position);
+            invariant(iterations[b] > 0);
+            invariant(restore_durations[b] >= iterations[b]);
 
-            fprintf(file, "%s %d %llu %d %llu\n",
-               bench_dist_names[d],
-               scale,
-               (unsigned long long)instance.tree.size,
-               iterations,
-               (unsigned long long)avg_ns);
+            u64 avg_ns =
+                duration_average_nonzero(restore_durations[b], iterations[b]);
 
-            // Print progress
-            time_t now = time(NULL);
-            struct tm *tm = localtime(&now);
+            file_printf_or_exit(files[b], path, "%s %llu %llu %llu %llu %llu\n",
+                                dist_spec->name, (unsigned long long)scale,
+                                (unsigned long long)instance.tree.size,
+                                (unsigned long long)iterations[b],
+                                (unsigned long long)avg_ns,
+                                (unsigned long long)restore_durations[b]);
+
             char timebuf[64];
-            strftime(timebuf, sizeof(timebuf), "%H:%M:%S", tm);
-            printf("%s %-10s %-10s %10d/%d %dx\n",
-               timebuf,
-               balancer->name,
-               bench_dist_names[d],
-               position,
-               scale,
-               iterations);
+            format_local_time_or_exit(timebuf, sizeof(timebuf), "%H:%M:%S");
+            printf("%s %-10s %-10s %10llu/%llu %llux\n", timebuf,
+                   balancer->name, dist_spec->name,
+                   (unsigned long long)position, (unsigned long long)scale,
+                   (unsigned long long)iterations[b]);
             fflush(stdout);
          }
       }
-
-      splay_free(&instance);
-      fclose(file);
    }
-}
 
+   free(restore_durations);
+   free(iterations);
+   splay_free(&instance);
+   arena_restore(previous_arena);
+   arena_destroy(&arena);
+
+   for (int b = 0; b < output_count; b++) {
+      staged_file_finish_or_exit(&outputs[b].file, files[b]);
+   }
+   free(files);
+   balancer_run_outputs_publish(outputs, output_count);
+   balancer_run_outputs_dispose(outputs, output_count);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main
@@ -176,27 +181,46 @@ static void run_balancer_benchmarks(int scale, int samples, u64 duration_ns, con
 int main(int argc, char **argv) {
    random_seed(1);
 
-   int scale   = 10000000;
-   int samples = 100;
-   u64 duration_ns = 10ULL * 1000000000ULL; // 10 seconds
+   u64 scale = 10000000;
+   u64 samples = 100;
+   u64 duration_ns = 10ULL * TIME_NS_PER_SECOND;
    const char *output_dir = "docs/benchmarks/data";
+   const char *strategy_name = NULL;
+   const char *dist_name = NULL;
 
    for (int i = 1; i < argc; i++) {
-      if (strcmp(argv[i], "-scale") == 0 && i + 1 < argc) {
-         scale = parse_int(argv[++i], "-scale");
-      } else if (strcmp(argv[i], "-samples") == 0 && i + 1 < argc) {
-         samples = parse_int(argv[++i], "-samples");
-      } else if (strcmp(argv[i], "-duration-ms") == 0 && i + 1 < argc) {
-         duration_ns = parse_u64(argv[++i], "-duration-ms") * 1000000ULL;
-      } else if (strcmp(argv[i], "-output-dir") == 0 && i + 1 < argc) {
-         output_dir = argv[++i];
+      if ((strcmp(argv[i], "-balancer") == 0 ||
+           strcmp(argv[i], "-strategy") == 0)) {
+         const char *flag = argv[i];
+         strategy_name = cli_parse_nonempty_string(
+             cli_arg_value(argc, argv, &i, flag), flag);
+      } else if ((strcmp(argv[i], "-distribution") == 0 ||
+                  strcmp(argv[i], "-dist") == 0)) {
+         const char *flag = argv[i];
+         dist_name = cli_parse_nonempty_string(
+             cli_arg_value(argc, argv, &i, flag), flag);
+      } else if (strcmp(argv[i], "-scale") == 0) {
+         scale = cli_parse_positive_arena_capacity(
+             cli_arg_value(argc, argv, &i, "-scale"), "-scale");
+      } else if (strcmp(argv[i], "-samples") == 0) {
+         samples = cli_parse_positive_sample_count(
+             cli_arg_value(argc, argv, &i, "-samples"), "-samples");
+      } else if (strcmp(argv[i], "-duration-ms") == 0) {
+         duration_ns = cli_parse_duration_ms_ns(
+             cli_arg_value(argc, argv, &i, "-duration-ms"), "-duration-ms");
+      } else if (strcmp(argv[i], "-output-dir") == 0) {
+         output_dir = cli_parse_nonempty_string(
+             cli_arg_value(argc, argv, &i, "-output-dir"), "-output-dir");
       } else {
-         fprintf(stderr, "unknown or incomplete argument: %s\n", argv[i]);
-         return 2;
+         return cli_unknown_arg(argv[i]);
       }
    }
 
-   run_balancer_benchmarks(scale, samples, duration_ns, output_dir);
+   const balancer_t *selected =
+       balancer_registry_find_optional_or_exit(strategy_name);
+
+   run_balancer_benchmarks(selected, dist_name, scale, samples, duration_ns,
+                           output_dir);
 
    return 0;
 }

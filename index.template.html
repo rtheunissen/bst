@@ -1208,14 +1208,14 @@
                     Keep in mind that time-based measurements are system-dependent so the results could be entirely different on other machines.
                 </p>
                 <figure>
-                    {{ inline "docs/benchmarks/svg/balancers/All/Duration__sbezier.svg" }}
+                    {{ inline "docs/benchmarks/svg/balancers/All/AverageDuration__sbezier.svg" }}
                 </figure>
                 <figure>
-                    {{ inline "docs/benchmarks/svg/balancers/All/Duration__cumulative.svg" }}
+                    {{ inline "docs/benchmarks/svg/balancers/All/CumulativeAverageDuration__cumulative.svg" }}
                 </figure>
                 <p>
                     The results show that median-balance is marginally faster than height-balance, which is somewhat unexpected.
-                    Looking at duration cumulatively, it appears that the total duration is practically identical between median-balance, height-balance and cost-optimized balance.
+                    Looking at average duration cumulatively across the sampled sizes, median-balance, height-balance and cost-optimized balance remain practically identical.
                 </p>
                 <p>
                     The two weight-balance strategies are both <span class="numeric">∼25%</span> faster than median-balance and height-balance and <span class="numeric">∼30%</span> faster than DSW, with logarithmic weight-balance having a slight edge.

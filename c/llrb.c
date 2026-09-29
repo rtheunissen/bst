@@ -1,6 +1,6 @@
 #include "llrb.h"
 #include "rank.h"
-#include <math.h>
+#include "tree_list_adapter.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LLRB internals
@@ -9,18 +9,20 @@
 // Red links (0-children) may only lean left.
 // ─────────────────────────────────────────────────────────────────────────────
 
-static node_t *llrb_fixUp(node_t *p) {
+static node_t *llrb_fixUp(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
+   invariant(!tree_shared(p));
    //
    // Right-leaning red link: rotate left to make it left-leaning.
    //
    if (isRed(p, p->r) && !isRed(p, p->l)) {
-      treeRotateL(&p);
+      treeRotateLSized(&p, size);
    }
    //
    // Two consecutive left red links: rotate right.
    //
    if (isRed(p, p->l) && isRed(p->l, p->l->l)) {
-      treeRotateR(&p);
+      treeRotateRSized(&p, size);
    }
    //
    // Both children red: promote (color flip).
@@ -31,28 +33,36 @@ static node_t *llrb_fixUp(node_t *p) {
    return p;
 }
 
-static node_t *llrb_insert(node_t *p, u64 i, u64 x) {
+static node_t *llrb_insert(node_t *p, u64 size, u64 i, u64 x) {
+   u64 inserted_size = tree_insert_inputs_require(p, i, size);
    if (p == NULL) {
+      invariant(i == 0);
       return tree_allocate((node_t){.x = x});
    }
-   tree_persist(&p);
+   tree_persist_unshared(&p);
    if (i <= p->s) {
-      p->s = p->s + 1;
-      p->l = llrb_insert(p->l, i, x);
+      u64 child_size = sizeL(p);
+      node_t **l = insertL(p);
+      *l = llrb_insert(*l, child_size, i, x);
    } else {
-      p->r = llrb_insert(p->r, i - p->s - 1, x);
+      u64 child_size = sizeR(p, size);
+      node_t **r = insertR(p, &i);
+      *r = llrb_insert(*r, child_size, i, x);
    }
-   return llrb_fixUp(p);
+   return llrb_fixUp(p, inserted_size);
 }
 
 // moveRedLeft makes p->l or one of its children red, assuming that p is red
 // and both p->l and p->l->l are black.
-static node_t *llrb_moveRedLeft(node_t *p) {
+static node_t *llrb_moveRedLeft(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
+   invariant(!tree_shared(p));
    demote(p);
    if (p->r != NULL && isRed(p->r, p->r->l)) {
-      tree_persist(&p->r);
-      treeRotateR(&p->r);
-      treeRotateL(&p);
+      u64 right_size = sizeR(p, size);
+      tree_persist_unshared(&p->r);
+      treeRotateRSized(&p->r, right_size);
+      treeRotateLSized(&p, size);
       promote(p);
    }
    return p;
@@ -60,64 +70,96 @@ static node_t *llrb_moveRedLeft(node_t *p) {
 
 // moveRedRight makes p->r or one of its children red, assuming that p is red
 // and both p->r and p->r->l are black.
-static node_t *llrb_moveRedRight(node_t *p) {
+static node_t *llrb_moveRedRight(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
+   invariant(!tree_shared(p));
    demote(p);
    if (p->l != NULL && isRed(p->l, p->l->l)) {
-      treeRotateR(&p);
+      treeRotateRSized(&p, size);
       promote(p);
    }
    return p;
 }
 
-static node_t *llrb_deleteMin(node_t *p, node_t **min) {
-   tree_persist(&p);
+typedef struct {
+   node_t *root;
+   node_t *node;
+} llrb_extract_result_t;
+
+static llrb_extract_result_t llrb_deleteMin(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
+   tree_persist_unshared(&p);
    if (p->l == NULL) {
-      *min = p;
+      node_t *r = p->r;
       p->r = NULL;
-      return NULL;
+      return (llrb_extract_result_t){.root = r, .node = p};
    }
    if (!isRed(p, p->l) && !isRed(p->l, p->l->l)) {
-      p = llrb_moveRedLeft(p);
+      p = llrb_moveRedLeft(p, size);
    }
-   p->s = p->s - 1;
-   p->l = llrb_deleteMin(p->l, min);
-   return llrb_fixUp(p);
+   invariant(p->l != NULL);
+   u64 child_size = sizeL(p);
+   node_t **l = deleteL(p);
+   llrb_extract_result_t result = llrb_deleteMin(*l, child_size);
+   *l = result.root;
+   result.root = llrb_fixUp(p, size_after_removing_one(size));
+   return result;
 }
 
-static node_t *llrb_delete(node_t *p, u64 i, u64 *x) {
-   tree_persist(&p);
+typedef struct {
+   node_t *root;
+   u64 value;
+} llrb_delete_result_t;
+
+static llrb_delete_result_t llrb_delete(node_t *p, u64 size, u64 i) {
+   u64 deleted_size = tree_delete_inputs_require(p, i, size);
+   tree_persist_unshared(&p);
+   llrb_delete_result_t result;
    if (i < p->s) {
       if (!isRed(p, p->l) && (p->l == NULL || !isRed(p->l, p->l->l))) {
-         p = llrb_moveRedLeft(p);
+         p = llrb_moveRedLeft(p, size);
       }
-      p->s = p->s - 1;
-      p->l = llrb_delete(p->l, i, x);
+      invariant(p->l != NULL);
+      u64 child_size = sizeL(p);
+      node_t **l = deleteL(p);
+      result = llrb_delete(*l, child_size, i);
+      *l = result.root;
    } else {
       if (isRed(p, p->l)) {
-         treeRotateR(&p);
+         treeRotateRSized(&p, size);
       }
       if (i == p->s && p->r == NULL) {
-         *x = p->x;
+         u64 value = p->x;
          tree_release(p);
-         return NULL;
+         return (llrb_delete_result_t){.root = NULL, .value = value};
       }
       if (!isRed(p, p->r) && (p->r == NULL || !isRed(p->r, p->r->l))) {
-         p = llrb_moveRedRight(p);
+         p = llrb_moveRedRight(p, size);
       }
       if (i == p->s) {
-         *x = p->x;
-         node_t *min = NULL;
-         p->r = llrb_deleteMin(p->r, &min);
+         invariant(p->r != NULL);
+         result.value = p->x;
+         u64 child_size = sizeR(p, size);
+         llrb_extract_result_t extracted = llrb_deleteMin(p->r, child_size);
+         p->r = extracted.root;
+         node_t *min = extracted.node;
+         invariant(min != NULL);
          p->x = min->x;
          tree_release(min);
       } else {
-         p->r = llrb_delete(p->r, i - p->s - 1, x);
+         invariant(p->r != NULL);
+         u64 child_size = sizeR(p, size);
+         node_t **r = deleteR(p, &i);
+         result = llrb_delete(*r, child_size, i);
+         *r = result.root;
       }
    }
-   return llrb_fixUp(p);
+   result.root = llrb_fixUp(p, deleted_size);
+   return result;
 }
 
-static node_t *llrb_balanceInsertL(node_t *p) {
+static node_t *llrb_balanceInsertL(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
    if (isRed(p, p->l)) {
       if (isRed(p, p->r)) {
          if (isRed(p->l, p->l->l) || isRed(p->l, p->l->r)) {
@@ -125,16 +167,17 @@ static node_t *llrb_balanceInsertL(node_t *p) {
          }
       } else {
          if (isRed(p->l, p->l->l)) {
-            treeRotateR(&p);
+            treeRotateRSized(&p, size);
          } else if (isRed(p->l, p->l->r)) {
-            treeRotateLR(&p);
+            treeRotateLRSized(&p, size);
          }
       }
    }
-   return llrb_fixUp(p);
+   return llrb_fixUp(p, size);
 }
 
-static node_t *llrb_balanceInsertR(node_t *p) {
+static node_t *llrb_balanceInsertR(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
    if (isRed(p, p->r)) {
       if (isRed(p, p->l)) {
          if (isRed(p->r, p->r->r) || isRed(p->r, p->r->l)) {
@@ -142,191 +185,209 @@ static node_t *llrb_balanceInsertR(node_t *p) {
          }
       } else {
          if (isRed(p->r, p->r->r)) {
-            treeRotateL(&p);
+            treeRotateLSized(&p, size);
          } else if (isRed(p->r, p->r->l)) {
-            treeRotateRL(&p);
+            treeRotateRLSized(&p, size);
          }
       }
    }
-   return llrb_fixUp(p);
+   return llrb_fixUp(p, size);
 }
 
-static node_t *llrb_build(node_t *l, node_t *p, node_t *r, u64 sl) {
+static node_t *llrb_build(node_t *l, node_t *p, node_t *r, u64 sl, u64 sr) {
+   u64 size = tree_build_inputs_require(l, p, r, sl, sr);
+   tree_debug_require_size(l, sl);
+   tree_debug_require_size(r, sr);
    if (rank_of(l) == rank_of(r)) {
       p->l = l;
       p->r = r;
       p->s = sl;
-      p->y = (u64)rank_of(l);
-      if (r == NULL || hasZeroChild(l) || hasZeroChild(r)) {
+      int child_rank = rank_of(l);
+      if (child_rank < 0) {
+         invariant(r == NULL);
+         p->y = 0;
+      } else {
+         p->y = (u64)child_rank;
+      }
+      if (child_rank >= 0 && (hasZeroChild(l) || hasZeroChild(r))) {
          promote(p);
       }
-      return llrb_fixUp(p);
+      return llrb_fixUp(p, size);
    }
    if (rank_of(l) < rank_of(r)) {
-      tree_persist(&r);
-      r->s = 1 + sl + r->s;
-      r->l = llrb_build(l, p, r->l, sl);
-      return llrb_balanceInsertL(r);
+      invariant(r != NULL);
+      tree_persist_unshared(&r);
+      u64 right_left_size = sizeL(r);
+      r->s = tree_size_from_child_sizes(sl, right_left_size);
+      r->l = llrb_build(l, p, r->l, sl, right_left_size);
+      return llrb_balanceInsertL(r, size);
    } else {
-      tree_persist(&l);
-      l->r = llrb_build(l->r, p, r, sl - l->s - 1);
-      return llrb_balanceInsertR(l);
+      invariant(l != NULL);
+      invariant(l->s < sl);
+      tree_persist_unshared(&l);
+      u64 left_right_size = sizeR(l, sl);
+      l->r = llrb_build(l->r, p, r, left_right_size, sr);
+      return llrb_balanceInsertR(l, size);
    }
 }
 
-static node_t *llrb_deleteMax(node_t *p, node_t **max) {
-   tree_persist(&p);
+static llrb_extract_result_t llrb_deleteMax(node_t *p, u64 size) {
+   tree_nonempty_root_shape_require(p, size);
+   tree_persist_unshared(&p);
    if (isRed(p, p->l)) {
-      treeRotateR(&p);
+      treeRotateRSized(&p, size);
    }
    if (p->r == NULL) {
       node_t *l = p->l;
       p->l = NULL;
-      *max = p;
-      return l;
+      return (llrb_extract_result_t){.root = l, .node = p};
    }
    if (!isRed(p, p->r) && (p->r->l == NULL || !isRed(p->r, p->r->l))) {
-      p = llrb_moveRedRight(p);
+      p = llrb_moveRedRight(p, size);
    }
-   p->r = llrb_deleteMax(p->r, max);
-   return llrb_fixUp(p);
+   u64 child_size = sizeR(p, size);
+   llrb_extract_result_t result = llrb_deleteMax(p->r, child_size);
+   p->r = result.root;
+   result.root = llrb_fixUp(p, size_after_removing_one(size));
+   return result;
 }
 
 static node_t *llrb_join(node_t *l, node_t *r, u64 sl, u64 sr) {
-   node_t *p = NULL;
-   if (l == NULL) return r;
-   if (r == NULL) return l;
+   tree_join_inputs_require(l, r, sl, sr);
+#ifdef DEBUG
+   tree_debug_require_join_inputs(l, r, sl, sr);
+#endif
+   if (l == NULL) {
+      invariant(sl == 0);
+      return r;
+   }
+   if (r == NULL) {
+      invariant(sr == 0);
+      return l;
+   }
    if (rank_of(l) < rank_of(r) || (rank_of(l) == rank_of(r) && sl <= sr)) {
-      node_t *r2 = llrb_deleteMin(r, &p);
-      return llrb_build(l, p, r2, sl);
+      llrb_extract_result_t extracted = llrb_deleteMin(r, sr);
+      node_t *r2 = extracted.root;
+      node_t *p = extracted.node;
+      invariant(p != NULL);
+      return llrb_build(l, p, r2, sl, size_after_removing_one(sr));
    } else {
-      node_t *l2 = llrb_deleteMax(l, &p);
-      return llrb_build(l2, p, r, sl - 1);
+      llrb_extract_result_t extracted = llrb_deleteMax(l, sl);
+      node_t *l2 = extracted.root;
+      node_t *p = extracted.node;
+      invariant(p != NULL);
+      invariant(sl > 0);
+      return llrb_build(l2, p, r, rank_of_last(sl), sr);
    }
 }
 
-static void llrb_split(node_t *p, u64 i, u64 s, node_t **out_l, node_t **out_r) {
-   if (p == NULL) {
-      *out_l = NULL;
-      *out_r = NULL;
-      return;
+static tree_split_result_t llrb_split_impl(node_t *root, u64 split_size,
+                                           u64 size) {
+   (void)tree_split_inputs_require(root, split_size, size);
+   if (root == NULL) {
+      return (tree_split_result_t){.left = NULL, .right = NULL};
    }
-   tree_persist(&p);
+   tree_persist_unshared(&root);
 
-   u64 sl = p->s;
-   u64 sr = s - p->s - 1;
+   u64 left_size = sizeL(root);
+   u64 right_size = sizeR(root, size);
 
-   if (i <= p->s) {
-      node_t *l, *r;
-      llrb_split(p->l, i, sl, &l, &r);
-      *out_l = l;
-      *out_r = llrb_build(r, p, p->r, sl - i);
-   } else {
-      node_t *l, *r;
-      llrb_split(p->r, i - sl - 1, sr, &l, &r);
-      *out_l = llrb_build(p->l, p, l, sl);
-      *out_r = r;
+   if (split_size <= root->s) {
+      tree_split_result_t split =
+          llrb_split_impl(root->l, split_size, left_size);
+
+      u64 right_split_size = suffix_size_after_prefix(left_size, split_size);
+      return (tree_split_result_t){
+          .left = split.left,
+          .right = llrb_build(split.right, root, root->r, right_split_size,
+                              right_size),
+      };
    }
+
+   u64 right_rank = rank_in_right_subtree(split_size, left_size);
+   tree_split_result_t split = llrb_split_impl(root->r, right_rank, right_size);
+   return (tree_split_result_t){
+       .left = llrb_build(root->l, root, split.left, left_size, right_rank),
+       .right = split.right,
+   };
 }
 
-static void llrb_verifyLeftLeaning(node_t *p) {
-   if (p == NULL) return;
+static tree_split_result_t llrb_split(node_t *root, u64 split_size, u64 size) {
+   (void)tree_split_inputs_require(root, split_size, size);
+   if (root != NULL) {
+      tree_debug_require_size(root, size);
+   }
+   return llrb_split_impl(root, split_size, size);
+}
+
+static void llrb_verifyLeftLeaningNode(node_t *p, void *ctx) {
+   (void)ctx;
    // No right-leaning red links: if right is red, left must also be red.
    invariant(!isRed(p, p->r) || isRed(p, p->l));
-   llrb_verifyLeftLeaning(p->l);
-   llrb_verifyLeftLeaning(p->r);
 }
 
+static void llrb_verifyLeftLeaning(node_t *p, u64 size) {
+   invariant(tree_verify_size_each_node(p, size, llrb_verifyLeftLeaningNode,
+                                        NULL) == size);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // List vtable
 // ─────────────────────────────────────────────────────────────────────────────
 
-static list_t llrb_vt_new(const list_vtable_t *vt) {
-   llrb_t *t = (llrb_t *)calloc(1, sizeof(llrb_t));
-   return (list_t){.impl = t, .vt = vt};
-}
-
-static list_t llrb_vt_clone(list_t *self) {
-   llrb_t *orig = (llrb_t *)self->impl;
-   llrb_t *copy = (llrb_t *)malloc(sizeof(llrb_t));
-   tree_share(orig->tree.root);
-   *copy = *orig;
-   return (list_t){.impl = copy, .vt = self->vt};
-}
-
-static void llrb_vt_free(list_t *self) {
-   llrb_t *t = (llrb_t *)self->impl;
-   free_nodes(t->tree.root);
-   free(t);
-   self->impl = NULL;
-}
-
-static u64  llrb_vt_size(list_t *self) { return ((llrb_t *)self->impl)->tree.size; }
-static void llrb_vt_each(list_t *self, void (*visit)(u64, void *), void *ctx) { inorder(((llrb_t *)self->impl)->tree.root, visit, ctx); }
+TREE_LIST_SIMPLE_FUNCTIONS(llrb_t, llrb)
 
 static void llrb_vt_verify(list_t *self) {
+   list_require(self);
    llrb_t *t = (llrb_t *)self->impl;
-   tree_verify_size(t->tree.root, t->tree.size);
-   verifyRedBlackRanks(t->tree.root);
-   llrb_verifyLeftLeaning(t->tree.root);
+   verifyRedBlackRanksSized(t->tree.root, t->tree.size);
+   llrb_verifyLeftLeaning(t->tree.root, t->tree.size);
    verifyRedBlackHeight(t->tree.root, t->tree.size);
 }
 
-static u64  llrb_vt_select(list_t *self, u64 i) { return tree_lookup(&((llrb_t *)self->impl)->tree, i); }
-static void llrb_vt_update(list_t *self, u64 i, u64 x) { tree_update_base(&((llrb_t *)self->impl)->tree, i, x); }
-
 static void llrb_vt_insert(list_t *self, u64 i, u64 x) {
+   list_require(self);
    llrb_t *t = (llrb_t *)self->impl;
-   assert_bst(i <= t->tree.size);
-   t->tree.root = llrb_insert(t->tree.root, i, x);
-   t->tree.size++;
+   u64 size = t->tree.size;
+   u64 inserted_size = tree_insert_inputs_require(t->tree.root, i, size);
+   t->tree.root = llrb_insert(t->tree.root, size, i, x);
+   tree_list_sized_inserted(&t->tree);
+   invariant(t->tree.size == inserted_size);
 }
 
 static u64 llrb_vt_delete(list_t *self, u64 i) {
+   list_require(self);
    llrb_t *t = (llrb_t *)self->impl;
-   assert_bst(i < t->tree.size);
-   u64 x;
-   t->tree.root = llrb_delete(t->tree.root, i, &x);
-   t->tree.size--;
-   return x;
+   u64 size = t->tree.size;
+   u64 deleted_size = tree_delete_inputs_require(t->tree.root, i, size);
+   llrb_delete_result_t result = llrb_delete(t->tree.root, size, i);
+   t->tree.root = result.root;
+   tree_list_sized_deleted(&t->tree);
+   invariant(t->tree.size == deleted_size);
+   return result.value;
 }
 
 static void llrb_vt_split(list_t *self, u64 i, list_t *out_l, list_t *out_r) {
+   tree_list_require_split(self, i, out_l, out_r);
    llrb_t *t = (llrb_t *)self->impl;
-   assert_bst(i <= t->tree.size);
+   u64 size = t->tree.size;
+   u64 right_size = tree_split_inputs_require(t->tree.root, i, size);
    tree_share(t->tree.root);
-   node_t *l, *r;
-   llrb_split(t->tree.root, i, t->tree.size, &l, &r);
-   llrb_t *sl = (llrb_t *)calloc(1, sizeof(llrb_t)); sl->tree = (tree_t){l, i};
-   llrb_t *sr = (llrb_t *)calloc(1, sizeof(llrb_t)); sr->tree = (tree_t){r, t->tree.size - i};
-   *out_l = (list_t){sl, self->vt};
-   *out_r = (list_t){sr, self->vt};
+   tree_split_result_t split = llrb_split(t->tree.root, i, size);
+   TREE_LIST_SPLIT_RESULT_PREPARED(llrb_t, size, split.left, i, split.right,
+                                   right_size);
 }
 
 static list_t llrb_vt_join(list_t *self, list_t *other) {
+   tree_list_require_join(self, other);
    llrb_t *t = (llrb_t *)self->impl;
    llrb_t *that = (llrb_t *)other->impl;
-   tree_share(t->tree.root);
-   tree_share(that->tree.root);
-   llrb_t *result = (llrb_t *)calloc(1, sizeof(llrb_t));
-   result->tree.root = llrb_join(t->tree.root, that->tree.root, t->tree.size, that->tree.size);
-   result->tree.size = t->tree.size + that->tree.size;
-   return (list_t){result, self->vt};
+   tree_join_roots_t roots =
+       tree_list_prepare_join_roots(&t->tree, &that->tree);
+   node_t *root =
+       llrb_join(roots.left, roots.right, t->tree.size, that->tree.size);
+   u64 joined_size = tree_list_join_size(t->tree.size, that->tree.size);
+   TREE_LIST_JOIN_RESULT(llrb_t, root, joined_size);
 }
 
-const list_vtable_t llrb_vtable = {
-   .name      = "LLRB",
-   .new_fn    = llrb_vt_new,
-   .clone_fn  = llrb_vt_clone,
-   .free_fn   = llrb_vt_free,
-   .size_fn   = llrb_vt_size,
-   .each_fn   = llrb_vt_each,
-   .verify_fn = llrb_vt_verify,
-   .select_fn = llrb_vt_select,
-   .update_fn = llrb_vt_update,
-   .insert_fn = llrb_vt_insert,
-   .delete_fn = llrb_vt_delete,
-   .split_fn  = llrb_vt_split,
-   .join_fn   = llrb_vt_join,
-};
+const list_vtable_t llrb_vtable = TREE_LIST_VTABLE("LLRB", llrb);

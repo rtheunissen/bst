@@ -1,92 +1,205 @@
 #include "wbst_topdown.h"
 #include "wbst_bottomup.h"
+#include "tree_list_adapter.h"
 
-#include <math.h>
-
-static inline tree_t make_tree(node_t *root, u64 size) {
-   return (tree_t){.root = root, .size = size};
-}
-static inline list_t make_list(void *impl, const list_vtable_t *vt) {
-   return (list_t){.impl = impl, .vt = vt};
+static void wbst_td_require_balance(weight_balance_t wb) {
+   weight_balance_require(wb);
 }
 
-#define WB_VT_BODY(TYPE, PREFIX, WB_INIT, INSF, DELF, SPLF, JOINF, VERF) \
-static list_t PREFIX##_vt_new(const list_vtable_t *vt) { TYPE *t = (TYPE *)calloc(1, sizeof(TYPE)); t->wb = WB_INIT; return make_list(t, vt); } \
-static list_t PREFIX##_vt_clone(list_t *self) { TYPE *o = (TYPE *)self->impl; TYPE *c = (TYPE *)malloc(sizeof(TYPE)); tree_share(o->tree.root); *c = *o; return make_list(c, self->vt); } \
-static void PREFIX##_vt_free(list_t *self) { TYPE *t = (TYPE *)self->impl; free_nodes(t->tree.root); free(t); self->impl = NULL; } \
-static u64  PREFIX##_vt_size(list_t *self) { return ((TYPE *)self->impl)->tree.size; } \
-static void PREFIX##_vt_each(list_t *self, void (*v)(u64, void*), void *c) { inorder(((TYPE *)self->impl)->tree.root, v, c); } \
-static u64  PREFIX##_vt_select(list_t *self, u64 i) { return tree_lookup(&((TYPE *)self->impl)->tree, i); } \
-static void PREFIX##_vt_update(list_t *self, u64 i, u64 x) { tree_update_base(&((TYPE *)self->impl)->tree, i, x); } \
-static void PREFIX##_vt_verify(list_t *self) { VERF } \
-static void PREFIX##_vt_insert(list_t *self, u64 i, u64 x) { INSF } \
-static u64  PREFIX##_vt_delete(list_t *self, u64 i) { DELF } \
-static void PREFIX##_vt_split(list_t *self, u64 i, list_t *out_l, list_t *out_r) { SPLF } \
-static list_t PREFIX##_vt_join(list_t *self, list_t *other) { JOINF }
-
-
-#define WBST_TD_SPLIT(TYPE) \
-   TYPE *t = (TYPE *)self->impl; tree_share(t->tree.root); node_t *l, *r; \
-   wbst_td_split(t->wb, t->tree.root, i, t->tree.size, &l, &r); \
-   TYPE *sl = (TYPE *)calloc(1, sizeof(TYPE)); sl->tree = make_tree(l, i); sl->wb = t->wb; \
-   TYPE *sr = (TYPE *)calloc(1, sizeof(TYPE)); sr->tree = make_tree(r, t->tree.size - i); sr->wb = t->wb; \
-   *out_l = make_list(sl, self->vt); *out_r = make_list(sr, self->vt);
-
-#define WBST_TD_JOIN(TYPE) \
-   TYPE *t = (TYPE *)self->impl, *that = (TYPE *)other->impl; \
-   tree_share(t->tree.root); tree_share(that->tree.root); \
-   TYPE *res = (TYPE *)calloc(1, sizeof(TYPE)); res->wb = t->wb; \
-   res->tree.root = wbst_td_join(t->wb, t->tree.root, that->tree.root, t->tree.size, that->tree.size); \
-   res->tree.size = t->tree.size + that->tree.size; return make_list(res, self->vt);
-
-static void wbst_td_pathL(node_t ***p, u64 *s) { *s = (**p)->s; (**p)->s++; *p = &(**p)->l; }
-static void wbst_td_pathR(node_t ***p, u64 *s, u64 *i) { *s = *s - (**p)->s - 1; *i = *i - (**p)->s - 1; *p = &(**p)->r; }
-static void wbst_td_deleteL(node_t ***p, u64 *s) { *s = (**p)->s; (**p)->s--; *p = &(**p)->l; }
-static void wbst_td_deleteR(node_t ***p, u64 *s, u64 *i) { *s = *s - (**p)->s - 1; *i = *i - (**p)->s - 1; *p = &(**p)->r; }
-
-static void wbst_td_rebalanceR(weight_balance_t wb, node_t **p, u64 sr) {
-   if (wb.singleRotation(sr - (*p)->r->s - 1, (*p)->r->s)) treeRotateL(p); else treeRotateRL(p);
+static void wbst_td_pathL(node_t ***p, u64 *s) {
+   invariant(p != NULL);
+   invariant(*p != NULL);
+   invariant(**p != NULL);
+   invariant(s != NULL);
+   tree_nonempty_root_shape_require(**p, *s);
+   invariant(!tree_shared(**p));
+   invariant((**p)->s < UINT64_MAX);
+   *s = (**p)->s;
+   (**p)->s = size_after_inserting_one((**p)->s);
+   *p = &(**p)->l;
 }
-static void wbst_td_rebalanceL(weight_balance_t wb, node_t **p, u64 sl) {
-   if (wb.singleRotation((*p)->l->s, sl - (*p)->l->s - 1)) treeRotateR(p); else treeRotateLR(p);
+
+static void wbst_td_pathR(node_t ***p, u64 *s, u64 *i) {
+   invariant(p != NULL);
+   invariant(*p != NULL);
+   invariant(**p != NULL);
+   invariant(s != NULL);
+   invariant(i != NULL);
+   tree_nonempty_root_shape_require(**p, *s);
+   invariant(!tree_shared(**p));
+   invariant((**p)->s < *s);
+   invariant(*i > (**p)->s);
+   u64 sr = sizeR(**p, *s);
+   *i = rank_in_right_subtree(*i, (**p)->s);
+   *s = sr;
+   *p = &(**p)->r;
+}
+
+static void wbst_td_deleteL(node_t ***p, u64 *s) {
+   invariant(p != NULL);
+   invariant(*p != NULL);
+   invariant(**p != NULL);
+   invariant(s != NULL);
+   tree_nonempty_root_shape_require(**p, *s);
+   invariant(!tree_shared(**p));
+   invariant((**p)->s > 0);
+   *s = (**p)->s;
+   (**p)->s = size_after_removing_one((**p)->s);
+   *p = &(**p)->l;
+}
+
+static void wbst_td_deleteR(node_t ***p, u64 *s, u64 *i) {
+   invariant(p != NULL);
+   invariant(*p != NULL);
+   invariant(**p != NULL);
+   invariant(s != NULL);
+   invariant(i != NULL);
+   tree_nonempty_root_shape_require(**p, *s);
+   invariant(!tree_shared(**p));
+   invariant((**p)->s < *s);
+   invariant(*i > (**p)->s);
+   u64 sr = sizeR(**p, *s);
+   *i = rank_in_right_subtree(*i, (**p)->s);
+   *s = sr;
+   *p = &(**p)->r;
+}
+
+static void wbst_td_rebalanceR(weight_balance_t wb, node_t **p, u64 size,
+                               u64 sr) {
+   wbst_td_require_balance(wb);
+   invariant(p != NULL);
+   invariant(*p != NULL);
+   tree_nonempty_root_shape_require(*p, size);
+   tree_nonempty_root_shape_require((*p)->r, sr);
+   invariant(!tree_shared(*p));
+   if (wb.singleRotation(sizeR((*p)->r, sr), sizeL((*p)->r))) {
+      treeRotateLSized(p, size);
+   } else {
+      treeRotateRLSized(p, size);
+   }
+}
+
+static void wbst_td_rebalanceL(weight_balance_t wb, node_t **p, u64 size,
+                               u64 sl) {
+   wbst_td_require_balance(wb);
+   invariant(p != NULL);
+   invariant(*p != NULL);
+   tree_nonempty_root_shape_require(*p, size);
+   tree_nonempty_root_shape_require((*p)->l, sl);
+   invariant(!tree_shared(*p));
+   if (wb.singleRotation(sizeL((*p)->l), sizeR((*p)->l, sl))) {
+      treeRotateRSized(p, size);
+   } else {
+      treeRotateLRSized(p, size);
+   }
 }
 
 void wbst_td_insert(weight_balance_t wb, node_t **p, u64 s, u64 i, u64 x) {
+   wbst_td_require_balance(wb);
+   invariant(p != NULL);
    for (;;) {
-      if (*p == NULL) { *p = tree_allocate((node_t){.x = x}); return; }
-      tree_persist(p);
+      (void)tree_insert_inputs_require(*p, i, s);
+      if (*p == NULL) {
+         invariant(s == 0);
+         invariant(i == 0);
+         *p = tree_allocate((node_t){.x = x});
+         return;
+      }
+      tree_persist_unshared(p);
       u64 sl = sizeL(*p), sr = sizeR(*p, s);
+      u64 inserted_sl = size_after_inserting_one(sl);
+      u64 inserted_sr = size_after_inserting_one(sr);
       if (i <= (*p)->s) {
-         if (wb.isBalanced(sr, sl + 1)) { wbst_td_pathL(&p, &s); }
-         else if (i <= (*p)->l->s) {
-            if (wb.singleRotation(sizeL((*p)->l) + 1, sizeR((*p)->l, sl))) { treeRotateR(p); wbst_td_pathL(&p, &s); }
-            else { treeRotateLR(p); wbst_td_pathL(&p, &s); wbst_td_pathL(&p, &s); }
+         if (wb.isBalanced(sr, inserted_sl)) {
+            wbst_td_pathL(&p, &s);
          } else {
-            if (wb.singleRotation(sizeL((*p)->l), sizeR((*p)->l, sl) + 1)) { treeRotateR(p); wbst_td_pathR(&p, &s, &i); wbst_td_pathL(&p, &s); }
-            else {
-               if (i <= (*p)->l->s + (*p)->l->r->s + 1) { treeRotateLR(p); wbst_td_pathL(&p, &s); wbst_td_pathR(&p, &s, &i); }
-               else { treeRotateLR(p); wbst_td_pathR(&p, &s, &i); wbst_td_pathL(&p, &s); }
+            invariant((*p)->l != NULL);
+            if (i <= (*p)->l->s) {
+               u64 inserted_left_left_size =
+                   size_after_inserting_one(sizeL((*p)->l));
+               if (wb.singleRotation(inserted_left_left_size,
+                                     sizeR((*p)->l, sl))) {
+                  treeRotateRSized(p, s);
+                  wbst_td_pathL(&p, &s);
+               } else {
+                  treeRotateLRSized(p, s);
+                  wbst_td_pathL(&p, &s);
+                  wbst_td_pathL(&p, &s);
+               }
+            } else {
+               u64 inserted_left_right_size =
+                   size_after_inserting_one(sizeR((*p)->l, sl));
+               if (wb.singleRotation(sizeL((*p)->l),
+                                     inserted_left_right_size)) {
+                  treeRotateRSized(p, s);
+                  wbst_td_pathR(&p, &s, &i);
+                  wbst_td_pathL(&p, &s);
+               } else {
+                  u64 left_right_boundary =
+                      rank_after_predecessor((*p)->l->s, (*p)->l->r);
+                  if (i <= left_right_boundary) {
+                     treeRotateLRSized(p, s);
+                     wbst_td_pathL(&p, &s);
+                     wbst_td_pathR(&p, &s, &i);
+                  } else {
+                     treeRotateLRSized(p, s);
+                     wbst_td_pathR(&p, &s, &i);
+                     wbst_td_pathL(&p, &s);
+                  }
+               }
             }
          }
       } else {
-         if (wb.isBalanced(sl, sr + 1)) { wbst_td_pathR(&p, &s, &i); continue; }
-         if (i > (*p)->s + (*p)->r->s + 1) {
-            if (wb.singleRotation(sizeR((*p)->r, sr) + 1, sizeL((*p)->r))) { treeRotateL(p); wbst_td_pathR(&p, &s, &i); }
-            else { treeRotateRL(p); wbst_td_pathR(&p, &s, &i); wbst_td_pathR(&p, &s, &i); }
+         if (wb.isBalanced(sl, inserted_sr)) {
+            wbst_td_pathR(&p, &s, &i);
+            continue;
+         }
+         invariant((*p)->r != NULL);
+         u64 right_left_boundary = rank_after_predecessor((*p)->s, (*p)->r);
+         if (i > right_left_boundary) {
+            u64 inserted_right_right_size =
+                size_after_inserting_one(sizeR((*p)->r, sr));
+            if (wb.singleRotation(inserted_right_right_size, sizeL((*p)->r))) {
+               treeRotateLSized(p, s);
+               wbst_td_pathR(&p, &s, &i);
+            } else {
+               treeRotateRLSized(p, s);
+               wbst_td_pathR(&p, &s, &i);
+               wbst_td_pathR(&p, &s, &i);
+            }
          } else {
-            if (wb.singleRotation(sizeR((*p)->r, sr), sizeL((*p)->r) + 1)) { treeRotateL(p); wbst_td_pathL(&p, &s); wbst_td_pathR(&p, &s, &i); }
-            else {
-               if (i > (*p)->s + (*p)->r->l->s + 1) { treeRotateRL(p); wbst_td_pathR(&p, &s, &i); wbst_td_pathL(&p, &s); }
-               else { treeRotateRL(p); wbst_td_pathL(&p, &s); wbst_td_pathR(&p, &s, &i); }
+            u64 inserted_right_left_size =
+                size_after_inserting_one(sizeL((*p)->r));
+            if (wb.singleRotation(sizeR((*p)->r, sr),
+                                  inserted_right_left_size)) {
+               treeRotateLSized(p, s);
+               wbst_td_pathL(&p, &s);
+               wbst_td_pathR(&p, &s, &i);
+            } else {
+               u64 right_left_left_boundary =
+                   rank_after_predecessor((*p)->s, (*p)->r->l);
+               if (i > right_left_left_boundary) {
+                  treeRotateRLSized(p, s);
+                  wbst_td_pathR(&p, &s, &i);
+                  wbst_td_pathL(&p, &s);
+               } else {
+                  treeRotateRLSized(p, s);
+                  wbst_td_pathL(&p, &s);
+                  wbst_td_pathR(&p, &s, &i);
+               }
             }
          }
       }
    }
 }
 
-void wbst_td_delete_internal(weight_balance_t wb, node_t **p, u64 s, u64 i, node_t **x) {
+node_t *wbst_td_delete_internal(weight_balance_t wb, node_t **p, u64 s, u64 i) {
+   wbst_td_require_balance(wb);
+   invariant(p != NULL);
    for (;;) {
-      u64 sl = (*p)->s, sr = s - (*p)->s - 1;
+      invariant(*p != NULL);
+      tree_rank_inputs_require(*p, i, s);
+      u64 sl = sizeL(*p), sr = sizeR(*p, s);
       if (i == (*p)->s) {
          node_t *old = *p;
          node_t *l = old->l;
@@ -94,104 +207,207 @@ void wbst_td_delete_internal(weight_balance_t wb, node_t **p, u64 s, u64 i, node
          if (tree_shared(old)) {
             tree_share(l);
             tree_share(r);
-            *x = tree_allocate((node_t){.x = old->x, .y = old->y});
+            node_t *deleted = tree_allocate((node_t){.x = old->x, .y = old->y});
             *p = wbst_bu_join(wb, l, r, sl, sr);
             tree_release(old);
+            return deleted;
          } else {
-            *x = old;
             *p = wbst_bu_join(wb, l, r, sl, sr);
             old->l = NULL;
             old->r = NULL;
             old->s = 0;
+            return old;
          }
-         return;
       }
-      tree_persist(p);
-      if (i <= (*p)->s) {
-         if (wb.isBalanced(sl - 1, sr)) { wbst_td_deleteL(&p, &s); }
-         else { wbst_td_rebalanceR(wb, p, sr); wbst_td_deleteL(&p, &s); wbst_td_deleteL(&p, &s); }
+      tree_persist_unshared(p);
+      node_t *node = *p;
+      invariant(node != NULL);
+      if (i <= node->s) {
+         invariant(i < node->s);
+         invariant(sl > 0);
+         if (wb.isBalanced(size_after_removing_one(sl), sr)) {
+            wbst_td_deleteL(&p, &s);
+         } else {
+            wbst_td_rebalanceR(wb, p, s, sr);
+            wbst_td_deleteL(&p, &s);
+            wbst_td_deleteL(&p, &s);
+         }
       } else {
-         if (wb.isBalanced(sr - 1, sl)) { wbst_td_deleteR(&p, &s, &i); }
-         else { wbst_td_rebalanceL(wb, p, sl); wbst_td_deleteR(&p, &s, &i); wbst_td_deleteR(&p, &s, &i); }
+         invariant(i > node->s);
+         invariant(sr > 0);
+         if (wb.isBalanced(size_after_removing_one(sr), sl)) {
+            wbst_td_deleteR(&p, &s, &i);
+         } else {
+            wbst_td_rebalanceL(wb, p, s, sl);
+            wbst_td_deleteR(&p, &s, &i);
+            wbst_td_deleteR(&p, &s, &i);
+         }
       }
    }
 }
 
-static node_t *wbst_td_buildL(weight_balance_t wb, node_t *p, node_t *l, node_t *r, u64 sl, u64 sr) {
-   if (wb.isBalanced(sr, sl)) { p->l = l; p->r = r; p->s = sl; return p; }
-   tree_persist(&l); l->r = wbst_td_buildL(wb, p, l->r, r, sl - l->s - 1, sr);
-   if (!wb.isBalanced(l->s, sl + sr - l->s)) wbst_td_rebalanceR(wb, &l, sr + sl - l->s);
+static node_t *wbst_td_buildL(weight_balance_t wb, node_t *p, node_t *l,
+                              node_t *r, u64 sl, u64 sr) {
+   wbst_td_require_balance(wb);
+   tree_build_inputs_require(l, p, r, sl, sr);
+   if (wb.isBalanced(sr, sl)) {
+      p->l = l;
+      p->r = r;
+      p->s = sl;
+      return p;
+   }
+   tree_nonempty_root_shape_require(l, sl);
+   tree_persist_unshared(&l);
+   u64 sll = sizeL(l), slr = sizeR(l, sl);
+   l->r = wbst_td_buildL(wb, p, l->r, r, slr, sr);
+   slr = tree_size_from_child_sizes(slr, sr);
+   if (!wb.isBalanced(sll, slr)) {
+      wbst_td_rebalanceR(wb, &l, tree_size_from_child_sizes(sll, slr), slr);
+   }
    return l;
 }
 
-static node_t *wbst_td_buildR(weight_balance_t wb, node_t *p, node_t *l, node_t *r, u64 sl, u64 sr) {
-   if (wb.isBalanced(sl, sr)) { p->l = l; p->r = r; p->s = sl; return p; }
-   tree_persist(&r); r->l = wbst_td_buildR(wb, p, l, r->l, sl, r->s);
-   r->s = 1 + sl + r->s;
-   if (!wb.isBalanced(sl + sr - r->s, r->s)) wbst_td_rebalanceL(wb, &r, r->s);
+static node_t *wbst_td_buildR(weight_balance_t wb, node_t *p, node_t *l,
+                              node_t *r, u64 sl, u64 sr) {
+   wbst_td_require_balance(wb);
+   tree_build_inputs_require(l, p, r, sl, sr);
+   if (wb.isBalanced(sl, sr)) {
+      p->l = l;
+      p->r = r;
+      p->s = sl;
+      return p;
+   }
+   tree_nonempty_root_shape_require(r, sr);
+   tree_persist_unshared(&r);
+   u64 srl = sizeL(r), srr = sizeR(r, sr);
+   r->l = wbst_td_buildR(wb, p, l, r->l, sl, srl);
+   r->s = rank_after_predecessor(sl, r);
+   if (!wb.isBalanced(srr, r->s)) {
+      wbst_td_rebalanceL(wb, &r, tree_size_from_child_sizes(r->s, srr), r->s);
+   }
    return r;
 }
 
-node_t *wbst_td_build(weight_balance_t wb, node_t *l, node_t *p, node_t *r, u64 sl, u64 sr) {
-   tree_persist(&p);
-   if (sl <= sr) return wbst_td_buildR(wb, p, l, r, sl, sr);
-   else return wbst_td_buildL(wb, p, l, r, sl, sr);
-}
-
-node_t *wbst_td_join(weight_balance_t wb, node_t *l, node_t *r, u64 sl, u64 sr) {
-   if (l == NULL) return r;
-   if (r == NULL) return l;
+node_t *wbst_td_build(weight_balance_t wb, node_t *l, node_t *p, node_t *r,
+                      u64 sl, u64 sr) {
+   wbst_td_require_balance(wb);
+   tree_build_inputs_require(l, p, r, sl, sr);
+   tree_debug_require_size(l, sl);
+   tree_debug_require_size(r, sr);
+   tree_persist_unshared(&p);
    if (sl <= sr) {
-      node_t *min; wbst_td_delete_internal(wb, &r, sr, 0, &min);
-      return wbst_td_build(wb, l, min, r, sl, sr - 1);
+      return wbst_td_buildR(wb, p, l, r, sl, sr);
+   }
+   return wbst_td_buildL(wb, p, l, r, sl, sr);
+}
+
+node_t *wbst_td_join(weight_balance_t wb, node_t *l, node_t *r, u64 sl,
+                     u64 sr) {
+   wbst_td_require_balance(wb);
+   tree_join_inputs_require(l, r, sl, sr);
+#ifdef DEBUG
+   tree_debug_require_join_inputs(l, r, sl, sr);
+#endif
+   if (l == NULL) {
+      invariant(sl == 0);
+      return r;
+   }
+   if (r == NULL) {
+      invariant(sr == 0);
+      return l;
+   }
+   if (sl <= sr) {
+      invariant(sr > 0);
+      node_t *min = wbst_td_delete_internal(wb, &r, sr, 0);
+      invariant(min != NULL);
+      return wbst_td_build(wb, l, min, r, sl, size_after_removing_one(sr));
    } else {
-      node_t *max; wbst_td_delete_internal(wb, &l, sl, sl - 1, &max);
-      return wbst_td_build(wb, l, max, r, sl - 1, sr);
+      invariant(sl > 0);
+      node_t *max = wbst_td_delete_internal(wb, &l, sl, rank_of_last(sl));
+      invariant(max != NULL);
+      return wbst_td_build(wb, l, max, r, rank_of_last(sl), sr);
    }
 }
 
-void wbst_td_split(weight_balance_t wb, node_t *p, u64 i, u64 s, node_t **out_l, node_t **out_r) {
-   if (p == NULL) { *out_l = NULL; *out_r = NULL; return; }
-   tree_persist(&p);
-   u64 sl = p->s, sr = s - p->s - 1;
-   if (i <= p->s) {
-      node_t *l, *r; wbst_td_split(wb, p->l, i, sl, &l, &r);
-      *out_l = l; *out_r = wbst_td_build(wb, r, p, p->r, sl - i, sr);
-   } else {
-      node_t *l, *r; wbst_td_split(wb, p->r, i - sl - 1, sr, &l, &r);
-      *out_l = wbst_td_build(wb, p->l, p, l, sl, i - sl - 1); *out_r = r;
+static tree_split_result_t wbst_td_split_impl(weight_balance_t wb, node_t *root,
+                                              u64 split_size, u64 size) {
+   wbst_td_require_balance(wb);
+   (void)tree_split_inputs_require(root, split_size, size);
+   if (root == NULL) {
+      return (tree_split_result_t){.left = NULL, .right = NULL};
    }
+   tree_persist_unshared(&root);
+   u64 left_size = sizeL(root);
+   u64 right_size = sizeR(root, size);
+   if (split_size <= root->s) {
+      tree_split_result_t split =
+          wbst_td_split_impl(wb, root->l, split_size, left_size);
+
+      u64 right_split_size = suffix_size_after_prefix(left_size, split_size);
+      return (tree_split_result_t){
+          .left = split.left,
+          .right = wbst_td_build(wb, split.right, root, root->r,
+                                 right_split_size, right_size),
+      };
+   }
+
+   u64 right_rank = rank_in_right_subtree(split_size, left_size);
+   tree_split_result_t split =
+       wbst_td_split_impl(wb, root->r, right_rank, right_size);
+   return (tree_split_result_t){
+       .left =
+           wbst_td_build(wb, root->l, root, split.left, left_size, right_rank),
+       .right = split.right,
+   };
+}
+
+tree_split_result_t wbst_td_split(weight_balance_t wb, node_t *root,
+                                  u64 split_size, u64 size) {
+   wbst_td_require_balance(wb);
+   (void)tree_split_inputs_require(root, split_size, size);
+   if (root != NULL) {
+      tree_debug_require_size(root, size);
+   }
+   return wbst_td_split_impl(wb, root, split_size, size);
 }
 
 void wbst_td_verifyBalance(weight_balance_t wb, node_t *p, u64 s) {
-   if (s < 3) return;
-   u64 sl = sizeL(p), sr = sizeR(p, s);
-   invariant(wb.isBalanced(sl, sr));
-   invariant(wb.isBalanced(sr, sl));
-   wbst_td_verifyBalance(wb, p->l, sl);
-   wbst_td_verifyBalance(wb, p->r, sr);
+   wbst_verifyBalance(wb, p, s, 3);
 }
 
-#define WBST_TD_SPLIT(TYPE) \
-   TYPE *t = (TYPE *)self->impl; tree_share(t->tree.root); node_t *l, *r; \
-   wbst_td_split(t->wb, t->tree.root, i, t->tree.size, &l, &r); \
-   TYPE *sl = (TYPE *)calloc(1, sizeof(TYPE)); sl->tree = make_tree(l, i); sl->wb = t->wb; \
-   TYPE *sr = (TYPE *)calloc(1, sizeof(TYPE)); sr->tree = make_tree(r, t->tree.size - i); sr->wb = t->wb; \
-   *out_l = make_list(sl, self->vt); *out_r = make_list(sr, self->vt);
+static void wbst_td_insert_op(wbst_topdown_t *t, u64 i, u64 x) {
+   invariant(t != NULL);
+   u64 size = t->tree.size;
+   u64 inserted_size = tree_insert_inputs_require(t->tree.root, i, size);
+   wbst_td_insert(t->wb, &t->tree.root, t->tree.size, i, x);
+   tree_list_sized_inserted(&t->tree);
+   invariant(t->tree.size == inserted_size);
+}
 
-#define WBST_TD_JOIN(TYPE) \
-   TYPE *t = (TYPE *)self->impl, *that = (TYPE *)other->impl; \
-   tree_share(t->tree.root); tree_share(that->tree.root); \
-   TYPE *res = (TYPE *)calloc(1, sizeof(TYPE)); res->wb = t->wb; \
-   res->tree.root = wbst_td_join(t->wb, t->tree.root, that->tree.root, t->tree.size, that->tree.size); \
-   res->tree.size = t->tree.size + that->tree.size; return make_list(res, self->vt);
+static u64 wbst_td_delete_op(wbst_topdown_t *t, u64 i) {
+   invariant(t != NULL);
+   u64 size = t->tree.size;
+   u64 deleted_size = tree_delete_inputs_require(t->tree.root, i, size);
+   node_t *deleted =
+       wbst_td_delete_internal(t->wb, &t->tree.root, t->tree.size, i);
+   invariant(deleted != NULL);
+   tree_list_sized_deleted(&t->tree);
+   invariant(t->tree.size == deleted_size);
+   u64 x = deleted->x;
+   tree_release(deleted);
+   return x;
+}
 
+static void wbst_td_verify_tree(wbst_topdown_t *t) {
+   invariant(t != NULL);
+   wbst_td_verifyBalance(t->wb, t->tree.root, t->tree.size);
+}
 
-WB_VT_BODY(wbst_topdown_t, wbst_td, wb_three_two,
-   { wbst_topdown_t *t = (wbst_topdown_t *)self->impl; wbst_td_insert(t->wb, &t->tree.root, t->tree.size, i, x); t->tree.size++; },
-   { wbst_topdown_t *t = (wbst_topdown_t *)self->impl; node_t *del; wbst_td_delete_internal(t->wb, &t->tree.root, t->tree.size, i, &del); t->tree.size--; u64 x = del->x; tree_release(del); return x; },
-   { WBST_TD_SPLIT(wbst_topdown_t) },
-   { WBST_TD_JOIN(wbst_topdown_t) },
-   { wbst_topdown_t *t = (wbst_topdown_t *)self->impl; tree_verify_size(t->tree.root, t->tree.size); wbst_td_verifyBalance(t->wb, t->tree.root, t->tree.size); invariant(height(t->tree.root) <= t->wb.maxHeight(t->tree.size)); }
-)
-const list_vtable_t wbst_topdown_vtable = { "WBSTTopDown", wbst_td_vt_new, wbst_td_vt_clone, wbst_td_vt_free, wbst_td_vt_size, wbst_td_vt_each, wbst_td_vt_verify, wbst_td_vt_select, wbst_td_vt_update, wbst_td_vt_insert, wbst_td_vt_delete, wbst_td_vt_split, wbst_td_vt_join };
+WB_VT_BODY(
+    wbst_topdown_t, wbst_td, wb_three_two,
+    { wbst_td_insert_op((wbst_topdown_t *)self->impl, i, x); },
+    { return wbst_td_delete_op((wbst_topdown_t *)self->impl, i); },
+    { WBST_TD_SPLIT(wbst_topdown_t); }, { WBST_TD_JOIN(wbst_topdown_t); },
+    { wbst_td_verify_tree((wbst_topdown_t *)self->impl); })
+const list_vtable_t wbst_topdown_vtable =
+    TREE_LIST_VTABLE("WBSTTopDown", wbst_td);

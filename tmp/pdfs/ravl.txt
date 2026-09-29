@@ -1,0 +1,1595 @@
+                                                                                                                                         0
+Deletion Without Rebalancing in Binary Search Trees
+SIDDHARTHA SEN, Microsoft Research
+ROBERT E. TARJAN, Princeton University and Intertrust Technologies
+DAVID HONG KYUN KIM, University of Chicago
+
+
+We address the vexing issue of deletions in balanced trees. Rebalancing after a deletion is generally more complicated than
+rebalancing after an insertion. Textbooks neglect deletion rebalancing, and many B-tree-based database systems do not do
+it. We describe a relaxation of AVL trees in which rebalancing is done after insertions but not after deletions, yet worst-case
+access time remains logarithmic in the number of insertions. For any application of balanced trees in which the number of
+updates is polynomial in the tree size, our structure offers performance competitive with that of classical balanced trees. With
+the addition of periodic rebuilding, the performance of our structure is theoretically superior to that of many if not all classic
+balanced tree structures. Our structure needs lg lg m + 1 bits of balance information per node, where m is the number of
+insertions and lg is the base-two logarithm, or lg lg n + O(1) with periodic rebuilding, where n is the number of nodes. An
+insertion takes up to two rotations and O(1) amortized time, not counting the time to find the insertion position. This is the
+same as in standard AVL trees. Using an analysis that relies on an exponential potential function, we show that rebalancing
+steps occur with a frequency that is exponentially small in the height of the affected node. Our techniques apply to other
+types of balanced trees, notably B-trees, as we show in a companion paper, and in particular red-black trees, which can be
+viewed as a special case of B-trees.
+CCS Concepts: rTheory of computation → Sorting and searching; Data structures and algorithms for data management;
+rInformation systems → Data access methods;
+
+Additional Key Words and Phrases: balanced trees, database access methods, exponential potential function, amortized
+complexity, data structure, algorithm
+
+1. INTRODUCTION
+Here is the true story that motivated this work, fictionalized to protect the parties involved. A
+database provider was contracted to build a real-time database to store customer information, to
+be queried and updated on a regular basis. The provider decided to use a red-black tree [Guibas and
+Sedgewick 1978] to store the database, but implemented rebalancing only after insertions, not after
+deletions. As a safety check, a limit of 80 was placed on the allowed height of the tree. This limit
+would allow storage of 240 records in a valid red-black tree, far exceeding the anticipated number.
+Exceeding the height bound was interpreted as an error and triggered a recovery process intended
+to restore the database. Some time after the database was placed in service, the height bound was
+
+A preliminary version of this article, not including the results in Section 7 and some of the results in Sections 9 and 10,
+appeared in Proceedings of the 21st Annual ACM-SIAM Symposium on Discrete Algorithms (Austin, Texas, Jan. 17-19),
+SIAM, Philadelphia, 2010 [Sen and Tarjan 2010]. A preliminary version of the results in Section 7 appeared in the third
+author’s undergraduate junior thesis [Kim 2010].
+Author’s addresses: Siddhartha Sen, Microsoft Research, New York, NY 10011 (sidsen@microsoft.com). This
+author’s research was partly done as a graduate student at Princeton University.
+Robert E. Tarjan, Department of Computer Science, Princeton University, Princeton, NJ 08540
+(ret@cs.princeton.edu), and Intertrust Technologies, Sunnyvale, CA 94085. This author’s research was
+partly done while visiting Stanford University, partially supported by an AFOSR MURI grant.
+David H. K. Kim, Department of Computer Science, University of Chicago, Chicago, IL 60637, United States,
+hongk@cs.uchicago.edu. This author’s research was done as an undergraduate student at Princeton University.
+Research at Princeton University was partially supported by NSF grants CCF-0830676 and CCF-0832797 and US-Israel
+Binational Science Foundation grant 2006204. The information contained herein does not necessarily reflect the opinion or
+policy of the federal government and no official endorsement should be inferred.
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee
+provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and
+the full citation on the first page. Copyrights for components of this work owned by others than ACM must be honored.
+Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires
+prior specific permission and/or a fee. Request permissions from permissions@acm.org.
+ c 2016 ACM. 1549-6325/2016/-ART0 $15.00
+DOI: 0000001.0000001
+
+
+                                                     ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:2                                                                   S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+exceeded, triggering the recovery process. Unfortunately, the recovery process was ill-designed,
+causing the height bound to be exceeded again, and this cycle repeated. The database provider had
+replicated the database for scalability and fault tolerance: queries were load-balanced across the
+replicas, while updates were applied to all of them. However, the failure that occurred was caused
+by a valid update, and since all replicas ran the same code, the same update caused every replica to
+fail, resulting in a total service outage and a lawsuit.
+   Aside from the unfortunate practical outcome, this incident raised an interesting theoretical ques-
+tion: can one maintain balance in a search tree by rebalancing only after insertions, not after dele-
+tions? Even if the recovery process mentioned above had been implemented correctly, the rebal-
+ancing algorithm would still have allowed the tree height to grow enormously, severely degrading
+performance. Before considering whether this can be avoided, we review some of the literature
+concerning deletion in balanced trees. Such a review provides insight into how the event described
+above came about.
+   The original paper on balanced search trees [Adel’son-Vel’skii and Landis 1962], which intro-
+duced AVL trees to the world, is only four pages long. It describes how to rebalance an n-node AVL
+tree after an insertion by doing one or two rotations and updating height information in O(log n)
+nodes. An algorithm for rebalancing after a deletion appeared several years later, in a technical re-
+port by a different author [Foster 1965]. Deletion rebalancing requires O(log n) rotations rather than
+O(1). In all existing forms of balanced trees, of which there are many (e.g., [Andersson 1993; Bayer
+1971; 1972; Guibas and Sedgewick 1978; Haeupler et al. 2009; 2015; Nievergelt and Reingold
+1973; Olivié 1982; Sedgewick 2008]), deletion is at least a little more complicated than insertion,
+although for some kinds of balanced search trees, notably red-black trees [Guibas and Sedgewick
+1978] and the recently introduced weak AVL (wavl) trees [Haeupler et al. 2009; 2015], rebalancing
+after a deletion can be done in O(1) rotations. Many textbooks describe algorithms for insertion but
+not deletion. If operations on the search tree occur concurrently, as in many database systems that
+use some form of B-tree as the underlying data structure, the synchronization necessary to do re-
+balancing on deletion reduces the available concurrency [Gray and Reuter 1993]. Several database
+systems, including Berkeley DB [Olson et al. 1999; 2000], use a B+ tree with nodes that are al-
+lowed to be underfilled, even empty. Nodes that become overfull as the result of an insertion are
+immediately split, but nodes that become underfull as the result of a deletion are allowed to remain
+underfull. Restructuring occurs only when a leaf becomes entirely empty, at which time the empty
+leaf and any connected empty internal nodes are deleted. Thus it was perhaps natural to try to avoid
+rebalancing on deletion in red-black trees. But disaster ensued.
+   A more precise version of our question is this: can one maintain a binary search tree so that
+search time is logarithmic but rebalancing is done only after insertions, not after deletions, and
+space remains linear in the number of undeleted nodes? To answer this question, we need to ask,
+“logarithmic in what parameter?” If there is no rebalancing after deletions (and none after accesses,
+which excludes self-adjusting structures such as splay trees [Sleator and Tarjan 1985]), then the
+tree can evolve to have arbitrary structure, which means that the search time can become Θ(n). But
+such an evolution may take many deletions, and it is still possible that the tree height, and hence the
+search time, could remain logarithmic in m, the number of insertions.
+   We show how to do this. We introduce a new kind of binary tree, the ravl tree (relaxed AVL
+tree), which is rebalanced only after insertions, not after deletions, and whose height is at most
+logφ m, where φ is the golden ratio. This bound implies that if the number of insertions and deletions
+is polynomial in the tree size n, the time per operation is O(log n). Our bound of logφ m is the
+same as that for an ordinary AVL tree without deletions. Indeed, without deletions a ravl tree is
+exactly an AVL tree. Furthermore, rebalancing affects nodes exponentially infrequently in their
+heights, which means that the amortized rebalancing time per insertion is O(1) and most of the
+rebalancing occurs deep in the tree. Mehlhorn and Tsakalidis [Mehlhorn and Tsakalidis 1986],
+proved the latter property for standard AVL trees if only insertions are allowed, not deletions. They
+also proved this property for “weak” B-trees with intermixed insertions and deletions, which include
+
+
+                                          ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                     0:3
+
+red-black trees as a special case. A result of Larsen and Fagerberg [Larsen and Fagerberg 1996] on
+relaxed balanced B-trees and a related result of Boyar, Fagerberg, and Larsen [Boyar et al. 1997] on
+chromatic trees, a type of relaxed balanced red-black tree, improve the constants of the Huddleston-
+Mehlhorn result for standard red-black trees. All these results use a multilevel credit argument. Our
+analyses use exponential potential functions, a tool that unifies and simplifies the multilevel credit
+method, and which we also used [Haeupler et al. 2009; 2015] to analyze wavl trees. Our results hold
+for bottom-up rebalancing; we extend them to top-down rebalancing with finite look-ahead as well.
+We obtain similar results for a relaxed version of red-black trees. Perhaps surprisingly, we obtain
+better constant factors for many of our bounds than the corresponding bounds for wavl trees. Thus
+not only does rebalancing after deletions complicate the implementation, it makes the time bounds
+worse.
+    Two of us [Sen and Tarjan 2009; 2014] have also used exponential potential functions to prove
+that B+ trees with underfilled nodes have similar properties, thus providing theoretical support for
+the use of such trees in actual database systems. Eliminating deletion rebalancing in binary trees is
+noticeably more challenging, as we discuss in Section 3.
+    The price we pay for our results on binary trees is that each node in the tree must store lg lg m + 1
+bits∗ of balance information (or lg lg n + O(1) with periodic rebuilding; see Section 8), rather than
+the one bit per node needed in AVL [Adel’son-Vel’skii and Landis 1962], wavl [Haeupler et al. 2009;
+2015], and red-black trees [Guibas and Sedgewick 1978]. Indeed, we provide evidence to suggest
+that O(1) bits suffice only if one does cascading swaps of items between nodes during deletions.
+(We leave rigorous resolution of this question as an open problem.) We conclude that the approach
+used by the unfortunate database provider to keep red-black trees balanced without rebalancing on
+deletion was theoretically doomed. That this would manifest itself in practice surprised us, since on
+random update sequences even unbalanced trees perform well, if the standard deletion algorithm is
+symmetrized [Culberson and Munro 1989].
+    The body of our paper consists of nine sections. Section 2 contains our tree terminology. Sec-
+tion 3 discusses candidate approaches for avoiding deletion rebalancing and motivates the approach
+we take. Section 4 defines ravl trees and describes bottom-up rebalancing after an insertion; the
+rebalancing algorithm is that of AVL trees, extended to ravl trees. Section 5 analyzes the amortized
+efficiency of bottom-up rebalancing. Section 6 describes and analyzes top-down rebalancing with
+fixed look-ahead, an alternative rebalancing method that improves concurrency. Section 7 applies
+the ideas in Sections 4-6 to red-black trees. Section 8 describes a way to rebuild the trees efficiently
+if they become very unbalanced. Section 9 examines other ways of handling insertions and deletions,
+and gives examples showing that natural methods that use one balance bit per node fail. Section 10
+explores the pros and cons of rebalancing after deletions. Section 11 contains final remarks.
+
+2. TREE TERMINOLOGY
+Our tree terminology is the same as in [Haeupler et al. 2009; 2015]. We repeat it here (almost
+verbatim) for completeness. A binary tree is an ordered tree in which each node x has a left child
+lef t(x) and a right child right(x), either or both of which may be missing. Missing nodes are
+external; non-missing nodes are internal. Each node is the parent of its children. We denote the
+parent of a node x by p(x). The root is the unique node with no parent. A leaf is a node with
+both children missing. The ancestor, respectively descendant relationship is the reflexive, transitive
+closure of the parent, respectively child relationship. If x is a node, its left, respectively right subtree
+is the binary tree containing all descendants of lef t(x), respectively right(x). The left, respectively
+right spine of a binary tree is the path from the root down through left, respectively right children
+to a missing node. The height h(x) of a node x is defined recursively by h(x) = 0 if x is a leaf,
+h(x) = max{h(lef t(x)), h(right(x))} + 1 otherwise. The height h of a tree is the height of its
+root.
+
+    ∗ We denote by lg the base-two logarithm.
+
+
+
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:4                                                                    S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+   We are most interested in binary trees as search trees. A binary search tree stores a set of items,
+each of which has a key selected from a totally ordered universe. We shall assume that each item
+has a distinct key; if not, we break ties by item identifier. In an internal binary search tree, each
+node contains an item, and the items are arranged in symmetric order: the key of the item in a node
+x is greater, respectively less than those of all items in its left, respectively right subtree. Given
+such a tree and a key, we can search for the item having that key by comparing the key with that
+of the item in the root. If they are equal, we have found the desired item. If the search key is less,
+respectively greater than that of the root, we search recursively in the left, respectively right subtree
+of the root. Each key comparison is a step of the search; the current node is the one whose item’s
+key is compared with the search key. Eventually the search either locates the desired item or reaches
+a missing node, the left or right child of the last node reached by the search in the tree.
+   To insert a new item into such a tree, we first do a search on its key. When the search reaches a
+missing node, we replace this node with a node containing the new item. Deletion is a little harder.
+First we find the node x containing the item to be deleted by doing a search on its key. If neither
+child of x is missing, we find the node y after x in symmetric order, by starting at the right child of
+x and walking down through left children until reaching a node with a missing left child. This node
+is y. A symmetric alternative is to find the node y before x in symmetric order, by starting at the left
+child of x and walking down through right children until reaching a node with a missing child; this
+node is y. Having found a node y next to x in symmetric order, we swap the items in x and y. Now
+the node containing the item to be deleted is either a leaf or has one missing child. In the former
+case, we replace it by a missing node; in the latter case, we replace it by its non-missing child. If
+each node has pointers to its children, an access, insertion, or deletion takes O(h + 1) time in the
+worst case, where h is the tree height.
+   An alternative kind of search tree is an external binary search tree: the external nodes contain
+the items, the internal nodes contain keys but no items, and all the keys are in symmetric order.
+Henceforth, unless we explicitly state otherwise, by a binary tree we mean an internal binary search
+tree. Our results extend to external binary search trees and to other binary tree data structures. We
+denote by n, m, and d, respectively the current number of nodes, the number of insertions, and the
+number of deletions in a sequence of intermixed searches, insertions, and deletions that starts with
+an empty tree. These parameters are related: n = m − d.
+   For purposes of deriving time bounds, we assume a pointer-machine [Tarjan 1979] implementa-
+tion, with each node occupying one machine cell and having pointers to its left and right children,
+and possibly to its parent. In addition, each node has an integer rank (see Section 4) and, if the tree
+is a search tree, a key. Creating a new node, following a pointer, comparing two keys or ranks, or
+adding a constant to a rank takes constant time.
+
+
+3. DESIGN CANDIDATES
+Our goal is to design binary search trees that avoid rebalancing on deletion yet maintain an O(log m)
+height bound at all times and use space proportional to the number of undeleted items. In this
+section, we discuss some natural candidate solutions and their drawbacks, motivating our approach
+in the subsequent sections.
+   A simple way to avoid deletion rebalancing is to do deletions lazily, via the “tombstone” method:
+in an existing form of balanced tree, replace the deletion algorithm by the following: to delete an
+item, simply remove it from its node but leave its key, so that searching remains possible. If a new
+item with the same key is later inserted, store it in the node containing its key. The tombstone
+method eliminates not only rebalancing during deletions but also swapping of items between nodes.
+In analyzing the method, one can ignore deletions and consider trees built only by insertions. This
+immediately yields the same height bound as the underlying tree, except that n is replaced by m.
+For example, applying the tombstone method to AVL trees with bottom-up rebalancing on insertion
+yields a height bound of logφ m. A similar application to red-black trees yields a height bound of
+2 lg m. In fact, all the results we present in this paper can be adapted to the tombstone method.
+
+                                           ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                               0:5
+
+   A significant drawback of the tombstone method is that it requires key comparisons to remain
+valid after items are deleted. There are important applications in computational geometry where
+this is not the case. A notable example is in the use of a persistent search tree to solve the planar
+point location problem [Sarnak and Tarjan 1986]. In this application, each line segment in the pla-
+nar subdivision becomes an item in a persistent search tree, inserted at a time corresponding to the
+smaller of the x-coordinates of the two endpoints and deleted at a time corresponding to the larger
+of the x-coordinates of the two endpoints. During a query, a given query point is compared against
+various line segments stored in the tree, to determine whether it is above or below each line seg-
+ment. If the point has x-coordinate larger than any point on the line segment, such a comparison is
+meaningless. In this application the tombstone method fails completely.
+   Another drawback of the tombstone method is that if the number of deletions approaches the
+number of insertions, the space required by the tree can become superlinear in the number of items.
+One can keep the space usage linear by removing empty nodes when possible: during a deletion,
+delete the item but not its key if it is in a node with two non-null children, or otherwise delete
+the node containing the item and replace this node by its non-empty child if it has one [Bronson
+et al. 2010]. This method ensures that every empty node has two non-empty children, so the number
+of nodes is at most 2n − 1. This method fails badly when applied to red-black trees however: in
+Section 9, we construct sequences of O(n) intermixed insertions and deletions that produce trees
+of height Ω(n). That is, only a linear number of updates, not a superpolynomial number, suffice
+to make the tree very unbalanced. Similar counterexamples exist for other kinds of balanced trees,
+such as AVL and wavl trees.
+   An alternative way to keep the space linear when using the tombstone method is to periodically
+rebuild the tree. Such rebuilding complicates the implementation, and it must be done each time the
+ratio of deletions to insertions exceeds an appropriately chosen constant. In contrast, our solution
+needs only one node per item at all times, and rebuilding (see Section 8) is only needed if the
+number of updates becomes super-polynomial in the number of items, and then only if one wants to
+guarantee a worst-case access time of O(log n) instead of O(log m).
+   An even more relaxed way to do rebalancing is to avoid rebalancing during both insertions and
+deletions but maintain a separate thread (or threads, in a multi-threaded implementation) that does
+rebalancing. This idea has been studied by many authors (e.g., [Hanke et al. 1997; Kessels 1983;
+Nurmi et al. 1987; Nurmi and Soisalon-Soininen 1996; Larsen and Fagerberg 1996; Boyar et al.
+1997]), who call their data structures “relaxed balanced trees” of various kinds. These papers derive
+bounds on the total number of rebalancing steps that must be done to restore the balance of the
+tree, as a function of the number of updates (insertions and deletions). In the best of these results,
+e.g. [Larsen and Fagerberg 1996; Boyar et al. 1997] the number of rebalancing steps is linear in the
+number of insertions, and the number of steps at a given tree height is exponentially infrequent in
+the height. The problem with this approach is that a sequence of n insertions of items in increasing
+order will produce a linear tree, in which searches will be extremely expensive until the balancing
+process has a chance to do its work. Furthermore, it is still necessary to do deletion rebalancing; it
+is just delayed. Our goal, on the other hand, is to completely avoid deletion rebalancing, both eager
+and lazy, while still maintaining, at all times, a logarithmic bound on search time.
+   These approaches fail to maintain O(log m) tree height because they rely on standard inser-
+tion rebalancing algorithms and, more importantly, on standard ways to store balance information.
+Specifically, they store only O(1) balance bits per node (encoding, for example, a node color, node
+type, or height difference), which means they are unable to retain enough information about the
+structure of the tree after sufficiently many deletions have occurred. The original tombstone method
+evades this problem at the cost of space, by retaining every node ever inserted. Is there a solution
+that uses only n nodes? This question is important, because practitioners that wish to avoid deletion
+rebalancing typically do so by taking an existing balanced tree implementation and removing the
+deletion rebalancing code. This is precisely what the database provider mentioned in the introduc-
+tion did, to disastrous effect. In the next two sections, we develop a method that stores sufficient
+
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:6                                                                               S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+balance information in each node to guarantee O(log m) tree height while doing deletions exactly
+as described in Section 2, with no rebalancing.
+   To understand our method, it is useful to compare B-trees with binary trees. In a B-tree, every leaf
+has the same depth. One can avoid rebalancing on deletion by allowing nodes to become underfilled,
+but a deletion that empties a leaf can trigger a cascade of deletions of empty nodes along a path up
+toward the root. In a binary tree, no nodes are empty, but nodes can have different depths. We store
+with each node a non-negative integer rank that is an estimate of the height of the node. Ranks
+provide a “scaffold” that guarantees a logarithmic height bound, replacing the leaf depth invariant
+in B-trees.
+4. RELAXED AVL TREES
+We define balance in a binary tree by giving each node a rank and imposing a rank rule that locally
+constrains ranks and implies a bound on height as a function of rank. For a general discussion of this
+approach, which captures all forms of height balance of which we are aware, see [Haeupler et al.
+2015]. Here we review the idea, give a few examples, and use it to define a new class of trees.
+   A ranked binary tree is a binary tree in which each node x has a non-negative integer rank r(x).
+We adopt the convention that missing nodes have rank −1. The rank difference of a node x with
+parent p(x) is r(p(x)) − r(x). An i-child is a node of rank difference i; an i, j-node is a node whose
+children have rank differences i and j. The latter definition does not distinguish between left and
+right children.
+   To see the impact of these definitions, consider a ranked binary tree in which every node is a
+1,1-node. Such a tree must be a perfect binary tree with the rank of each node equal to its height. To
+maintain balance, we want to keep the nodes as close to being 1,1-nodes as possible.
+   We can define AVL trees in this framework as ranked binary trees in which each node is a 1,1-
+node or a 1,2-node. In such a tree, ranks equal heights. (This is true in any ranked binary tree in
+which all rank differences are positive and each node has a 1-child.) We can define red-black trees
+as ranked binary trees in which all rank differences are 0 or 1 and a 0-child does not itself have a
+0-child. To interpret such a tree as a red-black tree, color each 1-child black and each 0-child red.
+The rank of a node is its “black height”, the number of black nodes on any path from the node to a
+missing node, not counting the node itself. The rank of a node is at most its height and at least the
+floor of half its height.
+   To allow deletion without rebalancing, we need a more relaxed rank rule. A relaxed AVL tree,
+or ravl† tree, is a ranked binary tree that obeys the following rank rule: every rank difference is
+positive.
+   L EMMA 4.1. In a ravl tree, each node has height no greater than its rank.
+   P ROOF. Every node has rank greater than the maximum of the ranks of its children. Since miss-
+ing nodes have rank −1, leaves have non-negative rank. The lemma follows by induction on the
+node rank.
+   Any binary tree can be made into a ravl tree by a suitable choice of node ranks; indeed, there
+are always many ways to do it. The efficiency of ravl trees comes not from their static structure
+but from the implementation of insertions and deletions and how this affects the tree structure over
+time. Specifically, we do insertions and deletions in a way that guarantees that the root rank, and
+hence the tree height, is logarithmic in the number of updates.
+   We consider ravl trees built from the empty tree by a sequence of intermixed insertions of leaves
+and deletions of arbitrary nodes. A new leaf x replaces a missing node and has a rank of zero. (See
+Figure 1.) If x has a parent p(x) of rank 0 before the insertion, x is a 0-child and violates the rank
+rule (see Figure 1c). We restore the rank rule by promoting and demoting nodes and doing rotations.
+A promotion increases the rank of a node by one, a demotion decreases it by one. A rotation at a left
+
+      † One meaning of “ravel” is “to undo the intricacies of”. Ravl trees undo the intricacies of deletions.
+
+
+
+
+                                                      ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                                       0:7
+
+                                                                  1 y                    0 y
+
+                                          0 x                 0 x                   0 x
+
+
+                                             (a)                      (b)                  (c)
+
+Fig. 1. Insertion of a new leaf x in a ravl tree. (a) Node x is the root: no rebalancing needed. (b) Parent y of x has positive
+rank. No rebalancing needed. (c) Parent y of x has rank 0. Rebalancing needed: sibling of x is a missing node of rank -1 and
+rank difference 1.
+
+
+                                   y                                                             x
+                                                         (right) rotation at x
+                        x                                                                                y
+
+                                             C           (left) rotation at y              A
+
+                A              B                                                                     B        C
+
+                                           Fig. 2. Rotation. Triangles denote subtrees.
+
+child x with parent y makes y the right child of x while preserving symmetric order; a rotation at a
+right child is symmetric. (See Figure 2.) The insertion algorithm starts at the inserted leaf and walks
+up the tree through ancestors, promoting each one, until the current node is not a 0-child, or it is a
+0-child and its sibling is not a 1-child. In the former case the rank invariant is restored; in the latter
+case it can be restored by doing one or two rotations and at most one promotion and two demotions.
+In details, the insertion algorithm is as follows (see Figure 3):
+
+Insertion rebalancing:
+While p(x) 6= null and p(x) is a 0,1-node, repeat the following step:
+     Promote: Promote p(x); x ← p(x).
+Now either the rank rule holds or x is a 0-child whose sibling is an i-child with i > 1. In the latter
+case, proceed as follows. Assume x is the left child of y = p(x); the other possibility is symmetric.
+Let z be the right child of x; y may be missing. Do the appropriate one of the following two steps:
+     Rotate: If node z is missing or a 2-child, rotate at x and demote y.
+     Double Rotate: Otherwise (node z is a 1-child), rotate at z twice, making x its left child and y
+     its right child; promote z and demote x and y.
+
+
+
+   During rebalancing, there is exactly one violation of the rank rule: current node x is a 0-child. A
+rotate or double rotate step restores the rank rule and terminates rebalancing, as does a promote step
+that promotes the root or results in the new x not being a 0-child. In the first rebalancing step, x is a
+leaf of rank zero and hence a 1,1-node; in each rebalancing step after the first, x is a 1,2-node. The
+rank of a rebalancing step is the rank of p(x) just before the step. Each step has rank one higher
+than that of the previous step. The rank of an insertion is the rank of the last rebalancing step, or
+zero if there is no rebalancing.
+   To delete an item in a leaf in a ravl tree, we replace the leaf by a missing node. To delete an item
+in a node with one child, we remove the node and replace it by its child; this child becomes the
+left or right child of the old parent of the deleted node if the deleted node was a left or right child,
+respectively. To delete an item in a node with two children, we swap the item with its symmetric-
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:8                                                                                  S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+
+
+                                                     k y 1                                                  k+1 y 0
+
+      Promote                           k x 0                 k-1       1                        k x 1                k-1       2
+
+                                            A                       B                                A                      B
+
+
+
+                                                     k y 1                                                   k x 1
+
+      Rotate                            k x 0                   j       2                   k-1         1            k-1 y 1
+
+                              k-1       1   k-2 z 2                 C                                A         k-2 z 1          j           1
+
+                                    A                B                                                            B                     C
+
+
+
+                                                     k y 1                                                   k z 1
+
+      Double Rotate                     k x 0                   j       2                    k-1 x 1                   k-1 y 1
+
+                              k-2       2       k-1 z 1             D                  k-2       1                                  j       1
+
+                                    A                                                        A                B    C                    D
+
+                                                 B       C
+
+Fig. 3. Bottom-up rebalancing after an insertion in a ravl tree. Values to the left of nodes are ranks, those to the right of
+nodes are rank differences. A promote makes the parent y of the old current node x into the new current node. In the rotate
+and double rotate cases, j ≤ k − 2, so the right child of y has rank difference at least 2 before the step, at least 1 after the
+step.
+
+
+
+
+order predecessor or successor, thereby moving it to a leaf or a node with one child, and proceed as
+above. In a deletion, no rotations occur and no ranks change.
+   As long as there are no deletions, all nodes remain 1,1- or 1,2-nodes (except in the middle of
+rebalancing), so the tree remains an AVL tree. Indeed, the rebalancing algorithm is just the standard
+bottom-up rebalancing algorithm for AVL trees. All the results we shall derive for bottom-up rebal-
+ancing hold as a special case for AVL trees built by insertions only. Deletions can create nodes of
+arbitrary positive rank difference, however, and thus can create trees that are not AVL trees. Indeed,
+deletions can produce trees of arbitrary structure.
+   We represent a ravl tree by storing with each node its rank and pointers to its left and right
+children. An alternative is to store ranks in difference form: the root stores its rank, and every child
+stores its rank difference. This only works if access to the tree is always via the root, and it requires
+computing node ranks during an insertion by summing rank differences along the path from the root
+to the new leaf. In an AVL tree, rank differences are one or two, so one bit per node suffices to store
+rank differences. But in a ravl tree, rank differences can become arbitrarily large, and storing ranks
+in difference form offers no advantages and requires changing at least one extra balance field during
+each insertion step. Thus we prefer to store ranks explicitly.
+   The rebalancing process after an insertion needs access to the affected nodes on the search path.
+There are several ways to provide such access, as we have discussed previously [Haeupler et al.
+2015]. One way is to add parent pointers, which requires three pointers per node instead of two and
+increases the cost of rotations. By using an alternative representation that saves space but costs time,
+this can be reduced to two pointers per node [Fredman et al. 1986].
+
+                                                         ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                   0:9
+
+   Instead of adding or modifying pointers to support parental access, we can store the search path
+during the search from the root for the insertion position, either in a separate stack or by reversing
+child pointers along the path.
+   A third method is to maintain a safe node during the search. This node is the topmost node that
+will be affected by rebalancing. Metzger [Metzger 1975] and Samadi [Samadi 1976] used safe nodes
+to limit the amount of locking in a concurrent B-tree. We apply this idea to binary trees and use it
+for a slightly different purpose: to avoid the need for parent pointers or a stack to do rebalancing.
+During an insertion, the safe node is either the root or the parent of the nearest ancestor of the current
+node that is not a 1-child and not a 1,1-node. A simpler alternative is to define the safe node to be
+the parent of the nearest ancestor of the current node that is not a 1,1-node, or the root if there is no
+such node. The latter definition gives the same node as the former, or its parent. We initialize the
+safe node to be the root and change it to the parent of the current node each time the current node
+is not a 1,1-node (or not a 1-child, if we are using the former definition). Once the search reaches
+the bottom of the tree, we do rebalancing steps (modified appropriately) top-down from the safe
+node to the new leaf. One advantage of this method is that it extends naturally to support top-down
+rebalancing with fixed look-ahead, as we discuss in Section 6.
+
+5. ANALYSIS OF BOTTOM-UP REBALANCING
+A search in a ravl tree takes O(h + 1) time, where h is the tree height. A deletion takes O(h + 1)
+time to find the item to be deleted and the node containing its replacement, if any, plus O(1) time to
+do the deletion. An insertion takes O(h + 1) time to find the location of the new leaf, plus at most
+h + 1 rebalancing steps, each of which takes O(1) time. At most one of these steps is a single or
+double rotation; the rest are promotions. All these bounds are worst-case.
+   Our most important result is that a ravl tree built from an empty tree has height logarithmic in
+the number of insertions, even if deletions are intermixed arbitrarily. Recall the definition of the
+Fibonacci √numbers Fk and of the golden ratio φ: F0 = 0, F1 = 1, Fk = Fk−1 + Fk−2 for k > 1;
+φ = (1 + 5)/2. The inequality Fk+2 ≥ φk is well-known [Knuth 1973].
+   T HEOREM 5.1. If a ravl tree of height h is built from an empty tree by a sequence of m inser-
+tions with bottom-up rebalancing intermixed with arbitrary deletions, m ≥ Fh+3 − 1 ≥ φh . Thus
+h ≤ logφ m.
+    P ROOF. We use an exponential potential function of the kind first used by us to analyze wavl
+trees [Haeupler et al. 2009; 2015]. So that potentials are defined even in the middle of an insertion,
+we give potentials to nodes that violate the rank invariant (nodes with a 0-child) as well as to those
+that do not.
+   Define the potential of a node of rank k to be Fk+2 if it is a 0,1-node, Fk+1 if it is a 0, j-node
+with j > 1, Fk if it is a 1,1-node, and 0 otherwise. We define the potential of a tree to be the sum of
+its node potentials. We call this the Fibonacci potential.
+   A deletion cannot increase the potential. We show by a case analysis that inserting a new leaf x
+increases the tree potential by at most 1 (see Figure 1), since x is a 1,1-node of rank 0 and hence has
+potential F0 = 0. If x has a parent y, the potential of y is non-zero after x is inserted only if y was
+a 1,2-node and is now a 1,1-node (y has rank 1 and a child other than x) or y was a 1,1-node and is
+now a 0,1-node (y has rank 0). In each case the potential of y increases from 0 to F1 = 1. No other
+node potential can change.
+   Similarly, we show by a case analysis that no rebalancing step increases the tree potential, and that
+a promotion step of rank k that promotes the root decreases the tree potential by Fk+2 . Consider
+a promotion step of rank k. (See Figure 3.) Such a step changes the node potentials only of the
+promoted node y and possibly of its parent if it has one. The promotion converts y from a 0,1-node
+to a 1,2-node, decreasing its potential from Fk+2 to 0. Thus if y is the root, the step decreases the
+tree potential by Fk+2 . Suppose y has a parent p(y). The promotion of y increases the potential of
+p(y) only if it converts p(y) from a 1,2-node to a 1,1-node or from a 1,1-node to a 0,1-node. In
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:10                                                                    S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+the former case the potential of p(y) increases from 0 to Fk+2 , since p(y) has rank k + 2; in the
+latter from Fk+1 to Fk+3 , or an increase of Fk+2 , since p(y) has rank k + 1. In both cases the tree
+potential is unchanged.
+   In a rotate step (see Figure 3), nodes x and y have potentials 0 and Fk+1 = Fk−1 + Fk , re-
+spectively, before the step, and Fk and at most Fk−1 , respectively, after. No other node potentials
+change. In a double rotate step, if node z is a 1,1-node, then nodes x, y, and z have potentials 0,
+Fk+1 = Fk1 + Fk , and Fk−1 , respectively, before the step, and Fk−1 , Fk−1 , and Fk after. If node z
+is not a 1,1-node, then nodes x, y, and z have potentials 0, Fk+1 = Fk−1 + Fk , and 0, respectively,
+before the step. After the step, z has potential Fk , and at most one of x and y can be a 1,1-node, so
+one has potential at most Fk−1 and the other has potential 0. No other node potentials change. In
+each case the step does not increase the tree potential.
+   The potential of the initial (empty) tree is 0. The argument above shows that the potential can
+only increase, by at most 1, each time a new leaf is inserted into a non-empty tree. Thus the total
+increase in potential caused by a sequence of m insertions into an empty tree, intermixed with
+arbitrary deletions, is at most m − 1. If the rank of the root is r, there was a terminal promote step
+of rank i that promoted the root, for each i from 0 to r − 1, inclusive. The total decrease in potential
+                                 Pr+1
+caused by these promotions is i=2 Fi = Fr+3 − 2. Since the potential is always non-negative,
+m − 1 ≥ Fr+3 − 2. By Lemma 4.1, h ≤ r. Thus m ≥ Fh+3 − 1 ≥ Fh+2 ≥ φh .
+    Remark: One can also prove Theorem 5.1 using an alternative definition of potential. Each node
+in the tree has a positive integer count. The potential of a node is the sum of the counts of all its
+descendants, including itself. We assign counts as follows: each new leaf gets a count of 1. When
+a leaf is deleted, its count is added to that of its parent, if it has a parent; when a unary node is
+deleted, its count is added to that of its child. It follows by a case analysis like that in the proof of
+Theorem 5.1 that the potential of a node x is at least Fk+3 − 1, where k = max{r(x), r(p(x)) − 2},
+with r(null) = 0. This implies m ≥ Fh+3 − 1. This argument was suggested by an anonymous
+referee of a previous version of this paper; we also used an analogous argument to prove a similar
+result for wavl trees [Haeupler et al. 2009; 2015]. We prefer the first proof above: we think it is a
+little simpler, it uses a potential that depends only on the structure of the tree, not its history, and the
+proof extends naturally to give inverse-exponential bounds on the amortized number of rebalancing
+steps, as we show below.
+    Although the worst-case insertion rebalancing time is O(log m), we can obtain much better amor-
+tized bounds. Indeed, we can obtain the same amortized bounds as for AVL trees built by insertions,
+with no deletions. To obtain better bounds for rebalancing, we use the potential method of amortized
+analysis [Tarjan 1985a]. As in the proof of Theorem 5.1, we assign a non-negative potential to each
+state of the data structure, zero for an empty structure. We define the amortized cost of an operation
+to be its actual cost plus the net increase in potential it causes. Then, for any sequence of operations
+on an initially empty structure, the total amortized cost of the operations is an upper bound on their
+total actual cost.
+   T HEOREM 5.2. Starting with an empty ravl tree, a sequence of m insertions with bottom-up
+rebalancing intermixed with arbitrary deletions does at most 3m promote steps.
+    P ROOF. Let the potential of a node be one if it is a 0,1-node or a 1,1-node of positive rank, and
+zero otherwise. Let the potential of a tree be the sum of the potentials of its nodes. Define the cost of
+an insertion to be the number of promote steps done during rebalancing. A deletion cannot increase
+the potential since it cannot create a 0,1-node or a 1,1-node. Consider an insertion. Adding a new
+leaf increases the potential by at most one, by making the parent of the new leaf into a 0,1-node or a
+1,1-node of positive rank. A non-terminal promote step decreases the potential by one: the promoted
+node changes from a 0,1-node to a 1,2-node; the potential of its parent does not change. Thus such
+a step has an amortized cost of zero. This is also true of a promote step that promotes the root. A
+terminal promote step that promotes a node other than the root can leave the potential unchanged
+(if the parent of the promoted node becomes a 1,1-node), and thus has an amortized cost of one.
+
+                                            ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                 0:11
+
+A rotate or double rotate step can increase the potential by at most two, by creating two 1,1-nodes
+of positive rank. We conclude that the amortized cost of an insertion is at most three: one for the
+increase in potential caused by inserting a new leaf, plus zero for each non-terminal promote step,
+plus at most two for the last rebalancing step.
+  By truncating the Fibonacci potential, we can prove the stronger result that rebalancing steps of
+rank k occur exponentially infrequently in k.
+   T HEOREM 5.3. Starting from an initially empty tree, a sequence of m insertions with bottom-
+up rebalancing intermixed with arbitrary deletions does at most (m − 1)/Fk ≤ (m − 1)/φk−2
+rebalancing steps of rank k, for any k > 0.
+   P ROOF. Fix k > 0. Let the potential of a node be its Fibonacci potential if its rank is less than k,
+Fk+1 if its rank is k, it has a 0-child, and it is not a 0,1-node, and zero otherwise. Let the potential
+of a tree be the sum of the potentials of its nodes. The effect of a rebalancing step on the potential is
+the same as in the proof of Theorem 5.1, with the following exceptions. A promote step of rank k or
+higher does not change the potential. A promote step of rank i < k that promotes a node y = p(x)
+whose parent p(y) has rank at least k decreases the potential by Fi+2 unless j = k − 1, p(y) has
+rank k, and p(y) is not a 1,1-node before the step, in which case it does not change the potential.
+A rotate or double rotate of rank greater than k does not change the potential. A rotate or double
+rotate of rank k decreases the potential by at least Fk+1 − Fk−1 = Fk . Thus no rebalancing step
+increases the potential. Furthermore a rebalancing step of rank k either decreases the potential by at
+least Fk (if it is a rotate or double rotate) or is preceded by a promote step of rank k − 1 that reduces
+the potential by Fk+1 . Thus the potential decreases by at least Fk for every rebalancing step of rank
+k.
+
+6. TOP-DOWN REBALANCING
+Rather than rebalance bottom-up after a new leaf is added, we can rebalance top-down before the
+leaf is added. Indeed, the safe node method described at the end of Section 4 does rebalancing
+top-down once it reaches the bottom of the tree. We can modify this method to rebalance more
+eagerly and thereby keep the look-ahead fixed; that is, keep the safe node within O(1) nodes of
+the current node of the search. This improves the worst-case concurrency of the tree, because the
+critical section of an insertion encompasses only O(1) nodes at any time. The idea is to force a
+reset of the safe node after a sufficiently large number of search steps that do not do a reset. A reset
+occurs at the next search step unless the current node is a 1,1-node. If the current node is a 1,1-node
+but not a 1-child, or both it and its parent are 1,1-nodes, we can force a reset by promoting the
+current node and rebalancing from the safe node top-down. This gives us the following top-down
+insertion algorithm, which we describe in complete detail to make its operation crystal-clear. If the
+tree is empty, create a new node of rank zero containing the item to be inserted and make it the root,
+completing the insertion. Otherwise, initialize w and x to be the root, and promote the root if it is
+1,1. This establishes the invariant for the main loop of the algorithm: x is a non-null node that is not
+a 1,1-node; w is the parent of x unless x is the root, in which case w = x. Repeat the following step
+until the item is inserted (see Figure 4).
+
+Top-down insertion step:
+   From x, take one step down the search path, to y. If y is null, replace it by a new node of rank zero
+containing the item to be inserted, completing the insertion (Figure 4a): the new node cannot be a
+0-child since x was not a 1,1-node and hence has positive rank. In the remaining cases, y is not null.
+If y is not a 1,1-node, replace w by x and x by y, completing the step (Figure 4b). If y is a 1,1-node
+but not a 1-child, promote y and replace w by x and x by y, completing the step (Figure 4c). In the
+remaining cases, y is a 1,1-node and a 1-child. From y take one step down the search path, to z. If z
+is null, replace it by a new node of rank zero containing the item to be inserted. Since y is a 1,1-node,
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:12                                                                                                S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+                             w                        w                          w                        w                                 w
+
+
+                        1 x                          x                   w' x                            x                                 x   w'
+
+                         y                                                 x' y                     k y 2                           k+1 y      x'
+
+
+                                           (a)                                 (b)                                      (c)
+
+
+                  w                                            w                                          w                                                       w
+
+
+                1 x                                        1 y                                        1 x                                                     1
+
+       0 y                                   0                          0 x            0 y                                                      0 y                   0 x
+
+z                                                                                               z
+
+
+                                  (d)                                                                                                 (e)
+
+                   w                                           w                                                           w
+
+
+                   x                                           x                                                      w' y
+
+                                                     y 1                       2                    x' z 1                              x 1
+               w' y
+                                           z 1                 1           B                                                         1                   1
+               x' z
+                                                           A                                                                     A                   B
+
+
+                  (f)                                                                   (g)
+
+
+                                                 w                                                                w
+
+
+                                                 x                                                        w' z
+
+                                 y 1                           2                                   y 1                          x 1
+
+                             1             z 1             D                                1                     2          2                  1
+
+                        A              1             1                                  A                     B        C                    D
+
+                                  B              C
+
+
+                                                                           (h)
+
+Fig. 4. Top-down rebalancing step during an insertion in a ravl tree. Node x is not a 1,1-node. Node y is the child of x
+along the search path. Ranks are to the left of nodes, rank differences to the right. (a) Node y is null: replace y by a new node
+and stop. (b) Node y is not a 1,1-node: replace w by x and x by y. (c) Node y is a 1,1-node but not a 1-child: promote y,
+replace w by x and x by y, and stop. In the remaining cases y is a 1,1-node and a 1-child, and z is the child of y along the
+search path. (d) Node z is null and y and z are both left or both right children: replace z by a new node, do a rotate step, and
+stop. (e) Node z is null and exactly one of y and z is a left child: replace z by a new node, do a double rotate step, and stop.
+(f) Node z is not null and is not a 1,1-node: replace w by y and x by z. In the remaining cases z is not null and is a 1,1-node.
+(g) Nodes y and z are both left or both right children: promote y and z, do a rotate step, and replace w by y and x by z. (h)
+Exactly one of y and z is a left child: promote y and z, do a double rotate step, replace w by z, and replace x by the child of
+z along the search path.
+
+
+it has rank 0; since y is a 1-child and x is not a 1,1-node, x is a 1,2-node of rank 1. If the new node
+
+                                                                   ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                  0:13
+
+and y are both left children, or, symmetrically, both right children, do a rotate step, completing the
+insertion (Figure 4d). If the new node is a right child and y a left child, or symmetrically if the new
+node is a left child and y a right child, do a double rotate step, completing the insertion (Figure 4e).
+The remaining possibility is z non-null. If z is not a 1,1-node, replace w by y and x by z (Figure 4f).
+Otherwise, promote y and z, making y a 0-child, and do a rotate (Figure 4g) or double rotate step
+(Figure 4h) to make all rank differences positive. If a single rotation is done, replace w by y and x
+by z. If a double rotation is done, replace w by z and x by the new node one step down from z along
+the search path (either y or x). This completes the step.
+
+
+   If the first insertion step does a single or double rotation, it changes the root. Subsequent steps do
+not affect the root and have w 6= x. Each insertion step either finishes the insertion or replaces x by
+a node of smaller rank, so the number of insertion steps is at most one plus the rank of the root. We
+define the rank of an insertion step to be the rank of y just before the step, or zero if y is null. Every
+insertion step of positive rank is non-terminal, since if y is not a 1,1-node the step ends by replacing
+w by x and x by y, and if y is a 1,1-node, z is non-null. We call an insertion step rebalancing if it is
+terminal or it does at least one promotion or rotation; the non-rebalancing steps merely traverse the
+search path without changing the tree.
+   We can show by a simple potential argument that the total number of rebalancing steps is O(m).
+Let the potential of a 1,1-node be 2, that of a 1,i-node with i > 0 be 1, that of any other node
+be 0, and that of a tree be the sum of the potentials of its nodes. A deletion does not increase the
+potential, nor does promoting the root at the beginning of an insertion. An insertion into an empty
+tree increases the potential by 2. An examination of the cases of an insertion step shows that a
+terminal step increases the potential by at most 3, and a non-terminal rebalancing step decreases it
+by at least 1. This gives us the following theorem:
+   T HEOREM 6.1. Starting with an empty ravl tree, a sequence of m top-down insertions inter-
+mixed with arbitrary deletions takes at most 4m rebalancing steps.
+ To obtain analogues of Theorems 5.1 and 5.3, we use an exponential potential function that grows
+more slowly than the Fibonacci potential.
+  T HEOREM 6.2. A ravl tree built from an empty tree by a sequence of m > 2 top-down insertions
+and intermixed deletions has height at most 2 lg m.
+    P ROOF. Let the potential of a node of rank k be 2(k+1)/2 if it is a 1,1-node, 2(k−1)/2 if it is a
+1,i-node with i > 1, and 0 otherwise. Let the potential of a tree be the sum of the potentials of
+its nodes. Deletions do not increase the potential, nor does promoting the root at the beginning of
+an insertion. An insertion into an empty tree increases the potential by 21/2 . Consider a terminal
+insertion step that does not do a rotation (Figure 4a). The new node has potential 21/2 . The only
+other node whose potential can change is the parent y of the new node. The potential of y increases
+only if y has rank 1, in which case y changes from a 1,2-node to a 1,1-node and increases in potential
+by 2. Thus the total increase is at most 3 · 21/2 . In a terminal rotate or double rotate insertion step
+(Figures 4d and 4e), the total potential of nodes x and y before the step is 1 + 21/2 , and the total
+potential of x, y, and the new node after the step is 2 · 21/2 + 2, for a net increase of 1 + 21/2 . It
+follows that m insertions increase the potential by at most (21/2 + 1)(m − 1) + 21/2 , not counting
+the effect of non-terminal restructuring steps.
+   We show by a case analysis that a non-terminal restructuring insertion step does not increase the
+potential. Consider such a step of rank k. If the step merely promotes y (Figure 4c), the potential
+of y decreases from 2(k+1)/2 to 0. The parent x of y increases in potential only if it changes from
+a 2,2-node to a 1,2-node, increasing its potential from 0 to 2(k+1)/2 , or it changes from a 1,2-
+node to a 1,1-node, increasing its potential from 2(k+1)/2 to 2 · 2(k+1)/2 . In either case the total
+potential change of x and y is 0. In a non-terminal rotate step (Figure 4g), only x, y, and z can
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:14                                                                    S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+change in potential. Their ranks are k + 1, k, and k − 1 before the step and k, k + 1, and k after
+the step, respectively. The potential of node x increases from 2k/2 to 2(k+1)/2 , that of y increases
+from 2(k+1)/2 to 2 · 2k/2 , and that of z decreases from 2k/2 to 0, for a total potential increase of
+2(k+1)/2 + 2 · 2k/2 − 2k/2 − 2(k+1)/2 − 2k/2 = 0. Similarly, in a non-terminal double rotate step
+(Figure 4h), only x, y, and z change in potential, from 2k/2 to 2(k−1)/2 , from 2(k+1)/2 to 2(k−1)/2 ,
+and from 2k/2 to 2 · 2k/2 , respectively, for a total potential increase of 2 · 2(k−1)/2 + 2 · 2k/2 − 2k/2 −
+2(k+1)/2 − 2k/2 = 0.
+   If the root has rank k and it is promoted at the beginning of an insertion, the potential decreases
+by 2(k+1)/2 . For the root to have height h, it must have rank at least h, which means that the root
+                                                        Ph−1
+promotions have decreased the potential by at least i=0 2(i+1)/2 = (2(h+1)/2 − 21/2 )/(21/2 − 1).
+Since the total decrease is at most (21/2 +1)(m−1)+21/2 , this gives 2h/2 ≤ (m−1)/21/2 +21/2 ≤
+m if m > 2.
+   T HEOREM 6.3. Starting from an empty√    tree, a sequence of m top-down insertions intermixed
+with arbitrary deletions does at most ( 2 + 1)m/2k/2 restructuring rebalancing steps of rank k.
+   P ROOF. The lemma is immediate for k = 0. Fix k > 0. Redefine the exponential potential
+function used to prove Theorem 6.2 to be zero for all nodes of rank greater than k. It is still true that
+no non-terminal
+      √           insertion step increases the potential, and that each terminal step increases it by at
+most 2 + 1. A restructuring rebalancing step of rank k is non-terminal. If it merely promotes, it
+decreases the potential by 2(k+1)/2 , by decreasing the potential of y from 2(k+1)/2 to zero. If it does
+a single rotation (Figure 4g), it decreases the potential by at least 2k/2 : the potentials of x, y, and
+z, respectively, are 2k/2 , 2(k+1)/2 , and 0 before the step and at most 2(k+1)/2 , 0, and 0 after. If it
+does a double rotation, it also decreases the potential by at least 2k/2 : the potentials of x, y, and z,
+respectively, are at most 2(k−1)/2 , 0, and 2(k−1)/2 after the step. The theorem follows.
+   By increasing the amount of look-ahead in top-down insertion, we can improve the constants in
+Theorems 6.2 and 6.3. Specifically, we force a reset after traversing k consecutive 1,1-nodes, of
+which the top one is not a 1-child, or traversing k + 1 consecutive 1,1-nodes of which the top one
+is a 1-child, by promoting the bottom 1,1-node and rebalancing appropriately. Here k ≥ 2 is an
+appropriately large constant. To analyze this method, we define the potential of a 1,1-node of rank
+k to be bk for some appropriate constant b > 1, that of any other node to be zero, and that of a tree
+to be the sum of the potentials of its nodes. If the parent of the top 1,1-node has rank k just before
+the forced reset, then the rebalancing increases the potential by at most bk − bk−2 − bk−3 − . . . − 1,
+whether or not the top 1,1-node is a 1-child. By choosing k sufficiently large, we can choose b
+arbitrarily close to φ while guaranteeing that√forced resets do not increase the potential, giving an
+analogue of Theorem 6.2 with b in √  place of 2. By truncating the potential, we obtain
+                                                                                    √ an analogue
+of Theorem 6.3 with b in place of 2. Choosing k = 3 is sufficient to give b > 2. Interestingly,
+for minimum look-ahead (k = 1), this potential function is not useful; for k > 2, giving positive
+potential to the 1, i-nodes for i > 1 makes the analysis worse, not better.
+7. RELAXED RED-BLACK TREES
+In this section we apply our ideas to red-black trees to obtain relaxed red-black trees. Although the
+results of this section follow from our results on relaxed B-trees [Sen and Tarjan 2014], we sketch
+them here for completeness, to show that they can be derived directly, without using multiway trees
+as an intermediary, and to enlarge our study in Section 9 of what can go wrong with alternative
+deletion methods.
+   A red-black tree [Guibas and Sedgewick 1978] is a binary tree is which each node is either red or
+black, with the node colors satisfying the following constraints:
+    Black Rule: Every path from the root to a missing node contains the same number of black
+    nodes.
+
+                                            ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                 0:15
+
+     Red Rule: The parent of a red node is black.
+
+   Red-black trees are equivalent to 2,4-trees, which are multiway trees in which all leaves have the
+same depth, each internal node has 2, 3, or 4 children, each internal node contains one less item than
+its number of children, and each leaf contains 1, 2, or 3 items. To obtain the 2,4-tree equivalent of a
+given red-black tree, contract each red node into its parent. To obtain the red-black tree equivalent
+of a given 2,4-tree, split each node with two items into a black parent and a red child, each with one
+item, and split each node with three items into a black parent and two red children. Since there are
+two ways to split a node with two items, the latter mapping is one-to-many.
+   Red-black trees are also equivalent to ranked binary trees satisfying the red-black rank rule: every
+node has a non-negative rank, all rank differences are zero or one, every leaf has rank zero, and every
+0-child has a parent that is not a 0-child [Haeupler et al. 2015]. Given a ranked binary tree satisfying
+the red-black rank rule, we can color its nodes to satisfy the red and black rules by coloring the root
+black and coloring each child black if it is a 1-child or red if it is a 0-child. Given a red-black tree,
+we can assign ranks to the nodes to satisfy the red-black rank rule by giving each node a rank equal
+to the number of black nodes on every path from it to a missing node, not counting the node itself.
+   Red-black trees were invented by Bayer [Bayer 1972], who called them symmetric binary B-
+trees, and popularized by Guibas and Sedgewick [Guibas and Sedgewick 1978], who invented the
+red-black representation. A red-black tree of n nodes has height at most 2 lg n. Rebalancing a red-
+black tree after an insertion or deletion takes at most two rotations worst-case for an insertion,
+at most three rotations worst-case for a deletion, and O(1) amortized color flips for an insertion or
+deletion [Tarjan 1983]. The insertion rebalancing algorithm is like that of AVL trees (and ravl trees):
+there are three rebalancing cases (ignoring symmetries); the first does only color flips but need not
+terminate, the second does a rotation and some color flips and terminates, and the third does two
+rotations and some color flips and terminates. For further results and discussion about red-black
+trees see [Bayer 1972; Guibas and Sedgewick 1978; Tarjan 1983; 1985b].
+   We develop a relaxed version of red-black trees in which rebalancing occurs only during in-
+sertions, not deletions, with properties like those of ravl trees. To obtain such trees we relax the
+red-black rank rule to allow arbitrary positive ranks. A relaxed red-black tree is a ranked binary tree
+such that all ranks and rank differences are non-negative and no 0-child has a 0-child as a parent.
+To insert an item into a relaxed red-black tree using bottom-up rebalancing, follow the search path
+until reaching a missing node. Replace the missing node by a node x of rank zero containing the
+item to be inserted. Then rebalance as follows (see Figure 5):
+
+Insertion rebalancing:
+While x is a 0-child with a non-null grandparent z that is a 0,0-node, repeat the following step:
+
+     Promote: Promote z; x ← z.
+
+Now either the rank rule holds or x is a 0-child whose grandparent z is a 0, i-node with i > 0. In
+the latter case, proceed as follows. Let y be the parent of x. Do the appropriate one of the following
+two steps:
+
+     Rotate: If nodes x and y are both left or both right children, rotate at y.
+     Double Rotate: Otherwise (node x is a left child and y a right child or vice-versa), rotate at x
+     twice.
+
+
+
+   Remark: Unlike bottom-up rebalancing in ravl trees, in relaxed red-black trees rotate and double
+rotate steps change no ranks.
+   The rank of an insertion step is the rank of x just before the step.
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:16                                                                              S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+
+
+                                                  k z 1                                                      k+1 z 0
+
+                                        k y 0                  k       0                             k y 1               k       1
+       Promote
+                                 k x 0                1           C                        k x 0                  1        C
+
+                                    A             B                                           A                B
+
+
+
+                                                  k z 1                                               k y 1
+
+       Rotate                           k y 0                          1                   k x 0                  k z 0
+
+                                 k x 0                1           C                             A                 1            1
+
+                                    A             B                                                            B             C
+
+
+
+                                                  k z 1                                               k x 1
+
+       Double Rotate                    k y 0                          1                   k y 0                  k z 0
+
+                                        1    k x 0                D                        1            1        1             1
+
+                                   A              1        1                            A             B        C             D
+
+                                              B        C
+
+Fig. 5. Bottom-up rebalancing after an insertion in relaxed red-black trees. Numbers to the left of nodes are ranks, those to
+the right of nodes are rank differences.
+
+
+   To delete an item, we proceed exactly as in ravl trees: we find the node containing the item to
+be deleted and swap this item with its predecessor or successor if it is in a node with two non-null
+children. Now the item is in a leaf or a node with only one non-null child. If it is in a leaf, we
+replace the leaf by a missing node; if it is in a node with one non-null child, we replace this node by
+its non-null child. No nodes change ranks.
+   Instead of rebalancing bottom-up after an insertion, we can rebalance top-down during the search
+for the insertion position. If the tree is empty, create a new node of rank zero containing the item
+to be inserted and make it the root, completing the insertion. Otherwise, initialize w and x to be
+the root, and promote the root if it is 0,0. This establishes the invariant for the main loop of the
+algorithm: x is a non-null node that is not a 0,0-node and not a 0-child; w is the parent of x unless x
+is the root, in which case w = x. Repeat the following step until the item is inserted (see Figure 6):
+
+Top-down insertion step:
+   From x, take one step down along the search path, to y. If y is null, replace it by a new node of
+rank zero containing the item to be inserted (Figure 6a). This completes the insertion: the new node
+may be a 0-child, but x is not. In the remaining cases, y is non-null. If y is not a 0,0-node and not
+a 0-child, replace w by x and x by y, completing the step (Figure 6b). If y is a 0,0-node, promote
+y (which is not a 0-child by the rank rule), replace w by y, and replace x by the child of y along
+the search path; this child cannot be null since it has non-negative rank and it cannot be a 0,0-node
+since y was a 0,0-node. This completes the step (Figure 6c). In the remaining cases y is a 0-child,
+and hence neither of its children is a 0-child. From y take one step down the search path, to z. If
+z is null, replace z by a new node of rank zero containing the item to be inserted; if the new node
+
+                                                      ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                                                                                     0:17
+
+           w                      w                       w                         w                          w                      w                             w
+
+
+           x 1                      x                w' x                          x                          x                      x                             x
+
+ y
+                                                      x' y 1                 k y 1                  k+1 y w'                     1 y                             y
+
+                                                                                                          x'                  z                           0
+
+
+                    (a)                                   (b)                               (c)                                                     (d)
+
+
+                        w                                           w                                          w                                              w
+
+
+                   0 x 1                                       0 y 1                                    0 x 1                                          0        1
+
+           0 y                                    0                      0 x                0 y                                               0 y                       0 x
+
+ z                                                                                                    z
+
+                                           (e)                                                                                      (f)
+
+
+     w             w                         w                                              w                                                        w
+
+
+     x              x                         x                                         k x                                                    k y
+
+                                                                          k y 0                                1                  k z 0                      k x 0
+w' y 0              y                         y        w'
+                                                                                                                                     w'
+                                                                    k-1 z 1                 1            B                                                   1              1
+x' z              k z >1                  k+1 z >0 x'
+                                                                                        A                                                                 A              B
+
+
+     (g)                        (h)                                                                                     (i)
+
+
+                                                  w                                                                w
+
+
+                                             k x                                                               k z
+
+                                k y 0                               1                           k y 0                        k x 0
+
+                                1        k-1 z 1               D                                1                1         1              1
+
+                            A                                                               A                 B         C                 D
+
+                                      B               C
+
+                                                                              (j)
+
+Fig. 6. Top-down rebalancing step during an insertion in a relaxed red-black tree. Node x is not a 0,0-node and not a
+0-child. Node y is the child of x along the search path. Ranks are to the left of nodes, rank differences to the right. (a) Node
+y is null: replace y by a new node and stop. (b) Node y is not a 0,0-node and not a 0-child: replace w by x and x by y. (c)
+Node y is a 0,0-node, promote y, and replace w by y and x by the child of y along the search path. In the remaining cases y
+is a 0-child, and z is the child of y along the search path. (d) Node z is null and y has positive rank: replace z by a new node
+of rank 0. (e) Node z is null, y has rank 0, and y and z are both left or both right children: replace z by a new node of rank 0,
+do a rotate step, and stop. (f) Node z is null, y has rank 0, and exactly one of y and z is a left child: replace y by a new node
+of rank 0, do a double rotate step, and stop. In the remaining cases z is not null. (g) Node z is not a 0,0-node: replace w by
+y and x by z. (h) Node z is a 0,0-node but not a 1-child: promote z and replace w by y and x by z. (i) Node z is a 0,0-node
+and a 1-child, and y and z are both left or both right children: promote z, do a rotate step, and replace w by z and x by the
+child of z along the search path. (j) Node z is a 0,0-node and a 1-child, and exactly one of y and z is a left child: promote z,
+do a double rotate step, replace w by whichever of x and y is on the search path from z after the rotations, and replace x by
+the child of the new w on the search path.
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:18                                                                   S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+is a 0-child, do a rotate or double rotate step to restore the rank rule (Figure 6d, 6e, and 6f). This
+completes the insertion. The remaining possibility is z non-null. If z is not a 0,0-node, replace w
+by y and x by z, completing the step (Figure 6g). If z is a 0,0-node but not a 1-child, promote z,
+and replace w by y and x by z, completing the step (Figure 6g). Otherwise (z is a 0,0-node and a
+1-child), do a rotate or double rotate step to restore the rank rule (Figures 6h and 6i, respectively). If
+a rotate step is done, replace w by z and x by the child of z along the search path. If a double rotate
+step is done, replace w by whichever of x and y is along the search path from z after the rotations,
+and replace x by the child of the new w along the search path.
+
+
+   Each top-down insertion step either finishes the insertion or replaces x by a node of smaller rank,
+so the number of insertion steps is at most one plus the rank of the root. We define the rank of a
+top-down insertion step to be the rank of y, or zero if y is null. We call a top-down insertion step
+rebalancing if it is terminal or it does at least one promotion or rotation.
+   We can analyze both bottom-up and top-down rebalancing using the same potential function. To
+get an amortized constant bound on the number of rebalancing steps, we define the potential of a
+tree to be twice the number of 0,0-nodes plus the number of 0, i-nodes with i > 0. Deletions do not
+increase the potential.
+   Suppose bottom-up rebalancing is used. (See Figure 5.) Insertion of a new node increases the
+potential by at most 1: the new node is a 1,1-node and has potential 0, but if its parent has rank 0, it
+changes from a 1,1-node to a 0,1-node or from a 0,1-node to a 0,1-node, increasing its potential by
+1. A promote step decreases the potential by at least 1: the potential of node z drops by 2, that of its
+parent may increase by 1. A rotate step does not change the potential: the potential of y increases
+by 1, that of z drops by 1. Similarly, a double rotate step does not change the potential: that of both
+y and z drops by 1, that of x increases by 2.
+   Suppose top-down rebalancing is used. (See Figure 6.) A terminal rebalancing step increases
+the potential by at most 1 (Figures 6a (no change), 6d, 6e, and 6f (+1 each)), and a non-terminal
+rebalancing step decreases it by at least 1: in Figure 6c, the potential of y drops by 2 and that of
+x increases by at most 1; in Figures 6h, 6i, and 6j, the promotion of z decreases its potential by 2
+and increases that of y by at most 1, and the rotate (6i) or double rotate (6j) does not change the
+potential.
+   Combining these observations we obtain the following theorem:
+   T HEOREM 7.1. In a relaxed red-black tree built by m insertions, each with either bottom-up or
+top-down rebalancing, intermixed with arbitrary deletions, the number of rebalancing steps is at
+most 2m.
+   To bound the root rank and hence the height of the tree, we use an exponential potential function.
+We define the potential of a node of rank k to be 2k if it is a 0, i-node with i > 0, 2k+1 if it is a
+0,0-node, and zero otherwise; we define the potential of a tree to be the sum of the potentials of
+its nodes. Suppose bottom-up rebalancing is used. Insertion of a new node increases the potential
+by at most 1: if the parent of the new node has rank 0, its potential increases by 1. A promote
+step does not increase the potential: it decreases the potential of z by 2k and increases that of the
+parent of z by at most the same amount. Similarly, rotate and double rotate steps do not increase
+the potential, by essentially the same argument used for the simple potential function. Similarly, if
+top-down rebalancing is used, a terminal rebalancing step increases the potential by at most 1, and
+a nonterminal rebalancing step does not increase it, again by essentially the same argument used for
+the simple potential function. In either bottom-up or top-down rebalancing, if the root has rank k
+and is promoted, the potential drops by 2k+1 .
+   T HEOREM 7.2. In a relaxed red-black tree built by m insertions, each with either bottom-
+up or top-down rebalancing, intermixed with arbitrary deletions, the rank of the root is at most
+lg(m + 1) − 1, and the height of the root is at most 2 lg(m + 1).
+
+                                           ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                  0:19
+
+   P ROOF. The only increase in potential is caused by insertions of new nodes and totals at most
+m − 1. (An insertion into an empty tree does not increase its potential.) If the root has rank k, there
+must have been a promotion of the root for each rank between 0 and k − 1 inclusive, decreasing the
+potential by 2k+1 − 2. Thus 2k+1 ≤ m + 1, which implies k ≤ lg(m + 1) − 1. The rank rule implies
+that the rank of the grandparent of a node is greater than the rank of the node, which implies that
+the height of the root is at most 2 lg(m + 1).
+   By truncating the exponential potential function, we can show that the number of rebalancing
+steps of rank k is exponentially small in k.
+   T HEOREM 7.3. In a relaxed red-black tree built from an empty tree by m insertions, each
+with either bottom-up or top-down rebalancing, intermixed with arbitrary deletions, the number of
+rebalancing steps of rank k is at most m/2k−1 .
+   P ROOF. The theorem is immediate for k = 0. Fix k > 0. Redefine the exponential potential to
+be zero for all nodes of rank k or greater. Inserting a new node still increases the potential by at
+most one, and no insertion rebalancing step can increase it, but a non-terminal bottom-up step of
+rank k, which must be a promotion, decreases it by 2k , as does a top-down rebalancing step of rank
+k. Since each bottom-up step of rank k is preceded by a non-terminal bottom-up step of rank k − 1,
+the theorem follows.
+   We conclude this section with a few comments about ravl trees versus relaxed red-black trees.
+Rebalancing does fewer promotions in the latter than in the former, at least locally. On the other
+hand, the height bound is smaller by a constant factor for ravl trees with bottom-up rebalancing than
+for relaxed red-black trees, and by increasing the look-ahead we can also make it smaller for ravl
+trees with top-down rebalancing. In a ravl tree the height of a node is at most its rank, but in a relaxed
+red-black tree the height of a node is at most twice its rank plus one. Thus
+                                                                         √ to compare Theorems 5.3
+and 6.3
+      √ with  7.3, we need to  compare  φ  (the base in Theorem  5.3) or    2 (the base in Theorem 6.3)
+with 2 (the square root of the base in Theorem 7.3). If rebalancing is bottom-up, or if rebalancing
+is top-down and the look-ahead is at least 3, the comparison favors ravl trees. Determining which
+variant of which of these data structures is best under what actual circumstances is a subject for
+experimental investigation.
+
+8. REBUILDING THE TREE
+As the ratio of the number of deletions to the number of insertions approaches one, the height of a
+ravl tree or a relaxed red-black tree can become ω(log n), although it remains O(log m). For any
+application in which the number of updates is polynomial in the typical tree size, the tree height
+will remain O(log n). We think this will be true except in very rare situations. When the number
+of updates becomes non-polynomial in the tree size, we can restore the tree height to O(log n) by
+rebuilding it. Although we view rebuilding as primarily of theoretical interest, we discuss it here
+for completeness. We stress that rebuilding does not save space but only time, and by rebuilding
+sufficiently infrequently one can reduce the rebuilding overhead to a vanishing fraction of the total
+time. This differs greatly from rebuilding when using the tombstone method (see Section 3): with
+the tombstone method, to keep the space linear in the number of undeleted nodes one must rebuild
+every time the number of deletions becomes a constant fraction of the number of insertions. Our
+trees use no extra space. We offer several versions of a simple rebuilding method and a rule for
+when to rebuild. We discuss the rebuilding of ravl trees; one can rebuild relaxed red-black trees in
+the same way.
+   To rebuild the tree, we initialize a new tree to empty. Then we traverse the old tree in symmetric
+order, deleting each visited node and inserting it into the new tree. Traversing the old tree takes
+O(n) time. Doing the insertions in the new tree takes O(n log n) time, most of it spent searching
+for the position to insert the next item. We can reduce the rebuilding time to O(n) by maintaining
+the right spine of the new tree in a stack, bottommost node on top. We insert each new node at the
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:20                                                                     S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+bottom of the right spine, and then walk up the spine toward the root doing bottom-up rebalancing
+until rebalancing is complete. This reduces the search time per insertion to O(1). By Theorem 5.2,
+the total rebalancing time for n insertions is O(n), which is O(1) amortized per insertion.
+    We do not need to rebuild the tree all at once; we can do it incrementally, Once we decide to
+rebuild, we do 1 +  deletions from the old tree and reinsertions into the new tree for every actual
+insertion or deletion of an item, where  > 0 is an appropriately chosen constant, such as  = 1. To
+facilitate the rebuilding, we maintain a current item x that is the next item to be moved from the old
+tree to the new one. To begin rebuilding, we initialize x to be the item of minimum key in the tree.
+After moving an item from the old tree to the new one, we update x to be the item of minimum key
+in the old tree. Rebuilding stops when the old tree is empty. We insert a new item into the new tree
+if its key is less than that of the current item, into the old tree if it is greater. Similarly, deletions and
+searches are performed in the new tree if the item’s key is less than that of the current item, in the
+old tree otherwise. To facilitate the rebuilding process, we can maintain the right spine of the new
+tree (which is the path to the position of the next insertion) and the left spine of the old tree (which
+is the path to the current item). These paths must be updated during insertions and deletions, but
+such updating takes O(1) amortized time per insertion or deletion during rebuilding.
+    There remains the question of when to rebuild. We want to do this often enough to guarantee that
+the tree height is O(log n) at all times but the rebuilding time is small. To decide when to rebuild,
+we maintain the current number of items n and the number of insertions m0 since the last rebuilding
+started, including reinsertions of items that were in the tree when the rebuilding started. A newly
+inserted item whose key is greater than that of the current item only counts once, not twice. For such
+an item we increment m0 when it is reinserted, not when it is inserted. When m0 /n > α, we begin
+rebuilding, where α is a parameter. If rebuilding is all at once, we choose α > 1. If rebuilding is
+incremental, we choose α ≥ 1 + 1/. As we shall prove, this choice guarantees that each rebuilding
+completes before the next one begins. Only a deletion can trigger rebuilding, since an insertion
+increases both m0 and n by 1 and hence cannot cause m0 /n to exceed α, since α > 1. When this
+deletion occurs, we do the deletion and then either rebuild the tree completely or delete and reinsert
+1 +  items. The rebuilding process is deemed to start just after the deletion that triggers it.
+    T HEOREM 8.1. If rebuilding is done all at once, there are at most d/(α − 1) reinsertions over
+all rebuildings, O(1/(α − 1)) per deletion.
+    P ROOF. For a given rebuilding, consider the interval of time from the beginning of the previous
+rebuilding, or the beginning of the operation sequence if there is no previous rebuilding, to the
+beginning of the given rebuilding. Let n be the number of items in the tree at the beginning of the
+interval. Let ∆m and ∆d be the number of insertions of new items and the number of deletions
+done during the interval. The number of items in the tree at the beginning of the given rebuilding is
+n + ∆m − ∆d, as is the number of reinsertions during this rebuilding. For this rebuilding to occur,
+it must be the case that m0 = n + ∆m > α(n + ∆m − ∆d). Subtracting n + ∆m − ∆d from both
+sides of this inequality and dividing by α − 1, we get ∆d/(α − 1) > n + ∆m − ∆d. Summing over
+all the rebuildings gives the theorem.
+   T HEOREM 8.2. Suppose rebuilding is incremental. If the tree contains n items at the beginning
+of a rebuilding, at most n/ − 1 insertions of new items and n/(1 + ) − 1 deletions occur during the
+rebuilding, and the rebuilding does at most n(1 + 1/) − 1 reinsertions. Furthermore m0 /n0 ≤ α
+throughout the rebuilding, where n0 is the current number of items.
+   P ROOF. The deletion that triggers the rebuilding results in 1+ reinsertions, after which n−1−
+additional reinsertions are needed. Each insertion reduces the number of needed reinsertions by at
+least , each deletion by at least 1 + . The bounds on the numbers of insertions, deletions, and
+reinsertions during the rebuilding follow. (The bounds are not as tight as possible; we have dropped
+some subtractive terms.) Let ∆m and ∆d be the number of insertions of new items and the number
+of deletions, respectively, from the beginning of rebuilding up to some time t during rebuilding.
+Then m0 < n + ∆m, and the number of items n0 at time t satisfies n0 = n + ∆m − ∆d, so
+
+                                             ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                  0:21
+
+m0 /n0 < (n + ∆m)/(n + ∆m − ∆d) ≤ n/(n − ∆d) < n/(n − n/(1 + )) by the bound on ∆d.
+This ratio is 1 + 1/ ≤ α.
+   T HEOREM 8.3. If rebuilding is incremental, there are at most d(1 + 1/)/(α − 1) reinsertions
+over all rebuildings.
+   P ROOF. We apply the argument in the proof of Theorem 8.1. For a given rebuilding, consider
+the interval of time from the beginning of the preceding rebuilding, or from the beginning of the
+operation sequence if there is no previous rebuilding, to the beginning of the given rebuilding. Let
+n, ∆m, and ∆d be the number of items in the tree at the beginning of the interval, the number of
+insertions of new items during the interval, and the number of deletions during the inteval, respec-
+tively. By the argument in the proof of Theorem 8.1, ∆d/(α−1) > n+∆m−∆d. Thus the number
+of items in the tree at the beginning of the rebuilding is at most ∆d/(α − 1). By Theorem 8.2, the
+number of reinsertions during the rebuilding is at most ∆d(1 + 1/)/(α − 1). Summing over all
+rebuildings gives the theorem.
+    T HEOREM 8.4. If rebuilding is done all at once, the tree height is always at most logφ n+logφ α
+if insertion rebalancing is bottom-up, at most 2 lg n + 2 lg α if insertion rebalancing is top-down.
+   P ROOF. The bound on tree height follows immediately from Theorem 5.1 for bottom-up rebal-
+ancing and from Theorem 6.2 for top-down rebalancing: if n0 is the current number of items in the
+tree, m0 /n0 ≤ α at all times except just after a deletion that triggers a rebuilding.
+    T HEOREM 8.5. If the rebuilding process is incremental, both the old tree and the new tree have
+height at most logφ n + logφ (α(1 + 1/)) if insertion rebalancing is bottom-up, at most 2 lg n +
+2 lg(α(1 + 1/)) if insertion rebalancing is top-down.
+    P ROOF. We prove the bound for bottom-up rebalancing using Theorem 5.1. The bound for top-
+down rebalancing follows similarly from Theorem 6.2. Consider an interval of time from the begin-
+ning of a rebuilding, or the beginning of the operation sequence, to the end of the next rebuilding,
+or the end of the operation sequence if there is no next rebuilding. The tree associated with this
+interval is the new tree built by the rebuilding that starts the interval, or the original tree if the in-
+terval starts at the beginning of the operation sequence. We prove that the height bound holds for
+this tree throughout the interval, which gives the theorem. Let t be a time during the interval, and let
+m0 and n0 be the number of insertions into the tree during the interval up to time t and the number
+of items in the tree at time t, respectively. If the interval does not end in a rebuilding, or if it does
+but t precedes the deletion that triggers this rebuilding, then m0 /n0 ≤ α, so the height bound holds
+(without the factor of 1 + 1/) by Theorem 5.1. Suppose the interval ends with a rebuilding and t
+is during this rebuilding. Let n be the number of items just before this rebuilding, and let ∆m and
+∆d be the number of insertions of new items and the number of deletions from the beginning of the
+rebuilding to t, respectively. Then (m0 − ∆m)/(n + 1) ≤ α. Also,
+                         m0 /n0 = m0 /(n + ∆m − ∆d)
+                                ≤ (m0 − ∆m)/(n + 1 − n/(1 + )) by Theorem 8.2
+                                = (m0 − ∆m)/(n(/(1 + )) + 1)
+                                ≤ (m0 − ∆m)/((n + 1)(/(1 + )))
+                                ≤ α(1 + 1/)
+   The height bound follows by Theorem 5.1.
+   By choosing  fixed and α sufficiently large, even growing as a function of n, we can make the
+rebuilding time arbitrarily small compared to the time for insertions and deletions, at the cost of only
+an additive term in the height bound. It is straightforward to verify that the inverse exponential upper
+bounds on insertion rebalancing steps (Theorems 5.2, 5.3, 6.1, and 6.3) hold even with rebuilding,
+if the constant factors are adjusted to account for the reinsertions.
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:22                                                                             S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+
+                           x                         x                                     x                               b
+
+
+                       0       y 0               1       y 1                           1       b 0                   x 0       c 0
+
+
+                                                               a 0                                               1
+
+
+
+             1                           1                                  1                             1
+
+
+         1                           1                                  1                             1
+
+
+                       (a)                        (b)                                  (c)                             (d)
+
+Fig. 7. Counterexample for relaxed red-black trees with one balance bit per node. Rank differences are to the right of
+nodes. Dashed lines are arbitrarily long paths of 1-children. (a) Root has two red children. (b) After insertion of new node
+a. Children of root become black. (c) After deletion of two biggest items and insertion of new node b. (d) After insertion of
+new node c, causing a left rotation that increases the tree height by 1 and leaves the root with two red children.
+
+   An alternative approach to rebalancing is to stay within the framework of using rotations to re-
+structure the tree. We can use local rebalancing steps that do rank changes and rotations, as in
+relaxed balanced trees. For example, one can use the rebalancing steps of chromatic trees [Boyar
+et al. 1997] to rebalance a relaxed red-black tree. The rebalancing steps corresponding to insertion
+rebalancing are not needed. A similar set of local rebalancing steps suffices for ravl trees. If one
+does a sufficiently large constant number of rebalancing steps per deletion, one can keep the tree
+height logarithmic in n at all times [Yang and Tarjan 2014]. There are at least two disadvantages of
+this approach: it restores balance much less efficiently than reinsertion, and it is more complicated,
+since it reintroduces the complexity of deletion rebalancing that we set out to eliminate.
+
+9. USING FEWER BALANCE BITS
+So far, the only method we have discussed that achieves an O(log m) height bound using only O(1)
+bits of balance information per node is the tombstone method without node deletions (Section 3).
+This method produces a data structure with Θ(m) nodes, not Θ(n), however. This leaves the ques-
+tion of whether there is a method that avoids rebalancing on deletion while using only n nodes
+and O(1) balance bits per node. We show that several approaches to this question fail, including
+the approach used by the database provider in the episode mentioned in the introduction. We give
+one method that succeeds, but it requires storing the rank of the root as well as doing a cascade of
+node swaps during a deletion. Our conclusion, based not on a proof but on consideration of several
+alternative methods, is that any method for which bounds like ours hold must rebalance on insertion
+and must either store Ω(log log m) bits of balance information per node or spend more than O(1)
+restructuring time per deletion. We now attempt to justify this conclusion.
+   Suppose we store rank differences instead of ranks in the nodes, and we want to keep the rank
+differences bounded (to 1 or 2 in a ravl tree, 0 or 1 in a relaxed red-black tree). How do we do
+insertions? The most naı̈ve idea is to avoid computing ranks while walking along the search path,
+merely inserting each new node with a fixed rank difference. If this difference is positive, we im-
+mediately run into the problem that a sequence of insertions of items in sorted order will produce
+a linear-depth tree, making search times linear. An alternative for relaxed red-black trees is to give
+new nodes a rank difference of zero. This is equivalent to coloring new nodes red, which is what
+the insertion algorithm for standard red-black trees does, and was the method used by the database
+provider discussed in Section 1. By mixing insertions with deletions, we can build a linear-depth
+tree, however. Insert three items in sorted order into an initially empty relaxed red-black tree. The
+third insertion creates a 0-child of a 0-child, causing a rotation and resulting in a tree whose root
+has two 0-children. Now repeat the following sequence of updates indefinitely: insert an item big-
+
+                                                     ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                                             0:23
+
+                   k                                                                        k
+
+
+           k-1         k-1
+                                                                 k-1                                        k-1
+
+
+                                                                      k-2                                 k-2
+      1                         1
+                                                            2                                                           2
+ 0                                   0
+                                                       1        1                   1                 1             1       1
+
+                                                   0        0        0                  0         0             0       0       0
+
+
+
+                       (a)                                                                      (b)
+
+Fig. 8. Counterexamples for two alternative methods of insertion and deletion in ravl trees that use one balance bit per
+non-root node. Node ranks are shown to the left. (a) New leaves get a maximum rank difference of 1. Dashed lines are
+arbitrarily long paths of 1-children. (b) New children get a maximum rank difference of 2. Dashed lines are elided parts of
+the tree.
+
+
+ger than all previous ones, delete the two biggest items, and insert two items each bigger than all
+previous ones. Each sequence of an insertion, two deletions, and two insertions adds a 1-child to
+the left spine of the tree and produces a root with two red children; the tree consists of the left spine
+of the root and the right child of the root. (See Figure 7.) Thus an intermixed sequence of inser-
+tions and deletions can build a tree of linear depth. This example is a counterexample both to what
+the database provider did and to the space-efficient version of the tombstone method discussed in
+Section 3.
+   It is easy to construct a similar counterexample for the variant of ravl trees in which each new
+leaf has a rank difference of 0, and for the variant in which a new leaf that becomes a child of an old
+leaf has rank difference 0, but a new leaf that becomes a child of a unary node has rank difference
+1. The latter variant corresponds to the way insertions are done in standard AVL trees.
+   It is not surprising that these variants fail, since insertions can increase our rank-based potential
+functions by an arbitrarily large amount, destroying our analyses. We can avoid this by maintaining
+the rank of the tree root. Then we can compute the rank of each node visited during a search by
+summing rank differences. In a ravl tree, if we give a new node a rank equal to the maximum of zero
+and two less than the rank of its parent (thereby giving it a rank difference of 0, 1, or 2), then adding
+such a node increases the potential by at most one, and all our analyses still hold. The equivalent
+method in a relaxed red-black tree is to give a new node a rank equal to the maximum of zero and
+one less than the rank of its parent, thereby giving it a rank difference of 0 or 1. Interestingly, the
+method of giving a new node in a ravl tree a rank equal to the maximum of zero and one less than the
+rank of its parent (thereby giving it a rank difference of 0 or 1) fails, as the following counterexample
+shows. (See Figure 8(a).) For arbitrary k ≥ 1, in O(k 2 ) insertions and deletions build a tree Tk of
+height k consisting of a root of rank k and a left and right spine, with each child having a rank
+difference of 1 and the two leaves having rank zero, as follows. For k = 1, do one insertion into an
+empty tree followed by one insertion of an item smaller than the one in the root and one insertion
+of an item larger than the one in the root. For k > 1, start with Tk−1 . Do 2(k − 1) insertions to give
+every non-leaf a second child of rank difference one. Then insert an item smaller than all those in
+the tree followed by an insertion of an item larger than all those in the tree. The first of these will
+increase the rank of the root; the second will make the root a 1,1-node. Finally, delete all the leaves
+           √ rank difference two. The result is Tk . Thus O(n) updates suffice to build a tree of
+that now have
+height Θ( n).
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:24                                                                    S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+    So far our counterexamples have only involved deletions of leaves. Such deletions only reduce
+the tree potential. On the other hand, deletion of a unary node can increase the potential if the node
+replacing it (its old child) increases in rank. The following counterexample shows that this problem
+is not just hypothetical. (See Figure 8(b).) Consider the variant of ravl trees in which we maintain
+the rank of the root, insert each new leaf with a rank equal to the maximum of 0 and two less than
+the rank of its new parent, and when deleting a unary node give its replacing node a rank difference
+of 2. This method guarantees that all rank differences are 1 or 2. For arbitrary k ≥ 1, in O(k 3 )
+insertions and deletions build a tree Tk0 of height k consisting of a root of rank k in which every
+child is a 1-child, every leaf has rank zero, every node on the left and right spines has two children,
+and the other non-leaves have one child. For k = 1, build T10 = T1 . For k > 1, start with Tk−1        0
+                                                                                                          .
+Insert an item less than all items in the tree and an item greater than all items in the tree. This
+increases the length of both spines by one, promotes all the items on the old spines including the
+root, and leaves the non-spine children of nodes on the spine with rank difference 2. To each of the
+leaves of rank zero and rank difference two, add a child via an insertion. This promotes the parent
+and results in a path of two nodes, each of rank difference one. For each of the remaining 2-children,
+proceed as follows. Delete the 2-child, replacing it by its only child, which increases in rank by one
+and becomes a 2-child. The leaf at the bottom of the path descending from this node now has rank
+one. Do two insertions to give this bottom node two 1-children. Delete the new 2-child, increasing
+the rank of the two new leaves to one. Choose one of these new leaves and do two insertions to give
+it two 1-children. Continue in this way until every node on the path down from the spine has two
+1-children, and the topmost node on the path is a 2-child. Do one more insertion to add a child to
+one of the rank-0 leaves at the bottom of the path. This promotes every node along the path, creating
+a path of 1-children all the way to the spine. Now delete all the 2-children of nodes on this path.
+Repeating this construction for every 2-child of a node on the left or right spine produces Tk0 . The
+number of updates to build Tk0 from Tk−1 0
+                                             is O(k 2 ), so the total number of updates to build Tk0 from
+an empty tree is O(k 3 ). Thus O(n) updates suffice to build a tree of height Θ(n1/3 ). Changing the
+insertions so that they add nodes of non-negative rank but rank difference 0, 1, or 2 does not affect
+this counterexample, since all insertions add nodes of rank 0. The counterexample also works if
+deletions use the tombstone method, since all deletions are of leaves or nodes with one child. A
+similar counterexample exists for relaxed red-black trees in which deletions are modified to keep all
+rank differences 0 or 1.
+    The counterexample in the previous paragraph suggests (but does not prove) that keeping the
+height logarithmically bounded using O(1) balance bits per node requires a deletion method that
+does not increase any ranks. We can obtain such a method by making sure that only leaves are
+deleted. This gives a valid method, but it requires arbitrarily long sequences of item swaps during
+deletions. There are three cases of deletion. To delete an item e, if e is in a leaf, merely delete the
+leaf. If e is in a node with a right child, swap e with the first item in the right subtree of the node
+containing e, and repeat this step until e is in a leaf; then delete the leaf. If e is in a node with a
+left child but no right child, proceed symmetrically: swap e with the last item in the left subtree of
+the node containing e, and repeat this step until e is in a leaf; then delete the leaf. The time for a
+deletion is O(h + 1). If we use this deletion method and modify insertions so that a leaf added by a
+deletion has a rank equal to the maximum of zero and the rank of its parent minus two, we obtain a
+variant of ravl trees in which every node has rank difference 1 or 2 and the bounds we have derived
+hold. To represent ranks we need to store the rank of the root plus one bit per node. The same idea
+applies to relaxed red-black trees.
+    Since successive swaps during a deletion are at nodes of strictly decreasing ranks, the number
+of swaps during a deletion is at most logφ m by Theorem 5.1. The following example shows that
+this bound is tight to within a constant factor even in the amortized sense. Let k be an integer large
+enough that k < bk/ lg φc − 1 = h. Do a sequence of insertions that build an AVL tree of height h
+in which a child has rank difference 1 if it is a right child or it is a descendant of the node x of height
+k on the right spine, and all other (left) children have rank difference 2. (See Figure 9(a).) It is easy
+
+
+                                            ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                                     0:25
+
+
+
+
+                    2                1                                              2         1
+
+
+                           2              1                                                       1
+
+
+                                     2
+                                                     1                                                   1
+
+
+                                              2          x 1                                                 x 1
+
+
+
+
+                               (a)                                                      (b)
+
+Fig. 9. Counterexample showing that Ω(log m) swaps per deletion can occur. (a) Tree built by insertions. (b) Left children
+have rank difference 2 except those that are descendants of x. Right children and proper descendants of x have rank difference
+1. Node x has 2k+1 − 1 descendants. There are at most Fh+3 − 1 non-descendants of x. (b) Tree after initial deletions. As
+long as the subtree rooted at x is non-empty, deletion of the root will cause swaps along the path from the root to x.
+
+to prove by induction that such a tree can be built by an appropriate sequence of insertions using the
+insertion method of Section 3. Indeed, any tree satisfying the AVL rank rule can be so built.
+   Node x has 2k+1 − 1 descendants including itself. The tree contains at most Fh+3 − 1 ≤ φh+1 ≤
+ k
+2 non-descendants of x. Leaf by leaf, delete all nodes except the left child of the root, the nodes
+on the right spine, and the descendants of x. (See Figure 9(b).) Now repeatedly delete the item in
+the root. Each of the first 2k+1 − 1 such deletions will cause item swaps along the right spine from
+the root to x (and possibly some additional swaps). Thus each of these Ω(n) deletions does at least
+Ω(h − k) = Ω(log m) swaps.
+
+10. TO REBALANCE ON DELETION OR NOT?
+Let us compare ravl trees and relaxed red-black trees to standard kinds of balanced trees. Deletion is
+much simpler in the former than in the latter. The price we pay for this simplicity is that the height
+bound is logarithmic in the number of insertions rather than the number of nodes, and each node
+needs to store lg lg m + O(1) bits of balance information rather than O(1), or lg lg n + O(1) if
+rebuilding is done. Rebalancing in ravl trees and relaxed red-black trees affects node exponentially
+infrequently in their height. The same is true in some kinds of standard balanced trees, including
+wavl trees and red-black trees [Haeupler et al. 2015; Sen and Tarjan 2014], but the bounds are not as
+good, because deletion rebalancing can make insertion rebalancing more expensive. Using periodic
+rebuilding as discussed in Section 8, we can reduce the height bound in ravl and relaxed red-black
+trees to logarithmic in the number of nodes, but for this to be useful the number of updates must be
+super-polynomial in the typical tree size, which we view as unlikely in practice. Using the multi-
+swapping deletion method discussed in Section 9, we can reduce the amount of balance information
+per node to O(1) in ravl trees and relaxed red-black trees, as long as we store the rank of the
+root as well. Storing the ranks explicitly, however, is only a small space penalty, and it reduces
+the context needed in rebalancing steps, so it seems a small price to pay. Indeed, at least some
+authors [Andersson 1993; Weiss 2011] have advocated storing ranks in standard balanced trees,
+since it simplifies rebalancing. Doing this eliminates the space advantage of standard balanced trees.
+Our tentative conclusion is that our theoretical results favor ravl trees and relaxed red-black trees
+over their standard cousins.
+   We have also done some preliminary experiments in which we compared ravl trees and relaxed
+red-black trees (with bottom-up rebalancing and without periodic rebuilding) to standard red-black
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:26                                                                     S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+         Table I. Performance comparison of red-black, wavl, relaxed red-black, and ravl trees on
+         typical input sequences (rots = rotations, bals = balance information updates, avg plen =
+         average path length, max plen = maximum path length).
+                 Test                  Red-black trees                              Wavl trees
+                              # rots    # bals     avg       max      # rots      # bals      avg       max
+                              ×106      ×106      plen       plen     ×106        ×106       plen       plen
+            1. Random         26.44    116.07   10.47       15.63     29.55      133.74     10.39      15.09
+            2. Queue          50.32    285.13   11.38       22.50     50.33      184.53     11.20      14.00
+            3. Working set    41.71    185.35   10.51       16.18     43.69      159.69     10.45      15.35
+            4. Static Zipf    25.24    112.86   10.41       15.46     28.27      130.93     10.34      15.05
+            5. Dynamic Zipf   23.18    103.47   10.48       15.66     26.04      125.99     10.40      15.16
+
+                 Test              Relaxed red-black trees                         Ravl trees
+                              # rots   # bals      avg     max       # rots      # bals      avg       max
+                              ×106     ×106       plen     plen      ×106        ×106       plen       plen
+           1. Random          11.45    38.91    11.30     18.90      14.32       80.61     11.11      16.75
+           2. Queue           33.56    67.10    11.94     23.50      33.55      134.22     11.38      14.00
+           3. Working set     22.38    50.25    11.61     19.36      28.00      119.92     11.20      16.64
+           4. Static Zipf     10.78    38.47    12.73     24.69      13.48       78.03     11.12      17.68
+           5. Dynamic Zipf    10.24    37.83    11.36     18.86      12.66       74.28     11.11      16.84
+
+
+
+
+trees and wavl trees, on typical input sequences. Our results show that ravl trees and relaxed red-
+black trees perform significantly fewer rotations and balance information updates than the other
+trees, at the cost of slightly greater average and maximum path lengths. We calculate average path
+length by measuring the length of the path between the root and each node of the tree, and taking the
+average of these lengths; the maximum path length is the maximum of these lengths. All balanced
+tree implementations were written in C; all reported quantities are machine-independent.
+   We generated five tree operation sequences, each performing a total of 226 operations on a tree
+of size n = 213 . To isolate the effect of rebalancing, only insertions and deletions were performed;
+the expected cost of interspersed accesses can be inferred from the average and maximum path
+lengths of the tree after each operation. Table I summarizes our results; the average and maximum
+path lengths reported are the average values over all operations. The first, fourth, and fifth opera-
+tion sequences perform insertions and deletions on randomly selected items, chosen uniformly at
+random in the first sequence and according to a Zipf distribution [Estoup 1916; Zipf 1932] with
+rank exponent α = 0.9346 in the fourth and fifth sequences. (This value of α is based on a clas-
+sic measurement study of the number of unique visitors seen by America Online on December 1,
+1997 [Adamic and Huberman 2002].) The fifth sequence simulates a dynamic Zipf distribution by
+randomly selecting an item and promoting it to the most popular rank after each operation (this sim-
+ulates the “flash crowd” or “slashdot” effect often seen in websites). The second operation sequence
+simulates a queue by inserting the items in order and repeatedly deleting the smallest item in the tree
+and inserting an item larger than all other items in the tree. The third operation sequence randomly
+selects an item and inserts or deletes the lg n items centered around this item in symmetric order.
+   The results in Table I show that ravl trees performed significantly fewer rotations and balance
+information updates—over 42% and 35% fewer, respectively, on average—than red-black trees and
+wavl trees on the tested sequences. Similarly, relaxed red-black trees performed over 51% and 68%
+fewer rotations and balance information updates, respectively, on average. The price for this im-
+provement is a slight increase in the average and maximum path length of the resulting trees: under
+5.6% and 4.3% greater, respectively, for ravl trees, and under 11.3% and 33.4% greater, respec-
+tively, for relaxed red-black trees, on average. Wavl trees performed more rotations and balance
+information updates than red-black trees, but maintained better average and maximum path lengths.
+The same comparison holds for ravl trees and relaxed red-black trees.
+   We plan to conduct more thorough experiments on these and other balanced tree implementations,
+such as left-leaning red-black trees [Bayer 1972; Sedgewick 2008]. In particular, we are investigat-
+
+                                             ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+Deletion Without Rebalancing in Binary Search Trees                                                                   0:27
+
+ing the performance of the trees on worst-case sequences, for which periodic rebuilding in ravl trees
+may be required to provide competitive performance.
+
+11. REMARKS
+We have shown that one can obtain logarithmic worst-case search time in binary search trees that
+are rebalanced only after insertions, not after deletions. The resulting data structures are simpler
+than standard balanced search trees. Our results seem to require either that lg lg m + O(1) balance
+bits be stored per node, or that deletion be modified to delete only leaves, which seems to require
+cascaded swapping of items. Whether this can be proved or disproved is an open question. Also open
+is the best way to do incremental rebuilding to overcome the cumulative effect of deletion without
+rebalancing. On the experimental side, it would be valuable to do a systematic evaluation of the
+practical performance of ravl trees and relaxed red-black trees as compared to red-black trees, wavl
+trees, and other standard kinds of trees. Ravl trees and relaxed red-black trees combine simplicity
+with efficiency and may well be very useful in practice.
+
+REFERENCES
+Lada A. Adamic and Bernardo A. Huberman. 2002. Zipf’s Law and the Internet. Glottometrics 3 (2002), 143–150.
+G. M. Adel’son-Vel’skii and E. M. Landis. 1962. An algorithm for the organization of information. Sov. Math. Dokl. 3 (1962),
+      1259–1262.
+Arne Andersson. 1993. Balanced Search Trees Made Simple. In WADS, Vol. 709. 60–71.
+Rudolf Bayer. 1971. Binary B-Trees for Virtual Memory. In SIGFIDET. 219–235.
+Rudolf Bayer. 1972. Symmetric Binary B-Trees: Data Structure and Maintenance Algorithms. Acta Inf. 1 (1972), 290–306.
+Joan Boyar, Rolf Fagerberg, and Kim S. Larsen. 1997. Amortization Results for Chromatic Search Trees, with an Application
+      to Priority Queues. J. Comput. System Sci. 55, 3 (1997), 504–521.
+Nathan Grasso Bronson, Jared Casper, Hassan Chafi, and Kunle Olukotun. 2010. A practical concurrent binary search tree.
+      In PPoPP. 257–268.
+J. Culberson and J. I. Munro. 1989. Explaining the behaviour of binary search trees under prolonged updates: a model and
+      simulations. Comput. J. 32, 1 (1989), 68–75.
+J. B. Estoup. 1916. Gammes Stenographiques. (1916).
+Caxton C. Foster. 1965. A Study of AVL Trees. Technical Report GER-12158. Goodyear Aerospace Corp.
+M. L. Fredman, R. Sedgewick, D. D. Sleator, and R. E. Tarjan. 1986. The pairing heap: a new form of self-adjusting heap.
+      Algorithmica 1, 1 (1986), 111–129.
+J. Gray and A. Reuter (Eds.). 1993. Transaction Processing: Concepts and Techniques. Morgan Kaufmann, San Mateo,
+      California. 851–876 pages.
+Leo J. Guibas and Robert Sedgewick. 1978. A Dichromatic Framework for Balanced Trees. In FOCS. 8–21.
+Bernhard Haeupler, Siddhartha Sen, and Robert E. Tarjan. 2009. Rank-Balanced Trees. In WADS. 351–362.
+Bernhard Haeupler, Siddhartha Sen, and Robert E. Tarjan. 2015. Rank-Balanced Trees. ACM Trans. Algorithms 11, 4 (2015),
+      30:1–30:26.
+Sabine Hanke, Thomas Ottmann, and Eljas Soisalon-Soininen. 1997. Relaxed Balanced Red-Black Trees. In CIAC. 193–204.
+Joep L. W. Kessels. 1983. On-the-Fly Optimization of Data Structures. Commun. ACM 26, 11 (1983), 895–901.
+David Hong Kyun Kim. 2010. Deletions Without Rebalancing in Red Black Trees. (2010). Undergraduate junior thesis,
+      Department of Mathematics, Princeton University.
+Donald E. Knuth. 1973. The Art of Computer Programming, Volume 3: Sorting and Searching. Addison-Wesley.
+K. S. Larsen and R. Fagerberg. 1996. Efficient Rebalancing of B-Trees with Relaxed Balance. Internat. J. Found. Comput.
+      Sci. 7, 2 (1996), 169–186.
+Kurt Mehlhorn and Athanasios Tsakalidis. 1986. An Amortized Analysis of Insertions into AVL-Trees. SIAM J. on Comput.
+      15, 1 (1986), 22–33.
+J. Metzger. 1975. Managing simultaneous operations in large ordered indexes. Technical Report. Technische Universität
+      München, Institut für Informatik, TUM-Math.
+J. Nievergelt and E. M. Reingold. 1973. Binary Search Trees of Bounded Balance. SIAM J. on Comput. 2, 1 (1973), 33–43.
+Otto Nurmi and Eljas Soisalon-Soininen. 1996. Chromatic Binary Search Trees: A Structure for Concurrent Rebalancing.
+      Acta Informatica 33, 6 (1996), 547–557.
+O. Nurmi, E. Soisalon-Soininen, and D. Wood. 1987. Concurrency Control in Database Structures with Relaxed Balance. In
+      PODS. 170–176.
+
+
+ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+0:28                                                                          S. Sen, R. E. Tarjan, and D. H. K. Kim
+
+Henk J. Olivié. 1982. A New Class of Balanced Search Trees: Half Balanced Binary Search Trees. ITA 16, 1 (1982), 51–71.
+Michael A. Olson, Keith Bostic, and Margo I. Seltzer. 1999. Berkeley DB. In USENIX Annual, FREENIX Track. 183–191.
+Michael A. Olson, Keith Bostic, and Margo I. Seltzer. 2000. Berkeley DB. (2000).
+Behrokh Samadi. 1976. B-Trees in a System with Multiple Users. Inf. Proc. Lett. 5, 4 (1976), 107–112.
+Neil Sarnak and Robert E. Tarjan. 1986. Planar point location using persistent search trees. Commun. ACM 29, 7 (1986),
+     669–679.
+Robert Sedgewick. 2008. Left-leaning Red-Black Trees. www.cs.princeton.edu/˜rs/talks/LLRB/LLRB.pdf. (2008).
+Siddhartha Sen and Robert Endre Tarjan. 2009. Deletion without Rebalancing in Multiway Search Trees. In ISAAC. 832–841.
+Siddhartha Sen and Robert E. Tarjan. 2010. Deletion without rebalancing in balanced binary trees. In SODA. 1490–1499.
+Siddhartha Sen and Robert E. Tarjan. 2014. Deletion Without Rebalancing in Multiway Search Trees. ACM Trans. Database
+     Syst. 39, 1 (2014), 8:1–8:14.
+Daniel Dominic Sleator and Robert Endre Tarjan. 1985. Self-adjusting binary search trees. J. ACM 32, 3 (1985), 652–686.
+Robert Endre Tarjan. 1979. A Class of Algorithms which Require Nonlinear Time to Maintain Disjoint Sets. J. Comput.
+     System Sci. 18, 2 (1979), 110–127.
+Robert Endre Tarjan. 1983. Updating a balanced search tree in O(1) rotations. Inf. Proc. Lett. 16, 5 (1983), 253–257.
+R. E. Tarjan. 1985a. Amortized Computational Complexity. SIAM J. Algebraic and Disc. Methods 6 (1985), 306–318.
+Robert Endre Tarjan. 1985b. Efficient top-down updating of red-black trees. Technical Report TR-006-85. Department of
+     Computer Science, Princeton University.
+Mark A. Weiss. 2011. Data Structures and Algorithm Analysis in Java (3rd ed.). Addison Wesley.
+S. Yang and R. E. Tarjan. 2014. Eager and lazy deletion rebalancing in binary search trees. (2014). Unpublished manuscript.
+G. K. Zipf. 1932. Selected studies of the Principle of Relative Frequency in Language. Harvard Univ. Press.
+
+
+
+
+                                                  ACM Transactions on Algorithms, Vol. 0, No. 0, Article 0, Publication date: 2016.
+

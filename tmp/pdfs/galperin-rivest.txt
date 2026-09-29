@@ -1,0 +1,623 @@
+                                                                      Chapter            19
+                                                                 Scapegoat              Trees
+
+                                                 Igal Galperin*                         Ronald   L. Rive&*
+
+
+
+
+Abstract                                                                            height-balanced approach. Red-black trees implement
+We present an algorithm      for maintaining      binary search trees.              the basic dictionary operations with a worst-case cost of
+The amortized    complexity     per INSERT or DELETE is O(log n)                    O(logn) per operation, at the cost of storing one extra
+while the worst-case    cost of a SEARCH is O(log n).
+      Scapegoat  trees, unlike most balanced-tree           schemes, do             bit (the “color” of the node) at each node. AVL trees
+not require keeping extra data (e.g. “colors”             or “weights”)             [l] are another well-known example of height-balanced
+in the tree nodes. Each node in the tree contains only a key                        trees.
+value and pointers. to its two children.         Associated     with the
+root of the whole tree are the only two extra values needed                              Other schemes are weight-balanced   in that the extra
+by the scapegoat scheme: the number of nodes in the whole                           information at each node records the size of the subtree
+tree, and the maximum         number of nodes in the tree since                     rooted at that node. By ensuring that the weights of sib-
+the tree was last completely       rebuilt.
+      In a scapegoat     tree a typical       rebalancing      operation            lings are approximately equal, an overall bound on the
+begins at a leaf, and successively        examines higher ancestors                 height of the tree is enforced. Nievergelt and Reingold
+until a node (the “scapegoat”)       is found that is so unbalanced                 [lo] introduce such trees and present algorithms for im-
+that the entire subtree rooted at the scapegoat can be rebuilt
+at zero cost, in an amortized       sense. Hence the name.                          plementing the basic dictionary operations in O(logn)
+                                                                                    worst-case time. Overmars and van Leeuwen in [11] use
+1      Introduction                                                                 such techniques too.
+                                                                                         The scapegoat method is a modification of the
+There are a vast number of schemes available for im-
+                                                                                    weight-balanced method of Varghese [5, Problem 18-
+plementing a “dictionary’‘-supporting     the operations
+                                                                                    31, who presents an algorithm for maintaining weight-
+INSERT, DELETE,     and SEAncrr-using    balanced binary
+                                                                                    balanced trees with amortized cost O(logn) per oper-
+search trees. Mehlhorn and Tsakalikis [9] survey the re-
+                                                                                    ation.    Our scheme combines the notions of height-
+cent literature on such data structures. In this paper
+                                                                                    balanced and weight-balanced to achieve an effective
+we propose a new method that achieves optimal amor-
+                                                                                    algorithm, without storing either height information or
+tized costs for update operations (INSERT and DELETE)
+                                                                                    weight information at any node.
+and optimal worst-case cost for SEARCH, without re-
+                                                                                         There have been previous binary tree schemes pro-
+quiring the extra information (e.g. colors or weights)
+                                                                                    posed that do not store any extra information at each
+normally required by many balanced-tree schemes. This
+                                                                                    node. Splay trees, due to Sleator and Tarjan [13], are
+is the first method ever proposed that achieves a worst-
+                                                                                    perhaps the best-known example; they achieve O(log n)
+case search time of O(logn) without using such extra
+                                                                                    amortized complexity per operation.       However, splay
+information, while maintaining optimal amortized up-
+                                                                                    trees do not guarantee a logarithmic worst-case bound
+date costs. In addition, the method is quite simple and
+                                                                                    on the cost of a SEARCH, and require restructuring even
+practical. (Indeed, we wonder why it wasn’t discovered
+                                                                                    during searches (unlike scapegoat trees, which do have a
+much earlier!)
+                                                                                    logarithmic worst-case cost of a SEARCH and do not re-
+     Many balanced-tree schemes are height-balanced;
+                                                                                    structure the tree during searches). Splay trees do have
+the extra information stored at each node helps to
+                                                                                    other desirable properties that make them of consid-
+enforce a bound on the overall height of the tree. Red-
+                                                                                    erable practical and theoretical interest, however, such
+black trees, invented by Bayer [2] and refined by by
+                                                                                    as their near-optimality when handling an arbitrary se-
+Guibas and Sedgewick [7], are an elegant example of the
+                                                                                    quence of operations.
+                                                                                         Section 2 introduces the basic scapegoat data struc-
+    *Laboratory        for Computer   Science,   Massachusetts   Institute   of     ture, and some notation. Section 4 describes the algo-
+Technology,  Cambridge, MA 02139. Supported by NSF grant                            rithm for maintaining scapegoat trees and outlines the
+CCR-8914428,   AR0 grant N00014-89-J-1988,       and the Siemens
+Corporation.  Email addresses: galperin@theory.lcs.mit.edu   and
+rivest@theory.lcs.mit.edu.
+
+
+                                                                                  165
+166                                                                                            GALPERIN AND RIVEST
+
+proof of their features. Section 5 proves the complexity        l     mat-sire[q   - The maximal value of si.ze[q since
+claims. Section 6 describes an algorithm for rebuilding a             the last time the tree was completely rebuilt. If
+binary search tree in linear time and logarithmic space.              DELETE operations are not performed, then the
+In Section 7 we show how our techniques can be used in                max-size attribute is not necessary.
+k - d trees, and state weak conditions that suffice to al-
+low the application of our techniques to other tree-based     3 Preliminary      discussion
+data structures. Section 8 reports the results of experi-     SEARCH, INSERT and DELETE operations on scapegoat
+mental evaluation of scapegoat trees. We compare a few        trees are performed in the usual way for binary search
+variations of the scapegoat algorithm and also compare        trees, except that, occasionally, after an update oper-
+it to other algorithms for maintenance of binary search       ation (INSERT or DELETE) the tree is restructured to
+trees. Finally, Section 9 concludes with some discussion      ensure that it contains no “deep” nodes.
+and open problems.                                                 A binary-tree node z is said to be cr-weight-
+                                                              balanced, for some a, l/2 5 (Y < 1, if both
+2 Notations
+In this section we describe the data structure of a (3.1)            sile(refi[x])  5 (Y. size(z), and
+scapegoat tree. Basically, a scapegoat tree consists of (34        site(right[x])   5 (Y. site(x)    .
+an ordinary binary search tree, with two extra values
+stored at the root.                                     We call a tree o-weight-balanced       if, for a given value
+      Each node z of a scapegoat tree maintains the of cy, l/2 < a < 1, all the nodes in it are cu-weight-
+following attributes:                                   balanced. Intuitively, a tree is o-weight-balanced if, for
+      key[z] - The key stored at node z.                any subtree, the sizes of its left and right subtree are
+                                                        approximately equal.
+      left[z] - The left child of z.                        We denote
+      righl[z] - The right child of z.
+      We’ll also use the notations:
+      size(z) - the size of the sub-tree rooted at z (i.e.,   and say that      a tree T is a-height-balanced      if it
+      the number of keys stored in this sub-tree including    satisfies
+      the key stored at z).
+                                                              (3.3)                  NT) L ha(n),
+      brother(z) - the brother of node z; the other child     where n = site(T).       Intuitively,  a tree is a-height-
+      of z’s parent or NIL.                                   balanced if its height is not greater than that of the
+                                                              heighest a-weight-balanced tree of the same size. The
+      h(z) and h(T) - height of a node and a tree             following standard lemma justifies this interpretation.
+      respectively. The height of a node is the length
+                                                                    LEMMA 3.1. If T is an cr-weight-balanced      binary
+      of the longest path from that node to a leaf. The       search tree, then T is a-height-balanced.
+      height of a tree is the height of its root.
+                                                                   Although scapegoat trees are not guaranteed to be
+    d(x) - depth of node c. The depth of a node is the        a-weight-balanced    at all times, they are loosely CY-
+    length (number of edges) of the path from the root        height-balanced, in that they satisfy the bound
+    to that node. (The root node is at depth 0.)
+    Note that values actually stored as fields in a           (3-4                 h(T) S ha(T) + 1,
+node are used with brackets, whereas values that are
+computed as functions of the node use parentheses;            where h,(T) is a shorthand for h,(site[g).
+each node only stores three values: key, left, and right.         We assume from now on that a fixed (Y, l/2 < cy < 1,
+Computing brother(x) requires knowledge of Z’S parent.        has been chosen. For this given o, we call a node of
+Most importantly, sire(z) is not stored at z, but can be      depth greater than h,(T) a deep node. In our scheme
+                                                              the detection of a deep node triggers a restructuring
+computed in time 0(&e(z))      as necessary.
+    The tree T as a whole has the following attributes:       operation.
+  l  root[T] - A pointer to the root node of the tree.
+                                                              4 Operations      on Scapegoat trees
+  l   siteM - The number of nodes in the tree. This           4.1 Searching a scapegoat tree.          In a scapegoat
+      is the same as sire(root[Tl).    In our complexity      tree, SEARCH operations proceed as in an ordinary
+      analyses we also denote size[T”J by n.                  binary search tree. No restructuring is performed.
+SCAPEGOATTREES                                                                                                                  167
+
+4.2 Inserting      into a scapegoat tree.        To insert
+a node into a scapegoat tree, we insert it as we would
+into an ordinary binary search tree, increment size[T],
+and set mat-site[T]     to be the maximum of site[T]
+and maz_size[7’l. Then-if      the newly inserted node is
+deep-we rebalance the tree as follows.
+      Let xc be the newly inserted deep node, and in
+general let xi+1 denote the parent of xi. We climb the
+ tree, examining x0, x1, 22, and so on, until we find a
+ node xi that is not o-weight-balanced. Since 2s is a leaf,
+ site(zs) = 0. We compute site(zj+r) using the formula         Figure 1: The initial tree, T. For CY= 0.57, h,(17) =
+                                                               h,(18) = 5, and T is loosely a-height-balanced (because
+(4.5) size(tj+l)   = sizc(zj) + sitc( brother(xj))   + 1       node 10 is at depth 6). Nodes 2, 5, 6, 12, 15 and 16 are
+                                                               currently weight-unbalanced.    Inserting 8 into this tree
+for j = 1,2,. . . , i, using additional recursive searches.    triggers a rebuild. We chose node 6 to be the scapegoat
+     We call xi, the ancestor of x0 that was found             node.
+that is not a-weight-balanced, the scapegoat node. A
+scapegoat node must exist, by Lemma 5.1 below.
+     Once the scapegoat node xi is found, we rebuild           we rebuild       the whole tree, and reset mazAze[T]              to
+the subtree rooted at xi. To rebuild a subtree is to           size[T].
+replace it with a l/a-weight-balanced     subtree containing
+the same nodes. This can be done easily in time                4.4   Remarks.
+O(Si.%e(Xj)). Sect ion 6 describes how this can be done           b Every time the whole tree is rebuilt           maz-size[g     is
+in space O(logn) as well.                                               set to sire[q.
+
+An alternative    way to find a scapegoat node.                     l   Note that ha(T) is easily computed from the infor-
+    As can be seen in Figure 1, 20 might have more                      mation stored at the root. (Indeed, it could even
+than one weight-unbalanced        ancestor.  Any weight-                be stored there as an extra attribute.)
+unbalanced ancestor of xc may be chosen to be the                   b   We do not need explicit parent fields in the nodes to
+scapegoat. Here we show that another way of finding                     find the scapegoat node, since we are just climbing
+a weight-unbalanced ancestor 2i of xc is to find the                    back up the path we came down to insert the new
+deepest ancestor of X,-Jsatisfying the condition                        node; the nodes z; on this path can be remembered
+                                                                        on the stack.
+(4.6)                  i > h,(Si.ZC(Xj)).
+
+Since this ancestor will often be higher in the tree           5 Correctness      and Complexity
+than the first weight-unbalanced ancestor, it may tend         5.1 Correctness.       The following two lemmas prove
+to yield more balanced trees on the average.         (In       that the algorithm is indeed correct.
+our experiments this heuristic performed better than               The first lemma guarantees that a deep node has
+choosing the first weight-unbalanced ancestor to be the        an ancestor that in not o-weight-balanced.
+scapegoat.)    Inequality (4.6) is satisfied when xi =              LEMMA 5.1. If x is a node at depth greater than
+rool[7’l, hence this scheme will always find a scapegoat       h,(T)       then there is an cY-weight-unbalanced      ancestor    of
+node. The scapegoat node found is indeed weight-               2.
+unbalanced by Lemma 5.2.
+                                                                     Proof By negation according to equations (3.1) if
+     Note that applying condition (4.6) when searching
+                                                               x is a child of y, then size(x) 5 cr. size(y). By induction
+for the scapegoat in the example in Figure 1 indeed
+                                                               on the path from x to the root, size(z) 5 ad(Z) . site[fl.
+results in node 6 being rebuilt, since it is the first
+                                                               Therefore, the depth d(x) of a node x is at most
+ancestor of node 8 that satisfies the inequality.
+                                                               log(,,,) sire[T], and the lemma follows,
+4.3 Deleting      from a scapegoat tree.      Deletions             The following lemma proves that a scapegoat node
+are carried out by first deleting the node as we would         found using inequality (4.6) is weight-unbalanced.
+from an ordinary binary search tree, and decrementing               LEMMA 5.2. If a binary tree T contains a node x0
+size[T]. Then, if                                              at depth greater than h,(n),     then the deepest ancestor
+                                                               xi of xo that is not a-height-balanced    is not a-weight-
+(4.7)              size[Tj < a f max-site[Tj                   balanced either.
+168                                                                                                                            GALPERIN AND RIVEST
+
+    Proof. We chose xi so that the following inequalities                  Proof Denote by sh and sr the sizes of the heavy
+are satisfied.                                                        and the light subtrees respectively. The root of the tree
+                  i > h,(size(xi))   ,                                is not o-weight-balanced, hence:
+and
+                                                                                              sh   >    ~2 * (sh          +     SI +    1)
+                        i - I 5 h,(Site(Xi-1)) .
+Subtracting        these two inequalities                 gives       This yields:
+                                                                                              sh   >        &             ’ (81     +   1)
+               1 >         h,(Si%C(Xi))            - h,(size(zj-1)
+                                                                      Since a > l/2 and Sh and SI are both whole numbers,
+                    =      h31/,          (2;E,)                  *   we get:
+                                                                                                       8h       2    sl   +     2   .
+Therefore,
+                        Si%e(Xi-1)          > CX* Site(Zi).               A tree T is complete of height h if a node cannot
+                                                                      be added to T without making its height greater than
+                                                                      h. A complete tree of height h has 2h+’ - 1 nodes.
+5.2 Complexity      of searching.   Since a scapegoat                      LEMMA 5.6. If T is not a-weight-balanced     and T
+tree is loosely a-height-balanced and o is fixed, a                   contains only one node at depth h(T) then rebuilding T
+SEARCH operation takes worsl-case time                                decreases its height.
+                          O(h,(n))           = O(logn)        Proof. Let x be the deepest node of T, and let TI
+                                                              .
+                                                          be the light subtree of T. Let T/ be the tree we get by
+     No restructuring or rebalancing operations are per- removing x from Tr if z is a node of TI, or TJ itself if x
+formed during a SEARCH. Therefore, not only do scape- is not a node of Tl. By Lemma 5.5, T,’ is not a complete
+goat trees yield an O(logn) worst-case SEARCH time, tree of height h(T)- 1. Therefore, Lemma 5.4 completes
+but they should also be efficient in practice for SEARCH- the proof.
+intensive applications since no balancing overhead is in-     -
+                                                              THEOREM 5.1. Jf a scapegoat tree T was created
+curred for searches.
+                                                          from a l/2-weight-balanced  tree by a sequence of INSERT
+                                                                      operations,      then T is a-height-balanced.
+5.3 Complexity      of inserting.        The following
+lemma is key to the complexity analysis.                                   Proof.     By induction                  on the number of insert oper-
+      LEMMA 5.3. The time to find the scapegoat node xi               ations   using Lemma             5.6.
+iS O(Si%e(Xi)).                                                            Let us now consider a sequence of n INSERT opera-
+                                                                      tions, beginning with an empty tree. We wish to show
+     Proof. The dominant part of the cost of finding the
+                                                                      that the amortized complexity per INSERT is O(logn).
+scapegoat node xi is the cost of computing the values
+                                                                            For an overview of amortized analysis, see Cormen
+si.ze(xo), si%e(xi), . . . , sire(xi). Observe that with the
+                                                                      et al. [5]. We begin by defining a nonnegative potential
+optimized size calculations described in equation (4.5),              fvnction for the tree Let
+each node in the subtree rooted at the scapegoat node
+xi is visited exactly once during these computations.                               A(x) = Isi%e(left[x])                     - site(right[x])),
+     We now analyze the situation where no DELETE
+operations are done; only INSERT and SEARCHopera-                     and define the potential of node x to be 0 if A(x) < 2,
+tions are performed. The following lemmas yield The-                  and A(x) otherwise. The potential of a l/2-weight-
+orem 5.1, which shows that a scapegoat tree is always                 balanced node is thus 0, and the potential of a node
+a-height-balanced if no deletions are performed. The                  x that is not o-weight-balanced is @(size(x)).          (Note
+next lemma asserts that rebuilding a tree does not make               that A(x) is not stored at x nor explicitly manipulated
+it deeper.                                                            during any update operations; it is just an accounting
+     LEMMA 5.4. If T is a l/2-weight-balanced     binary              fiction representing the amount of “prepaid work” avail-
+search tree, then no tree of the same size has a smaller              able at node x.) The potential of the tree is the sum of
+height.                                                               the potentials of its nodes.
+                                                                            It is easy to see that by increasing their cost by only
+      Proof.      Straightforward.
+                                                                      a constant factor, the insertion operations that build up
+     LEMMA 5.5. If the root of T is not a-weight-                     a scapegoat tree can pay for the increases in potential
+balanced then its heavy subtree contains at least 2 nodes             at the nodes. That is, whenever we pass by a node x
+more than its light subtree.                                          to insert a new node as a descendant of x, we can pay
+SCAPEGOAT TREES                                                                                                                              169
+
+for the increased potential in x that may be required by          by Lemma 5.7. Hence
+the resulting increase in A(x).
+     The potential of the scapegoat node, like that of any          max(h,(T’),        h(P))       5 max(h,(T’),          h(T))      =
+non-a-weight-balanced      node, is O(site(zi)). Therefore,                                                m=(UT),           h(T))       .
+this potential is sufficient to pay for finding the scape-
+goat node and rebuilding its subtree. (Each of these                  The lemma follows by induction                      on the number of
+ two operations has complexity Q( size( xi)).) Further-           operations in the sequence.
+more, the potential of the rebuilt subtree is 0, so the
+                                                                        LEMMA 5.9. For T’ = INSERT(T, x), if T is loosely
+entire initial potential may be used up to pay for these
+                                                                  cv-height-balanced  but is not a-height-balanced,     and
+operations. This completes the proof of the following
+                                                                  h,(T’)    = h,(T) + 1, th en T’ is a-height-balanced.
+ theorem.
+     THEOREM 5.2. A scapegoat tree can handle a se-                    Proof.   We know that
+ quence of n INSERT and m SEARCH operations,          begin-
+ ning with an empty tree, with O(logn) amortized cost                                     h(T)        = ha(T)      + 1.
+ per INSERT and O(logk) worst-case time per SEARCH,               Hence
+ where k is the sire of the tree the SEARCH is performed
+on.                                                                                            h(T)    = h,(T’).
+
+                                                                  Combining this with Lemma 5.7 gives
+5.4     Complexity                    The main lemma of
+                           of deleting.
+this section, Lemma 5.10, states that scapegoat trees                                      h(T’)       _< h,(T’)     ,
+are loosely o-height-balanced (recall inequality (3.4)).
+Since we perform Q(n) operations between two suc-                 i.e., T’ is height balanced.
+cessive rebuilds due to delete operations we can “pay”                  Now we have the tools to prove the main lemma of
+for them in the amortized sense. Therefore, combining             this section.
+Lemma 5.10 with the preceding results completes the                     LEMMA 5.10. A scapegoat tree built by INSERT and
+proof of the following theorem.                                   DELETE operations from an empty tree is always loosely
+      THEOREM 5.3. A scapegoat tree can handle a se-              a-height-balanced.
+ quence of n INSERT and m SEARCH or DELETE opera-
+                                                                       Proof. Let 01,. . . , o,, be a sequence of update oper-
+ tions, beginning with an empty tree, with O(logn) amor-
+                                                                  ations that is applied to a l/2-weight-balanced       scape-
+ tized cost per INSERT or DELETE and O(logk) worst-
+                                                                  goat tree, up until (but not including) the first opera-
+ case time per SEARCH, where k is the size of the tree
+                                                                  tion, if any, that causes the entire tree to be rebuilt.
+ the SEARCH is performed on.
+                                                                  To prove the lemma it suffices to show that during
+      The first lemma generalizes Theorem 5.1.                    this sequence of operations the tree is always loosely
+       LEMMA 5.7. For any tree T let T’ = INSERT(T, x),           o-height-balanced.   During any sequence of update op-
+then                                                              erations that do not change h,(T), a loosely o-height-
+                   h(T’)   5 max(h,(T’),   h(T))   .              balanced tree remains loosely o-height-balanced,         and
+                                                                  an a-height-balanced       tree remains a-height-balanced,
+     Proof If the insertion of x did not trigger a rebuild,       by Lemma 5.8. Therefore, let oil, . . . , oi* be the sub-
+then the depth of x is at most ha(T’) and we are done.            sequence (not necessarily successive) of operations that
+     Otherwise, suppose z was initially inserted at depth         change ha(T). An INSERT operation in this subsequence
+d in T, where d > hLI(      thereby causing a rebuild. If         leaves the tree o-height-balanced, by Lemma 5.9. The
+T already contained other nodes of depth d we are done,           usage of mat-size[T]     in DELETE implies that there are
+since a rebuild does not make a tree deeper. Otherwise,           no two successive DELETE operations in this subse-
+the arguments in section 5.1 and Lemma 5.6 apply.                 quence, since the entire tree would be rebuilt no later
+                                                                  than the second such DELETE operation. Therefore a
+   LEMMA 5.8. If h,(T)     does not change during                 DELETE operation in this subsequence must operate on
+         of INSERT and DELETE operations
+a sequence                                        then            an a-height-balanced tree. Since the DELETE operation
+m=4UT),  h(T)) is not increased by that sequence.                 decreases h,(T) by just one, the result is a loosely IY-
+       Proof   A     DELETE operation can not          increase   height-balanced tree. The lemma follows from applying
+max(h,(T),     h(T)).   For an INSERT we have                     the preceding lemmas in an induction on the number of
+                                                                  operations.
+                   h(T’) I m=(L(T’),       h(T))                  This completes the proof of Theorem 5.3.
+170                                                                                             GALPERIN    AND RIVEST
+
+6     Rebuilding        in place
+A straightforward way of rebuilding a tree is to use a
+stack of logarithmic size to traverse the tree in-order
+in linear time and copy its nodes to an auxiliary array.
+Then build the new l/2-weight-balanced     tree using a
+ “divide and conquer” method. This yields O(n) time
+and space complexity. Our methods improve the space
+complexity to logarithmic.
+
+6.1     A simple     recursive   method.         The first    Figure 2: The tree INSERT(T, 8), where T is the tree of
+algorithm links the elements together into a list, rather     Figure 1.
+than copying them into an array.
+     The initial tree-walk is implemented by the fol-
+lowing procedure, FLATTEN.            A call of the form      input a pointer scapegoat to the root of a subtree to be
+FLATTEN(Z, NIL) returns a list of the nodes in the sub-
+                                                              rebuilt, and the size n of that subtree. It returns the
+tree rooted at 2, sorted in nondecreasing order. In gen-      root of the rebuilt subtree. The rebuilt subtree is 1/2-
+eral, a call of the form FLATTEN(Z, y) takes as input a       weight-balanced. The procedure utilizes the procedures
+pointer x to the root of a subtree and a pointer y to         FLATTEN and BUILD-TREE       defined above, and runs in
+the first node in a list of nodes (linked using their right   time O(n) and space proportional to the height of the
+pointer fields). The set of nodes in the subtree rooted       input subtree.
+at x and the set of nodes in the list headed by y are         REBUILD-TREE(~, scapegoat)
+assumed to be disjoint. The procedure returns the list
+resulting from turning the subtree rooted at x into a list    1 create a dummy node w
+of nodes, linked by their right pointers, and appending       2 % c FLATTEN(scapegoat, 20)
+the list headed by y to the result.                           3 BUILD-TREE(~, Z)
+FLATTEN(Z,         y)                                         4   return   left[w]
+1 if z = NIL                                                       Figures 1 and 2 illustrate   this process.
+2     then return          y
+                                                              6.2     A non-recursive      method.     This section sug-
+3 right[x]   + FLATTEN(r’ight[x], y)
+                                                              gests a non-recursive method for rebuilding a tree in
+4 return     FLATTEN( reft[x], z)                             logarithmic space, that proved to be faster in our ex-
+     The procedure runs in time proportional to the           periments than the previous version. We only sketch
+number of nodes in the subtree, and in space propor-          the procedure here; details are given the full version of
+tional to its height                                          this paper.
+     The following procedure, BUILD-TREE, builds a                  We traverse the old tree in-order. Since the number
+l/2-weight-balanced   tree of n nodes from a list of nodes    of nodes in the tree is known, the new place of each node
+headed by node x. It is assumed that the list of nodes        we encounter can be uniquely determined. Every node
+has length at least n + 1. The procedure returns the          is “plugged into” the right place in the new tree upon
+n+ 1st node in the list, s, modified so that left[s] points   being visited, thereby creating the new tree in place.
+to the root r of the n-node tree created.                           We need to keep track of the “cutting edge” of the
+BUILD-TREE(~, x)
+                                                              two tree traversals as shown in Figure 3. Since the depth
+1 ifn=O                                                       of both trees is logarithmic, two logarithmic size stacks
+2     then         lefi[z] c NIL                              suffice for this purpose.
+3                  return   z
+4 P c BUILD-TREE( [(n - 1)/2], Z)                             7    More    Applications    of Scapegoat     Techniques
+5 s c BUILD-TREE([(~ - 1)/2J , right[r])            The ideas underlying scapegoat trees are that of finding
+6 right[r] c left[s]                                and rebuilding a subtree whose root is not weight-
+7 Ieft[s]+-r                                        balanced when the tree gets too deep, and periodically
+8 return    s                                       rebuilding the root after enough DELETES occurred.
+    A call to BUILD-TREE(~, scapegoat) runs in time This   technique can be applied to other tree-like data
+O(n) and uses O(logn) space.                        structures.   To allow this, it should be possible to find
+    The following procedure, REBUILD-TREE, takes as the  scapegoat  node and to rebuild the subtree rooted at
+                                                    it. The time to find the scapegoat and the rebuilding
+SCAPEGOAT     TREES                                                                                                        171
+
+
+                                                                scapegoat. However, if we choose as a scapegoat an
+                                                                ancestor x of the deep node that satisfies condition (4.6):
+
+                                                                (7.8)             h(x) > krt,i,,&i44),
+                                                                we can prove the following theorem.
+                                                                     THEOREM 7.1. A related scapegoat tree can han-
+                                                                dle a sequence ofn INSERT and m. SEARCH or DELETE
+                                                                operations, beginning with an empty tree, with an
+                                                                amortized cost of O(F(n) logl,c,,,ios,, 7~) per INSERT
+                                                                or DELETE and O(logl,Qtriggcr k) worst-case time per
+                                     The
+                                        V                       SEARCH, where k is the site of the tree the SEARCH is
+                                     cutting                    performed on.
+                                     edges
+                                                                  Proof. (sketch) The existence of an ancestor that
+                                                             satisfies equation (7.8) is guaranteed as explained in
+Figure 3: Non-recursive rebuilding in place. An inter-
+                                                             Section 5 (the root of the tree satisfies it). It follows
+mediate state during the execution of a rebuilding in
+                                                             from the way the scapegoat was chosen that rebuilding
+place of the tree INSERT(T, 8). Node 11 is the new root
+                                                             the subtree rooted at it decreases the depth of the
+of the subtree being rebuilt. (See T in Figure 1).           rebuilt subtree, allowing us to prove a result similar to
+                                                             Lemma 5.7. The other lemmas leading to Theorem 5.3
+                                                             can also be proven for relaxed rebuilding. Hence, we can
+time does not have to be linear in the number of nodes
+                                                             indeed support a tree of depth at most logl,acri9ser k+l,
+in the subtree being rebuilt, as was the case with binary
+                                                             where k is the size of the tree, thereby establishing the
+search trees (Theorem 5.3). It is also not necessary for
+                                                             bound on the worst-case search time.
+the rebuilding algorithm to yield a perfectly balanced
+                                                                  To prove the amortized bound on the complexity
+subtree. These generalizations of the main theorem,
+                                                             of updates we will define a potential function @ in an
+allow us to apply scapegoat techniques to an array of
+                                                             inductive manner. Let the potential of the nodes in
+other tree-like data structures.
+                                                             a subtree that was just rebuilt and of newly inserted
+                                                             nodes be 0. Every time a node is traversed by an update
+7.1 A stronger version of the main theorem.
+                                                             operation, increase its potential by F(N), where N is
+Suppose for a class of trees, some fixed (Ybal 2 l/2 and a
+                                                             the size of the subtree rooted at that node. For any
+function F, F(n) = Q(l), satisfying F(G) = O(F(n))
+                                                             update operation, the node whose potential is increased
+for any constant C, there exists an algorithm that when
+                                                             the most is the root. Hence the total price of the update
+given n nodes can in 0(&‘(n))       steps build a tree con-
+                                                             operation is bounded by (F(N) + 1) logl,atrigper N =
+taining those nodes that is aa,,-weight-balanced.     We’ll
+call such a rebuilding routine a arb,l-relaxed rebuilding    W’W)log~/a,~;.,~r        NJ = F(n) = Q(l).
+                                                                   If the root is otrigger- weight unbalanced, then CN
+routine. Also suppose there exists an algorithm that
+                                                             different update operations traversed it. since it was
+can find an ancestor of a given node that is not weight-
+                                                             inserted or last rebuilt. Now C 2 CO, where
+balanced in O(nF(n)) time, where n is the size of the
+subtree rooted at the scapegoat node, provided such an
+ancestor exists. Then we can use scapegoat techniques                               co= 2a
+                                                                                        &trigger      - @bar
+                                                                                              triggerabal
+to support dynamic updates to this class with amor-
+tized logarithmic complexity. When F(n) is constant At each one of the last Co passes the potential of
+and oba[ = l/2, we have the previously handled situa- the root was increased by at least F(( 1 - Co)N).
+tion of Theorem ??                                            Hence, the total potential stored at the root is at least
+      For a fixed atrigger, atrigger > ffbal, an insertion    CsNF((1 - Co)N) = O(NF(N),                  allowing it to pay for
+of a deep node with respect to atrigger would trigger the rebuilding operation.
+a rebuilding. Lemma 5.1 guarantees that such a node
+ha an atrigger -weight-unbalanced ancestor. However, 7.2 Scapegoat k - d trees.                              Bentley introduced
+for any constants cr, p, l/2 < cr < p and for n k - d trees in [3]. He proved average-case bounds
+large enough there exists a P-weight-unbalanced         tree of O(lgn) for a tree of size n for both updates and
+of size n that can be rebuilt into a deeper o-weight-         searches. Bentley in [4] and Overmars and van Leeuwen
+balanced tree. Hence, we cannot choose any atrigger- in [ll] propose a scheme for dynamic maintenance of
+weight unbalanced ancestor of the deep node to be the k-d trees that achieves a logarithmic worst-case bound
+172                                                                                         GALPERIN AND RIVEST
+
+for searches with an average-case bound of O((lgn)‘)     naively one could expect a O(log2d N) worst-case search
+for updates.     Both use an idea similar to ours of     time.) They do not address deletion, and give only ex-
+rebuilding weight-unbalanced subtrees. Overmars and      perimental results for insertion times. Samet in [12]
+van Leeuwen called their structure pseudo L - d trees.   proposed an algorithm for deletions. Overmars and van
+     Scapegoat k-d trees achieve logarithmic worst-case  Leeuwen in [ll] introduced pseudoquad trees - a dy-
+bounds for searches and a log2 n amortized bound for     namic version of quad trees. They suggest an algorithm
+updates. ( The analysis of updates in [ll] and [4] can   for achieving O((lg N)2) average insertion and deletion
+be improved to yield amortized rather than average-case  times, where N is the number of insertions, while im-
+bounds.) However, scapegoat k - d trees do not require   proving the worst-case search time to logd+I-a n+O(l),
+maintaining extra data at the nodes. Also we believe     where d is the dimension of the tree, n the size of the
+they might prove to be faster in practice as they do not tree the search is performed on, and 6 an arbitrary con-
+rebuild every weight-unbalanced node, thereby allowing   stant satisfying 1 < 6 < d.
+for it to become balanced by future updates.                  Comparing scapegoat quad trees can be compared
+     Applying Theorem 7.1 we get:                        to pseudo-quad trees we can point out that:
+    THEOREM 7.2. A scapegoat k - d tree can handle             Scapegoat trees offer worst-case search time of
+a sequence of n INSERT and m SEARCH or DELETE                  Clogd+, n for any constant C, or following the
+operations, beginning with an empty tree, with O(log2 n)      original    notations of Overmars and van Leeuwen
+amortized   cost per INSERT or DELETE and O(log k)             log,+,-,    n for any positive constant 6 (note that
+worst-case time per SEARCH,where k is the size of the          we  do   not require 1 < a).
+tree the SEARCHis performed    on.
+      Proof.To apply Theorem 7.1 we use the algorithm             The bounds on updates are improved from average-
+Bentley proposes in [3] for building a perfectly balanced         case to amortized bounds. (Though careful analysis
+k - d tree of N nodes in O(kN lg N), by taking as a               of the algorithm in [ll] can yield amortized bounds
+splitting point the median with respect to the splitting          too.)
+coordinate. Finding the scapegoat is done in a manner
+similar to that in binary search trees.                           Scapegoat trees do not require maintenance of
+                                                                  extra data at the nodes regarding the weight of the
+7.3 Scapegoat trees for orthogonal             queries.           children of each node. This can be quite substantial
+For keys which are d dimensional vectors one may wish             in this case, as ecah node has 2d children, where d
+to specify a range for each component of the key and              is the dimension of the tree.
+ask how many keys have all components in the desired
+range. Leuker in [8] proposed an algorithm that handles       Scapegoat trees might prove faster in practice, as
+range queries in O(logdn) worst-case time where n is          they do not require the rebuilding of every weight-
+the size of the tree. Updates are handled in O(nlogdn)        unbalanced node, thereby allowing some nodes to
+amortized time.                                               be balanced by future updates. Also more compact
+     Leuker’s paper proves that given a list of n keys a      storage might result in greater speed.
+l/3-balanced tree may be formed in O(nlogmin(‘~d-‘)n)         We call a multi-way node, x, o-weight-balanced,
+time.                                                    if the every child y of x, satisfies size(y) L osize(x).
+     Using this in Theorem 7.1 proves                    Weight and height balanced trees are defined in a way
+     THEOREM 7.3. A scapegoat orthogonal tree can similar to that used for binary trees.
+handle a sequence of n INSERT and m SEARCH or                 Theorem 2.2.3 in [ll] suggests how to build a
+DELETE operations, beginning with an empty tree, with l/(d+l)      weight balanced pseudo-quad tree in O(n log n)
+o(logmWW       n) amortized cost per INSERT or DELETE time. Finding a scapegoat in a multiway tree can be
+and O(logd k) worst-case time per range query, where k done by traversing a tree in a manner similar to that
+is the size of the tree the range query is performed on. described for binary trees, starting at the deep node
+     Note that our algorithm improves Leuker’s amor- and going up. Plugging this into Theorem 7.1 proves:
+tized bounds for updates, and does not require storage
+                                                              THEOREM 7.4. A scapegoat quad tree can han-
+of balancing data at the nodes of the tree.
+                                                            dle   a sequence     of n INSERT and m SEARCH or
+                                                            DELETE operations,     beginning with an empty tree, with
+7.4 Scapegoat quad trees.        Quad trees were in-
+                                                            O(log2n) amortized cost per INSERT or DELETE and
+troduced by Finkel and Bentley in [S]. They achieve
+                                                            O(log,+,-,   k) worst-case time per SEARCH,where k is
+a worst-case bound of O(log2N) per search. (As in
+                                                            the size of the tree the SEARCHis performed on.
+a d dimensional quad tree every node has 2d children
+ SCAPEGOAT     TREES                                                                                                      173
+
+
+8 Experimental         Results
+We compared scapegoat trees to two other schemes
+for maintaining binary search trees - red-black trees
+and splay trees. We also compare the performance of
+scapegoat trees for different values of cr. We compare
+the performance for each one of the three operations
+INSERT, DELETE, and SEARCH separately. We consider
+two types of workloads - uniformly distributed inputs
+and sorted inputs.        The results are summarized in
+Tables 4 and 5. The tables list average time in seconds
+per 128K (131,072) operations.
+       To compare the performance for uniformly dis-
+tributed inputs, we inserted the nodes into a tree in a
+random order, then searched for randomly chosen nodes
+in the tree, and finally deleted all of the nodes in ran-
+ dom order. We tried trees of three sizes - lK, 8K and        Figure 4: Results of comparative experiments for uni-
+ 64K. The results appear in Table 4.                          formly distributed inputs. Execution time in seconds
+       Table 5 summarizes the results of the comparison       per 128K (131,072) op erations for splay trees, red-black
+for sorted sequences. Here too we tried three tree sizes      trees and scapegoat trees with cy varying between 0.55
+- lK, 8K and 64K. First we inserted the nodes into a          - 0.75 for tree sizes of lK, 8K and 64K.
+ tree in increasing order of keys, then we searched for all
+ of the keys that were inserted in increasing order, and      possible positions, instead of spreading them evenly.
+ finally we deleted all of the nodes in increasing order of   Th’ is simplified the code somewhat and yielded a 6%
+ keys.                                                        - 9% percent speedup over the version described by the
+       For uniformly distributed sequences our experi-        pseudo-code
+ ments show that one can choose an (I! so that scapegoat
+ trees outperform red-black trees and splay trees on all      9 Discussion     and Conclusions
+ three operations. However, for the insertion of sorted se-
+                                                              We leave as an open problem the average-case analysis
+ quences scapegoat trees are noticeably slower than the
+ other two data structures. Hence, in practical applica-      of scapegoat trees (say, assuming that all permutations
+ tions, it would be advisable to use scapegoat trees when     of the input keys are equally likely).
+ the inserted keys are expected to be roughly randomly             To summarize: scapegoat trees are the first “unen-
+ distributed, or when the application is search intensive.    cumbered” tree structure (i.e., having no extra storage
+       Unsurprisingly, as the value of cr is increased the    per tree node) that achieves a worst-case SEARCHtime
+  SEARCH and DELETE operations perform faster, while
+                                                              of O(logn), with reasonable amortized update costs.
+ the INSERTS become slower. Therefore, in practical           Acknowledgments
+  applications the value of (Y should be chosen according          We are greatful to Jon Bentley for suggesting the
+ to the expected frequency in which these operations will     applicability of our techniques to k - d trees. We thank
+  be performed.                                               Charles Leiserson for some helpful discussions. We also
+       For the splay trees we used top-down splaying          thank David Williamson and John Leo for allowing us
+  as suggested by Sleator and Tarjan in [13]. The             to use their software in our experiments.
+ implementation of red-black trees follows Chapter 14
+  in Cormen, Leiserson and Rivest [5].                        References
+       The non-recursive method of rebuilding subtrees         [l] G. M. Adel’son-Vel’sW      and E. M. Landis. An algo-
+  described in section 6.2 proved to work faster than              rithm for the organization of information.   Soviet Math-
+  the method described in section 6.1 by 25% - 30%.                ematics Doklady, 3:1259-1263, 1962.
+  In section 4 we described two ways to choose the             [2] R. Bayer. Symmetric binary B-trees: Data structure
+  scapegoat. Our experiments suggest that checking for             and maintenance algorithms. Acta Informatica, 1:290-
+  condition (4.6) yields a better overall performance.             306, 1972.
+                                                               [3] Jon L. Bentley. Multidimensional      binary search trees
+        In our experiments we used a variant of the non-
+                                                                   used fro associative searching. Communications      of the
+  recursive rebuilding algorithm described by the pseudo-          ACM, 19:509-517, 1975.
+  code in section 6.2 which inserts all the nodes at the       [4] Jon L. Bentley. Multidimensional      binary search trees
+  deepest level of the newly-built subtree at the leftmost         in database applications.   IEEE Transactions     on Soft-
+174                                                              GALPERIN   AND RIVEST
+
+
+
+
+Figure 5: Results of comparative   experiments  for mono-
+tone inputs.     Execution  time in seconds per 128K
+(131,072) operations for splay trees, red-black trees and
+scapegoat trees with (Y varying between 0.55 - 0.75 for
+tree sizes of lK, 8K and 64K.
+
+
+       ware Engineering, 5(4):333-340, 1979.
+   [5] Thomas H. Cormen,          Charles E. Leiserson, and
+       Ronald L. Rivest. Introduction to Algorithms.      MIT
+       Press/McGraw-Hill,     1990.
+   [6] R. A. Finkel and J. L. Bentley. Quad-trees; a data
+       structure for retrieval on composite keys. Acta Infor-
+       matica, 4:1-9, 1974.
+   [7] Leo J. Guibas and Robert Sedgewick. A diochromatic
+       framework for balanced trees. In Proceedings of the
+        19th Annual Symposium on Foundations of Computer
+       Science, pages 8-21. IEEE Computer Society, 1978.
+   [8] George S. Leuker. A data structure for orthogonal
+       range queries. In Proceedings of the 19th Annual Sym-
+       posium on Foundations of Computer Science, pages 28-
+       34. IEEE Computer Society, 1978.
+   [9] K. Mehlhorn and A. Tsakahdis. Data structures. In
+       J. van Leeuwen, editor, Algorithms and Complexity,
+       volume A, chapter 6, pages 301-341. Elsevier, 1990.
+ [lo] I. Nievergelt and E. M. Reingold. Binary search trees of
+       bounded balance. SIAM Journal on Computing, 2:33-
+       43, 1973.
+ [ll] Mark H. Overmars and Jan van Leeuwen. Dynamic
+       multi-dimentional    data structures based on quad- and
+       k - d trees. Acta Informotica, 17:267-285, 1982.
+ [12] Hanan Samet. Deletion in two-dimentional quad trees.
+        Communications of the ACM, 23(12):703-710, 1980.
+ [13] Daniel D. Sleator and Robert E. Tarjan. Self-adjusting
+       binary search trees. Journal of the ACM, 32(3):652-
+       686, 1985.
+

@@ -1,105 +1,266 @@
 #include "wbst_relaxed.h"
 #include "wbst_bottomup.h"
-
-#include <math.h>
-
-static inline tree_t make_tree(node_t *root, u64 size) {
-   return (tree_t){.root = root, .size = size};
-}
-static inline list_t make_list(void *impl, const list_vtable_t *vt) {
-   return (list_t){.impl = impl, .vt = vt};
-}
-
-#define WB_VT_BODY(TYPE, PREFIX, WB_INIT, INSF, DELF, SPLF, JOINF, VERF) \
-static list_t PREFIX##_vt_new(const list_vtable_t *vt) { TYPE *t = (TYPE *)calloc(1, sizeof(TYPE)); t->wb = WB_INIT; return make_list(t, vt); } \
-static list_t PREFIX##_vt_clone(list_t *self) { TYPE *o = (TYPE *)self->impl; TYPE *c = (TYPE *)malloc(sizeof(TYPE)); tree_share(o->tree.root); *c = *o; return make_list(c, self->vt); } \
-static void PREFIX##_vt_free(list_t *self) { TYPE *t = (TYPE *)self->impl; free_nodes(t->tree.root); free(t); self->impl = NULL; } \
-static u64  PREFIX##_vt_size(list_t *self) { return ((TYPE *)self->impl)->tree.size; } \
-static void PREFIX##_vt_each(list_t *self, void (*v)(u64, void*), void *c) { inorder(((TYPE *)self->impl)->tree.root, v, c); } \
-static u64  PREFIX##_vt_select(list_t *self, u64 i) { return tree_lookup(&((TYPE *)self->impl)->tree, i); } \
-static void PREFIX##_vt_update(list_t *self, u64 i, u64 x) { tree_update_base(&((TYPE *)self->impl)->tree, i, x); } \
-static void PREFIX##_vt_verify(list_t *self) { VERF } \
-static void PREFIX##_vt_insert(list_t *self, u64 i, u64 x) { INSF } \
-static u64  PREFIX##_vt_delete(list_t *self, u64 i) { DELF } \
-static void PREFIX##_vt_split(list_t *self, u64 i, list_t *out_l, list_t *out_r) { SPLF } \
-static list_t PREFIX##_vt_join(list_t *self, list_t *other) { JOINF }
+#include "tree_list_adapter.h"
 
 // Forward declaration
-node_t *wbst_rlx_join(weight_balance_t wb, node_t *l, node_t *r, u64 sl, u64 sr);
+static node_t *wbst_rlx_join_impl(weight_balance_t wb, node_t *l, node_t *r,
+                                  u64 sl, u64 sr);
+
+static void wbst_rlx_require_balance(weight_balance_t wb) {
+   weight_balance_require(wb);
+}
 
 static node_t *wbst_rlx_balance(weight_balance_t wb, node_t *p, u64 s) {
-   if (s < 4) return p;
-   if (!wb.isBalanced(sizeL(p), sizeR(p, s)) || !wb.isBalanced(sizeR(p, s), sizeL(p)))
-      p = tree_partition(p, s >> 1);
+   wbst_rlx_require_balance(wb);
+   tree_sized_root_shape_require(p, s);
+   if (s < 4) {
+      return p;
+   }
+   invariant(p != NULL);
+   invariant(p->s < s);
+   tree_persist_unshared(&p);
+   if (!wb.isBalanced(sizeL(p), sizeR(p, s)) ||
+       !wb.isBalanced(sizeR(p, s), sizeL(p))) {
+      p = tree_partition_sized(p, s, s >> 1);
+   }
    p->l = wbst_rlx_balance(wb, p->l, sizeL(p));
    p->r = wbst_rlx_balance(wb, p->r, sizeR(p, s));
    return p;
 }
 
-void wbst_rlx_insert(weight_balance_t wb, node_t **p, u64 s, u64 i, u64 x, u64 tree_size) {
-   node_t **unbalancedNode = NULL;
-   u64 unbalancedSize = 0;
-   int h = 0;
+static void
+wbst_rlx_note_unbalanced_insert(weight_balance_t wb, node_t ***unbalanced_node,
+                                u64 *unbalanced_size, node_t **candidate,
+                                u64 candidate_size, u64 stable_side_size,
+                                u64 growing_side_size) {
+   wbst_rlx_require_balance(wb);
+   invariant(unbalanced_node != NULL);
+   invariant(unbalanced_size != NULL);
+   invariant(candidate != NULL);
+   invariant(*candidate != NULL);
+   invariant(candidate_size > 0);
+   invariant(stable_side_size <= candidate_size);
+   invariant(growing_side_size <= candidate_size);
+   invariant(tree_size_from_child_sizes(stable_side_size, growing_side_size) ==
+             candidate_size);
+
+   if (*unbalanced_node != NULL) {
+      return;
+   }
+   if (!wb.isBalanced(stable_side_size, growing_side_size)) {
+      *unbalanced_node = candidate;
+      *unbalanced_size = candidate_size;
+   }
+}
+
+void wbst_rlx_insert(weight_balance_t wb, node_t **p, u64 s, u64 i, u64 x,
+                     u64 tree_size) {
+   wbst_rlx_require_balance(wb);
+   invariant(p != NULL);
+   invariant(i <= s);
+   invariant(s <= tree_size);
+   tree_debug_require_size(*p, s);
+   node_t **unbalanced_node = NULL;
+   u64 unbalanced_size = 0;
+   u64 depth = 0;
+   u64 inserted_tree_size = sequence_insert_inputs_require(i, tree_size);
    for (;;) {
+      (void)tree_insert_inputs_require(*p, i, s);
       if (*p == NULL) {
+         invariant(s == 0);
+         invariant(i == 0);
          *p = tree_allocate((node_t){.x = x});
-         if (h > wb.maxHeight(tree_size + 1)) {
-            *unbalancedNode = wbst_rlx_balance(wb, *unbalancedNode, unbalancedSize);
+         int max_height = wb.maxHeight(inserted_tree_size);
+         invariant(max_height >= 0);
+         if (depth > (u64)max_height) {
+            invariant(unbalanced_node != NULL);
+            invariant(*unbalanced_node != NULL);
+            invariant(unbalanced_size > 0);
+            *unbalanced_node =
+                wbst_rlx_balance(wb, *unbalanced_node, unbalanced_size);
          }
          return;
       }
-      tree_persist(p); h++;
+      tree_persist_unshared(p);
+      depth = size_after_inserting_one(depth);
       u64 sl = sizeL(*p), sr = sizeR(*p, s);
+      u64 inserted_size = sequence_insert_inputs_require(i, s);
       if (i <= sl) {
-         if (unbalancedNode == NULL && !wb.isBalanced(sr, sl + 1)) { unbalancedNode = p; unbalancedSize = s + 1; }
-         p = insertL(*p); s = sl;
+         u64 inserted_sl = sequence_insert_inputs_require(i, sl);
+         wbst_rlx_note_unbalanced_insert(wb, &unbalanced_node, &unbalanced_size,
+                                         p, inserted_size, sr, inserted_sl);
+         p = insertL(*p);
+         s = sl;
       } else {
-         if (unbalancedNode == NULL && !wb.isBalanced(sl, sr + 1)) { unbalancedNode = p; unbalancedSize = s + 1; }
-         p = insertR(*p, &i); s = sr;
+         u64 right_i = rank_in_right_subtree(i, sl);
+         u64 inserted_sr = sequence_insert_inputs_require(right_i, sr);
+         wbst_rlx_note_unbalanced_insert(wb, &unbalanced_node, &unbalanced_size,
+                                         p, inserted_size, sl, inserted_sr);
+         p = insertR(*p, &i);
+         invariant(i == right_i);
+         s = sr;
       }
    }
 }
 
-static node_t *wbst_rlx_joinLr(weight_balance_t wb, node_t *l, node_t *r, u64 sl, u64 sr) {
-   if (r == NULL) return l;
-   if (wb.isBalanced(sr, sl)) { node_t *p = tree_deleteMax(&l); p->l = l; p->r = r; p->s = sl - 1; return p; }
-   tree_persist(&l); l->r = wbst_rlx_join(wb, l->r, r, sl - l->s - 1, sr); return l;
+static node_t *wbst_rlx_join_left_heavy(weight_balance_t wb, node_t *l,
+                                        node_t *r, u64 sl, u64 sr) {
+   wbst_rlx_require_balance(wb);
+   tree_join_inputs_require(l, r, sl, sr);
+   if (r == NULL) {
+      invariant(sr == 0);
+      return l;
+   }
+   if (wb.isBalanced(sr, sl)) {
+      invariant(l != NULL);
+      invariant(sl > 0);
+      node_t *p = tree_deleteMax_sized(&l, sl);
+      invariant(p != NULL);
+      p->l = l;
+      p->r = r;
+      p->s = rank_of_last(sl);
+      return p;
+   }
+   tree_nonempty_root_shape_require(l, sl);
+   tree_persist_unshared(&l);
+   l->r = wbst_rlx_join_impl(wb, l->r, r, sizeR(l, sl), sr);
+   return l;
 }
 
-static node_t *wbst_rlx_joinlR(weight_balance_t wb, node_t *l, node_t *r, u64 sl, u64 sr) {
-   if (l == NULL) return r;
-   if (wb.isBalanced(sl, sr)) { node_t *p = tree_deleteMin(&r); p->l = l; p->r = r; p->s = sl; return p; }
-   tree_persist(&r); r->l = wbst_rlx_join(wb, l, r->l, sl, r->s); r->s = sl + r->s; return r;
+static node_t *wbst_rlx_join_right_heavy(weight_balance_t wb, node_t *l,
+                                         node_t *r, u64 sl, u64 sr) {
+   wbst_rlx_require_balance(wb);
+   tree_join_inputs_require(l, r, sl, sr);
+   if (l == NULL) {
+      invariant(sl == 0);
+      return r;
+   }
+   if (wb.isBalanced(sl, sr)) {
+      invariant(r != NULL);
+      invariant(sr > 0);
+      node_t *p = tree_deleteMin_sized(&r, sr);
+      invariant(p != NULL);
+      p->l = l;
+      p->r = r;
+      p->s = sl;
+      return p;
+   }
+   tree_nonempty_root_shape_require(r, sr);
+   tree_persist_unshared(&r);
+   r->l = wbst_rlx_join_impl(wb, l, r->l, sl, r->s);
+   r->s = rank_after_prefix(sl, r);
+   return r;
 }
 
-node_t *wbst_rlx_join(weight_balance_t wb, node_t *l, node_t *r, u64 sl, u64 sr) {
-   if (sl > sr) return wbst_rlx_joinLr(wb, l, r, sl, sr);
-   else return wbst_rlx_joinlR(wb, l, r, sl, sr);
+static node_t *wbst_rlx_join_impl(weight_balance_t wb, node_t *l, node_t *r,
+                                  u64 sl, u64 sr) {
+   wbst_rlx_require_balance(wb);
+   tree_join_inputs_require(l, r, sl, sr);
+   if (sl > sr) {
+      return wbst_rlx_join_left_heavy(wb, l, r, sl, sr);
+   }
+   return wbst_rlx_join_right_heavy(wb, l, r, sl, sr);
 }
 
-// WBSTRelaxed - written explicitly to avoid macro comma issues
-static list_t wbst_rlx_vt_new(const list_vtable_t *vt) { wbst_relaxed_t *t = (wbst_relaxed_t *)calloc(1, sizeof(wbst_relaxed_t)); t->wb = wb_three_two; return (list_t){t, vt}; }
-static list_t wbst_rlx_vt_clone(list_t *self) { wbst_relaxed_t *o = (wbst_relaxed_t *)self->impl; wbst_relaxed_t *c = (wbst_relaxed_t *)malloc(sizeof(wbst_relaxed_t)); tree_share(o->tree.root); *c = *o; return (list_t){c, self->vt}; }
-static void wbst_rlx_vt_free(list_t *self) { wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl; free_nodes(t->tree.root); free(t); self->impl = NULL; }
-static u64  wbst_rlx_vt_size(list_t *self) { return ((wbst_relaxed_t *)self->impl)->tree.size; }
-static void wbst_rlx_vt_each(list_t *self, void (*v)(u64, void*), void *c) { inorder(((wbst_relaxed_t *)self->impl)->tree.root, v, c); }
-static u64  wbst_rlx_vt_select(list_t *self, u64 i) { return tree_lookup(&((wbst_relaxed_t *)self->impl)->tree, i); }
-static void wbst_rlx_vt_update(list_t *self, u64 i, u64 x) { tree_update_base(&((wbst_relaxed_t *)self->impl)->tree, i, x); }
-static void wbst_rlx_vt_verify(list_t *self) { wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl; tree_verify_size(t->tree.root, t->tree.size); }
-static void wbst_rlx_vt_insert(list_t *self, u64 i, u64 x) { wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl; wbst_rlx_insert(t->wb, &t->tree.root, t->tree.size, i, x, t->tree.size); t->tree.size++; }
-static u64  wbst_rlx_vt_delete(list_t *self, u64 i) { return tree_delete_base(&((wbst_relaxed_t *)self->impl)->tree, i); }
-static void wbst_rlx_vt_split(list_t *self, u64 i, list_t *out_l, list_t *out_r) {
-   wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl; tree_share(t->tree.root); node_t *l, *r; tree_split_internal(t->tree.root, i, &l, &r);
-   wbst_relaxed_t *sl = (wbst_relaxed_t *)calloc(1, sizeof(wbst_relaxed_t)); sl->tree = make_tree(l, i); sl->wb = t->wb;
-   wbst_relaxed_t *sr = (wbst_relaxed_t *)calloc(1, sizeof(wbst_relaxed_t)); sr->tree = make_tree(r, t->tree.size - i); sr->wb = t->wb;
-   *out_l = (list_t){sl, self->vt}; *out_r = (list_t){sr, self->vt};
+node_t *wbst_rlx_join(weight_balance_t wb, node_t *l, node_t *r, u64 sl,
+                      u64 sr) {
+   wbst_rlx_require_balance(wb);
+   tree_join_inputs_require(l, r, sl, sr);
+#ifdef DEBUG
+   tree_debug_require_join_inputs(l, r, sl, sr);
+#endif
+   return wbst_rlx_join_impl(wb, l, r, sl, sr);
 }
-static list_t wbst_rlx_vt_join(list_t *self, list_t *other) {
-   wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl, *that = (wbst_relaxed_t *)other->impl;
-   tree_share(t->tree.root); tree_share(that->tree.root);
-   wbst_relaxed_t *res = (wbst_relaxed_t *)calloc(1, sizeof(wbst_relaxed_t)); res->wb = t->wb;
-   res->tree.root = wbst_rlx_join(t->wb, t->tree.root, that->tree.root, t->tree.size, that->tree.size);
-   res->tree.size = t->tree.size + that->tree.size; return (list_t){res, self->vt};
-}
-const list_vtable_t wbst_relaxed_vtable = { "WBSTRelaxed", wbst_rlx_vt_new, wbst_rlx_vt_clone, wbst_rlx_vt_free, wbst_rlx_vt_size, wbst_rlx_vt_each, wbst_rlx_vt_verify, wbst_rlx_vt_select, wbst_rlx_vt_update, wbst_rlx_vt_insert, wbst_rlx_vt_delete, wbst_rlx_vt_split, wbst_rlx_vt_join };
 
+void wbst_rlx_verify(weight_balance_t wb, tree_t *tree) {
+   wbst_rlx_require_balance(wb);
+   invariant(tree != NULL);
+   tree_sized_handle_require(*tree);
+   node_path_metrics_t metrics =
+       tree_verify_size_path_metrics(tree->root, tree->size);
+   if (tree->root == NULL) {
+      invariant(metrics.nodes == 0);
+      return;
+   }
+   invariant(nodeMaximumPathLengthFromMetrics(metrics) <=
+             wb.maxHeight(tree->size));
+}
+
+void wbst_rlx_rebalance_if_too_tall(weight_balance_t wb, tree_t *tree) {
+   wbst_rlx_require_balance(wb);
+   invariant(tree != NULL);
+   tree_sized_handle_require(*tree);
+   if (tree->root == NULL) {
+      return;
+   }
+   tree_debug_require_size(tree->root, tree->size);
+   int max_height = wb.maxHeight(tree->size);
+   if (nodeHeightExceeds(tree->root, max_height)) {
+      tree->root = wbst_rlx_balance(wb, tree->root, tree->size);
+   }
+#ifdef DEBUG
+   wbst_rlx_verify(wb, tree);
+#endif
+}
+
+u64 wbst_rlx_delete(weight_balance_t wb, tree_t *tree, u64 i) {
+   wbst_rlx_require_balance(wb);
+   invariant(tree != NULL);
+   u64 size = tree->size;
+   u64 deleted_size = tree_delete_inputs_require(tree->root, i, size);
+
+   int max_height_before = wb.maxHeight(size);
+   u64 x = tree_delete_base(tree, i);
+   invariant(tree->size == deleted_size);
+   if (tree->root != NULL && wb.maxHeight(tree->size) < max_height_before) {
+      wbst_rlx_rebalance_if_too_tall(wb, tree);
+   }
+   return x;
+}
+
+WB_VT_BODY(
+    wbst_relaxed_t, wbst_rlx, wb_three_two,
+    {
+       wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl;
+       wbst_rlx_insert(t->wb, &t->tree.root, t->tree.size, i, x, t->tree.size);
+       tree_list_sized_inserted(&t->tree);
+    },
+    {
+       wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl;
+       return wbst_rlx_delete(t->wb, &t->tree, i);
+    },
+    {
+       wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl;
+       u64 size = t->tree.size;
+       tree_share(t->tree.root);
+       tree_split_result_t split =
+           tree_split_roots_sized(t->tree.root, i, size);
+       tree_t left = tree_list_make_sized_tree(split.left, i);
+       u64 right_size = tree_list_split_right_size(size, i);
+       tree_t right = tree_list_make_sized_tree(split.right, right_size);
+       wbst_rlx_rebalance_if_too_tall(t->wb, &left);
+       wbst_rlx_rebalance_if_too_tall(t->wb, &right);
+       TREE_LIST_SPLIT_RESULT_FIELD_PREPARED(wbst_relaxed_t, size, wb, t->wb,
+                                             left.root, left.size, right.root,
+                                             right.size);
+    },
+    {
+       wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl;
+       wbst_relaxed_t *that = (wbst_relaxed_t *)other->impl;
+       weight_balance_require_equal(t->wb, that->wb);
+       tree_join_roots_t roots =
+           tree_list_prepare_join_roots(&t->tree, &that->tree);
+       u64 joined_size = tree_list_join_size(t->tree.size, that->tree.size);
+       node_t *joined_root = wbst_rlx_join(t->wb, roots.left, roots.right,
+                                           t->tree.size, that->tree.size);
+       tree_t joined = tree_list_make_sized_tree(joined_root, joined_size);
+       wbst_rlx_rebalance_if_too_tall(t->wb, &joined);
+       TREE_LIST_JOIN_RESULT_FIELD(wbst_relaxed_t, wb, t->wb, joined.root,
+                                   joined.size);
+    },
+    {
+       wbst_relaxed_t *t = (wbst_relaxed_t *)self->impl;
+       wbst_rlx_verify(t->wb, &t->tree);
+    })
+const list_vtable_t wbst_relaxed_vtable =
+    TREE_LIST_VTABLE("WBSTRelaxed", wbst_rlx);

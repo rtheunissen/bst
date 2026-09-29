@@ -1,91 +1,226 @@
 #include "redblack_topdown.h"
 #include "redblack_bottomup.h"
+#include "tree_list_adapter.h"
 
-
-#define TREE_VT_SIMPLE(TYPE, PREFIX) \
-static list_t PREFIX##_vt_new(const list_vtable_t *vt) { \
-   TYPE *t = (TYPE *)calloc(1, sizeof(TYPE)); return (list_t){t, vt}; } \
-static list_t PREFIX##_vt_clone(list_t *self) { \
-   TYPE *o = (TYPE *)self->impl; TYPE *c = (TYPE *)malloc(sizeof(TYPE)); \
-   tree_share(o->tree.root); *c = *o; return (list_t){c, self->vt}; } \
-static void PREFIX##_vt_free(list_t *self) { \
-   TYPE *t = (TYPE *)self->impl; free_nodes(t->tree.root); free(t); self->impl = NULL; } \
-static u64  PREFIX##_vt_size(list_t *self) { return ((TYPE *)self->impl)->tree.size; } \
-static void PREFIX##_vt_each(list_t *self, void (*v)(u64, void*), void *c) { inorder(((TYPE *)self->impl)->tree.root, v, c); } \
-static u64  PREFIX##_vt_select(list_t *self, u64 i) { return tree_lookup(&((TYPE *)self->impl)->tree, i); } \
-static void PREFIX##_vt_update(list_t *self, u64 i, u64 x) { tree_update_base(&((TYPE *)self->impl)->tree, i, x); }
-
-void rb_td_insert(node_t **p, u64 i, u64 x) {
-   if (*p == NULL) { tree_attach(p, x); return; }
-   tree_persist(p);
-   if (isRedRed(*p)) promote(*p);
+void rb_td_insert(node_t **p, u64 size, u64 i, u64 x) {
+   invariant(p != NULL);
+   (void)tree_insert_inputs_require(*p, i, size);
+   if (*p == NULL) {
+      invariant(i == 0);
+      tree_attach(p, x);
+      return;
+   }
+   tree_persist_unshared(p);
+   if (isRedRed(*p)) {
+      promote(*p);
+   }
+   u64 subtree_size = size;
    for (;;) {
+      invariant((*p)->s < subtree_size);
+      (void)tree_insert_inputs_require(*p, i, subtree_size);
+      u64 left_size = sizeL(*p);
       assert_bst(!isRedRed(*p));
-      if (i <= (*p)->s) {
-         if ((*p)->l == NULL) { tree_attachL(*p, x); return; }
-         if (isRedRed((*p)->l)) { tree_pathLeft(&p); promote(*p); continue; }
-         if (!isRed(*p, (*p)->l)) { tree_pathLeft(&p); continue; }
+      if (i <= left_size) {
+         (void)tree_insert_inputs_require((*p)->l, i, left_size);
+         if ((*p)->l == NULL) {
+            tree_attachL(*p, x);
+            return;
+         }
+         if (isRedRed((*p)->l)) {
+            tree_pathLeftSized(&p, &subtree_size);
+            promote(*p);
+            continue;
+         }
+         if (!isRed(*p, (*p)->l)) {
+            tree_pathLeftSized(&p, &subtree_size);
+            continue;
+         }
          assert_bst(isRed(*p, (*p)->l) && !isRedRed((*p)->l));
-         if (i <= (*p)->l->s) {
-            if ((*p)->l->l == NULL) { tree_attachLL(*p, x); if (isRed((*p)->l, (*p)->l->l)) treeRotateR(p); return; }
-            if (!isBlack((*p)->l, (*p)->l->l)) { tree_pathLeft(&p); tree_pathLeft(&p); promote(*p); continue; }
-            if (!isRedRed((*p)->l->l)) { tree_pathLeft(&p); tree_pathLeft(&p); continue; }
-            treeRotateR(p); tree_pathLeft(&p); promote(*p); continue;
+         u64 left_left_size = sizeL((*p)->l);
+         if (i <= left_left_size) {
+            (void)tree_insert_inputs_require((*p)->l->l, i, left_left_size);
+            if ((*p)->l->l == NULL) {
+               tree_attachLL(*p, x);
+               if (isRed((*p)->l, (*p)->l->l)) {
+                  treeRotateRSized(p, size_after_inserting_one(subtree_size));
+               }
+               return;
+            }
+            if (!isBlack((*p)->l, (*p)->l->l)) {
+               tree_pathLeftSized(&p, &subtree_size);
+               tree_pathLeftSized(&p, &subtree_size);
+               promote(*p);
+               continue;
+            }
+            if (!isRedRed((*p)->l->l)) {
+               tree_pathLeftSized(&p, &subtree_size);
+               tree_pathLeftSized(&p, &subtree_size);
+               continue;
+            }
+            treeRotateRSized(p, subtree_size);
+            tree_pathLeftSized(&p, &subtree_size);
+            promote(*p);
+            continue;
          } else {
-            if ((*p)->l->r == NULL) { tree_attachLR(*p, x); if (isRed((*p)->l, (*p)->l->r)) treeRotateLR(p); return; }
-            if (!isRedRed((*p)->l->r)) { tree_pathLeft(&p); tree_pathRight(&p, &i); continue; }
-            if (!isBlack((*p)->l, (*p)->l->r)) { tree_pathLeft(&p); tree_pathRight(&p, &i); promote(*p); continue; }
-            treeRotateLR(p); promote(*p);
-            if (i <= (*p)->s) tree_pathLeft(&p); else tree_pathRight(&p, &i);
+            u64 left_right_size = sizeR((*p)->l, left_size);
+            u64 left_right_rank = rank_in_right_subtree(i, left_left_size);
+            (void)tree_insert_inputs_require((*p)->l->r, left_right_rank,
+                                             left_right_size);
+            if ((*p)->l->r == NULL) {
+               tree_attachLR(*p, x);
+               if (isRed((*p)->l, (*p)->l->r)) {
+                  treeRotateLRSized(p, size_after_inserting_one(subtree_size));
+               }
+               return;
+            }
+            if (!isRedRed((*p)->l->r)) {
+               tree_pathLeftSized(&p, &subtree_size);
+               tree_pathRightSized(&p, &subtree_size, &i);
+               continue;
+            }
+            if (!isBlack((*p)->l, (*p)->l->r)) {
+               tree_pathLeftSized(&p, &subtree_size);
+               tree_pathRightSized(&p, &subtree_size, &i);
+               promote(*p);
+               continue;
+            }
+            treeRotateLRSized(p, subtree_size);
+            promote(*p);
+            if (i <= (*p)->s) {
+               tree_pathLeftSized(&p, &subtree_size);
+            } else {
+               tree_pathRightSized(&p, &subtree_size, &i);
+            }
          }
       } else {
-         if ((*p)->r == NULL) { tree_attachR(*p, x); return; }
-         if (!isRedRed((*p)->r) && !isRed(*p, (*p)->r)) { tree_pathRight(&p, &i); continue; }
-         if (isRedRed((*p)->r)) { tree_pathRight(&p, &i); promote(*p); continue; }
-         if (i > (*p)->s + (*p)->r->s + 1) {
-            if ((*p)->r->r == NULL) { tree_attachRR(*p, x); if (isRed((*p)->r, (*p)->r->r)) treeRotateL(p); return; }
-            if (!isRedRed((*p)->r->r)) { tree_pathRight(&p, &i); tree_pathRight(&p, &i); continue; }
-            if (!isOneChild((*p)->r, (*p)->r->r)) { tree_pathRight(&p, &i); tree_pathRight(&p, &i); promote(*p); continue; }
-            treeRotateL(p); tree_pathRight(&p, &i); promote(*p); continue;
+         u64 right_size = sizeR(*p, subtree_size);
+         u64 right_rank = rank_in_right_subtree(i, left_size);
+         (void)tree_insert_inputs_require((*p)->r, right_rank, right_size);
+         if ((*p)->r == NULL) {
+            tree_attachR(*p, x);
+            return;
+         }
+         if (!isRedRed((*p)->r) && !isRed(*p, (*p)->r)) {
+            tree_pathRightSized(&p, &subtree_size, &i);
+            continue;
+         }
+         if (isRedRed((*p)->r)) {
+            tree_pathRightSized(&p, &subtree_size, &i);
+            promote(*p);
+            continue;
+         }
+         u64 right_left_boundary = rank_after_predecessor((*p)->s, (*p)->r);
+         if (i > right_left_boundary) {
+            u64 right_right_size = sizeR((*p)->r, right_size);
+            u64 right_right_rank =
+                rank_in_right_subtree(right_rank, sizeL((*p)->r));
+            (void)tree_insert_inputs_require((*p)->r->r, right_right_rank,
+                                             right_right_size);
+            if ((*p)->r->r == NULL) {
+               tree_attachRR(*p, x);
+               if (isRed((*p)->r, (*p)->r->r)) {
+                  treeRotateLSized(p, size_after_inserting_one(subtree_size));
+               }
+               return;
+            }
+            if (!isRedRed((*p)->r->r)) {
+               tree_pathRightSized(&p, &subtree_size, &i);
+               tree_pathRightSized(&p, &subtree_size, &i);
+               continue;
+            }
+            if (!isOneChild((*p)->r, (*p)->r->r)) {
+               tree_pathRightSized(&p, &subtree_size, &i);
+               tree_pathRightSized(&p, &subtree_size, &i);
+               promote(*p);
+               continue;
+            }
+            treeRotateLSized(p, subtree_size);
+            tree_pathRightSized(&p, &subtree_size, &i);
+            promote(*p);
+            continue;
          } else {
-            if ((*p)->r->l == NULL) { tree_attachRL(*p, x); if (isRed((*p)->r, (*p)->r->l)) treeRotateRL(p); return; }
-            if (!isRedRed((*p)->r->l)) { tree_pathRight(&p, &i); tree_pathLeft(&p); continue; }
-            if (!isBlack((*p)->r, (*p)->r->l)) { tree_pathRight(&p, &i); tree_pathLeft(&p); promote(*p); continue; }
-            treeRotateRL(p); promote(*p);
-            if (i > (*p)->s) tree_pathRight(&p, &i); else tree_pathLeft(&p);
+            u64 right_left_size = sizeL((*p)->r);
+            (void)tree_insert_inputs_require((*p)->r->l, right_rank,
+                                             right_left_size);
+            if ((*p)->r->l == NULL) {
+               tree_attachRL(*p, x);
+               if (isRed((*p)->r, (*p)->r->l)) {
+                  treeRotateRLSized(p, size_after_inserting_one(subtree_size));
+               }
+               return;
+            }
+            if (!isRedRed((*p)->r->l)) {
+               tree_pathRightSized(&p, &subtree_size, &i);
+               tree_pathLeftSized(&p, &subtree_size);
+               continue;
+            }
+            if (!isBlack((*p)->r, (*p)->r->l)) {
+               tree_pathRightSized(&p, &subtree_size, &i);
+               tree_pathLeftSized(&p, &subtree_size);
+               promote(*p);
+               continue;
+            }
+            treeRotateRLSized(p, subtree_size);
+            promote(*p);
+            if (i > (*p)->s) {
+               tree_pathRightSized(&p, &subtree_size, &i);
+            } else {
+               tree_pathLeftSized(&p, &subtree_size);
+            }
          }
       }
    }
 }
 
 TREE_VT_SIMPLE(redblack_topdown_t, rb_td)
-static void rb_td_vt_verify(list_t *self) { redblack_topdown_t *t = (redblack_topdown_t *)self->impl; tree_verify_size(t->tree.root, t->tree.size); verifyRedBlackRanks(t->tree.root); verifyRedBlackHeight(t->tree.root, t->tree.size); }
-static void rb_td_vt_insert(list_t *self, u64 i, u64 x) { redblack_topdown_t *t = (redblack_topdown_t *)self->impl; t->tree.size++; rb_td_insert(&t->tree.root, i, x); }
-static u64 rb_td_vt_delete(list_t *self, u64 i) {
+static void rb_td_vt_verify(list_t *self) {
+   list_require(self);
    redblack_topdown_t *t = (redblack_topdown_t *)self->impl;
-   assert_bst(i < t->tree.size); u64 x;
-   t->tree.root = rb_bu_delete(t->tree.root, t->tree.size, i, &x); t->tree.size--; return x;
+   verifyRedBlackRanksSized(t->tree.root, t->tree.size);
+   verifyRedBlackHeight(t->tree.root, t->tree.size);
+}
+static void rb_td_vt_insert(list_t *self, u64 i, u64 x) {
+   list_require(self);
+   redblack_topdown_t *t = (redblack_topdown_t *)self->impl;
+   u64 size = t->tree.size;
+   u64 inserted_size = tree_insert_inputs_require(t->tree.root, i, size);
+   rb_td_insert(&t->tree.root, size, i, x);
+   tree_list_sized_inserted(&t->tree);
+   invariant(t->tree.size == inserted_size);
+}
+static u64 rb_td_vt_delete(list_t *self, u64 i) {
+   list_require(self);
+   redblack_topdown_t *t = (redblack_topdown_t *)self->impl;
+   u64 size = t->tree.size;
+   u64 deleted_size = tree_delete_inputs_require(t->tree.root, i, size);
+   rb_bu_delete_result_t result = rb_bu_delete(t->tree.root, t->tree.size, i);
+   t->tree.root = result.root;
+   tree_list_sized_deleted(&t->tree);
+   invariant(t->tree.size == deleted_size);
+   return result.value;
 }
 static void rb_td_vt_split(list_t *self, u64 i, list_t *out_l, list_t *out_r) {
-   redblack_topdown_t *t = (redblack_topdown_t *)self->impl; tree_share(t->tree.root); node_t *l, *r;
-   rb_split(t->tree.root, t->tree.size, i, &l, &r);
-   redblack_topdown_t *sl = (redblack_topdown_t *)calloc(1, sizeof(redblack_topdown_t)); sl->tree = (tree_t){l, i};
-   redblack_topdown_t *sr = (redblack_topdown_t *)calloc(1, sizeof(redblack_topdown_t)); sr->tree = (tree_t){r, t->tree.size - i};
-   *out_l = (list_t){sl, self->vt}; *out_r = (list_t){sr, self->vt};
+   tree_list_require_split(self, i, out_l, out_r);
+   redblack_topdown_t *t = (redblack_topdown_t *)self->impl;
+   u64 size = t->tree.size;
+   u64 right_size = tree_split_inputs_require(t->tree.root, i, size);
+   tree_share(t->tree.root);
+   tree_split_result_t split = rb_split(t->tree.root, size, i);
+   TREE_LIST_SPLIT_RESULT_PREPARED(redblack_topdown_t, size, split.left, i,
+                                   split.right, right_size);
 }
 static list_t rb_td_vt_join(list_t *self, list_t *other) {
-   redblack_topdown_t *t = (redblack_topdown_t *)self->impl, *that = (redblack_topdown_t *)other->impl;
-   tree_share(t->tree.root); tree_share(that->tree.root);
-   redblack_topdown_t *res = (redblack_topdown_t *)calloc(1, sizeof(redblack_topdown_t));
-   res->tree.root = rb_join(t->tree.root, that->tree.root, t->tree.size, that->tree.size);
-   res->tree.size = t->tree.size + that->tree.size; return (list_t){res, self->vt};
+   tree_list_require_join(self, other);
+   redblack_topdown_t *t = (redblack_topdown_t *)self->impl;
+   redblack_topdown_t *that = (redblack_topdown_t *)other->impl;
+   tree_join_roots_t roots =
+       tree_list_prepare_join_roots(&t->tree, &that->tree);
+   node_t *root =
+       rb_join(roots.left, roots.right, t->tree.size, that->tree.size);
+   u64 joined_size = tree_list_join_size(t->tree.size, that->tree.size);
+   TREE_LIST_JOIN_RESULT(redblack_topdown_t, root, joined_size);
 }
-const list_vtable_t redblack_topdown_vtable = {
-   "RedBlackTopDown", rb_td_vt_new, rb_td_vt_clone, rb_td_vt_free,
-   rb_td_vt_size, rb_td_vt_each, rb_td_vt_verify,
-   rb_td_vt_select, rb_td_vt_update, rb_td_vt_insert, rb_td_vt_delete,
-   rb_td_vt_split, rb_td_vt_join,
-};
-
+const list_vtable_t redblack_topdown_vtable =
+    TREE_LIST_VTABLE("RedBlackTopDown", rb_td);
 
 // ═══════════════════════════════════════════════════════════════════════════════

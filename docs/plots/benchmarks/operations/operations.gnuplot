@@ -1,4 +1,5 @@
 load "docs/plots/colors.gnuplot"
+load "docs/plots/functions.gnuplot"
 
 if (!exists("DATA_ROOT")) DATA_ROOT = "docs/benchmarks/data"
 if (!exists("SVG_ROOT")) SVG_ROOT = "docs/benchmarks/svg"
@@ -112,11 +113,11 @@ RedBlackRelaxed        = "RedBlackBottomUp RedBlackTopDown RedBlackRelaxedBottom
 RankBalanced           = "AVLBottomUp AVLWeakTopDown AVLRelaxedBottomUp RedBlackRelaxedTopDown"
 WeightBalanced         = "LBSTBottomUp LBSTTopDown WBSTBottomUp WBSTTopDown"
 WeightBalancedRelaxed  = "LBSTBottomUp LBSTRelaxed WBSTBottomUp WBSTRelaxed"
-Probabilistic          = "TreapBottomUp TreapTopDown TreapFingerTree Randomized Zip"
+Probabilistic          = "TreapTopDown TreapFingerTree Randomized Zip"
 SelfAdjusting          = "Splay AVLBottomUp LBSTRelaxed TreapTopDown"
 Relaxed                = "AVLRelaxedBottomUp RedBlackRelaxedTopDown LBSTRelaxed WBSTRelaxed"
 Persistent             = "Conc Splay AVLBottomUp AVLRelaxedBottomUp RedBlackBottomUp LBSTBottomUp LBSTRelaxed TreapTopDown"
-Simplified             = "RedBlackBottomUp RedBlackTopDown LLRB AA"
+Simplified             = "RedBlackBottomUp RedBlackTopDown"
 Conclusions            = "AVLTopDown AVLRelaxedBottomUp RedBlackBottomUp RedBlackRelaxedTopDown LBSTBottomUp LBSTRelaxed TreapTopDown Splay"
 
 GROUPS = "\
@@ -145,10 +146,10 @@ OPERATIONS = "\
 
 DISTRIBUTIONS = "\
     Uniform \
+    Normal \
+    Skewed \
     Zipf \
     Maximum \
-    Skewed \
-    Normal \
     "
 
 do for [GROUP in GROUPS] {
@@ -167,8 +168,8 @@ do for [GROUP in GROUPS] {
 
         DATA = sprintf("%s/operations/measurements/%s", DATA_ROOT, OPERATION)
 
-        x = "column('Position')/(column('Scale')/10)"
-        y = "column('Allocations')/column('Step')/log2(column('Size'))"
+        x = "column('Position')/1000000.0"
+        y = "column('Allocations')/column('Step')/path_log2_size(column('Size'))"
 
         set xrange [0.5:*]
         set format y2 "%.2f"
@@ -196,10 +197,10 @@ do for [GROUP in GROUPS] {
         set xlabel "Operations / 10^6"
         set ylabel "{/:Bold Maximum Path Length } / log_2(Size)"
 
-        x = "column('Position')/(column('Scale')/10)"
-        y = "column('MaximumPathLength')/log2(column('Size'))"
-
         DATA = sprintf("%s/operations/measurements/%s", DATA_ROOT, OPERATION)
+
+        x = "column('Position')/1000000.0"
+        y = "column('MaximumPathLength')/path_log2_size(column('Size'))"
 
         set xrange [0.5:*]
         set format y2 "%.2f"
@@ -230,8 +231,8 @@ do for [GROUP in GROUPS] {
         set xrange [0.5:*]
         set format y2 "%L"
 
-        x = "column('Position')/(column('Scale')/10)"
-        y = "column('MaximumPathLength')/log2(column('Size'))"
+        x = "column('Position')/1000000.0"
+        y = "column('MaximumPathLength')/path_log2_size(column('Size'))"
 
         NORMAL = "unique"
         SMOOTH = "sbezier"
@@ -260,8 +261,8 @@ do for [GROUP in GROUPS] {
         set xrange [0.5:*]
         set format y2 "%.3f"
 
-        x = "column('Position')/(column('Scale')/10)"
-        y = "column('AveragePathLength')/log2(column('Size'))"
+        x = "column('Position')/1000000.0"
+        y = "column('AveragePathLength')/path_log2_size(column('Size'))"
 
         NORMAL = "unique"
         SMOOTH = "sbezier"
@@ -290,8 +291,8 @@ do for [GROUP in GROUPS] {
         set xrange [0.5:*]
         set format y2 "%L"
 
-        x = "column('Position')/(column('Scale')/10)"
-        y = "column('AveragePathLength')/log2(column('Size'))"
+        x = "column('Position')/1000000.0"
+        y = "column('AveragePathLength')/path_log2_size(column('Size'))"
 
         NORMAL = "unique"
         SMOOTH = "sbezier"
@@ -314,10 +315,10 @@ do for [GROUP in GROUPS] {
         set xlabel "{Operations / 10^6}"
         set ylabel "{/:Bold Rotations} / Operations"
 
-        x = "column('Position')/(column('Scale')/10)"
-        y = "column('Rotations')/column('Step')"
-
         DATA = sprintf("%s/operations/measurements/%s", DATA_ROOT, OPERATION)
+
+        x = "column('Position')/1000000.0"
+        y = "column('Rotations')/column('Step')"
 
         set xrange [0.5:*]
         set format y2 "%.2f"
@@ -341,13 +342,13 @@ do for [GROUP in GROUPS] {
         set xlabel "Operations / 10^6"
         set ylabel "{/:Bold Duration } in milliseconds"
 
-        x = "column('Position')/(column('Scale')/10)"
+        DATA = sprintf("%s/operations/benchmarks/%s", DATA_ROOT, OPERATION)
+
+        x = "column('Position')/1000000.0"
         y = "column('Duration')/1000000" # nano / 10^6 is 1k
 
         set xrange [0.5:*]
         set format y2 "%.2f"
-
-        DATA = sprintf("%s/operations/benchmarks/%s", DATA_ROOT, OPERATION)
 
         NORMAL = "sbezier"
         SMOOTH = "mcsplines"
@@ -370,7 +371,7 @@ do for [GROUP in GROUPS] {
         set xlabel "Operations / 10^6"
         set ylabel "{/:Bold Total Duration } in seconds"
 
-        x = "column('Position')/(column('Scale')/10)"
+        x = "column('Position')/1000000.0"
         y = "column('Duration')/1000/1000/1000"
 
         set xrange [0:*]
