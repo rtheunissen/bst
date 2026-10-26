@@ -7,6 +7,9 @@ import (
    "math"
 )
 
+// A balancer restores balance to a tree in-place. A tree that shares its nodes
+// with other trees first copies the nodes that other trees can reach, so that
+// restoring balance does not modify the other trees.
 type Balancer interface {
    Restore(Tree) Tree
    Verify(Tree)
@@ -56,6 +59,7 @@ func (balancer Median) balance(p *Node, s list.Size) *Node {
 }
 
 func (balancer Median) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -97,6 +101,7 @@ func (balancer Height) balance(p *Node, s list.Size) *Node {
 }
 
 func (balancer Height) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -150,6 +155,7 @@ func (balancer Log) balanced(p *Node, s list.Size) bool {
 }
 
 func (balancer Log) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -196,6 +202,7 @@ func (balancer Weight) isBalanced(x, y list.Size) bool {
 }
 
 func (balancer Weight) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -225,6 +232,7 @@ func (balancer Weight) verify(p *Node, s list.Size) {
 type Cost struct{}
 
 func (balancer Cost) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -277,10 +285,15 @@ type DSW struct {
 }
 
 func (balancer DSW) Verify(tree Tree) {
+   if tree.size == 0 {
+      invariant(tree.root == nil)
+      return
+   }
    invariant(tree.root.height() == int(utility.Log2(tree.size)))
 }
 
 func (balancer DSW) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.toTree(balancer.toVine(tree.root), tree.size)
    return tree
 }
