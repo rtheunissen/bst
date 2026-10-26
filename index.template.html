@@ -481,7 +481,7 @@
                 The problem to solve is to determine from which subtree the root of the join should come from, and exactly how to produce it.
             </p>
             <p>
-                In 1961, Hibbard{{ template "reference" "1961_hibbard" }} proposed a simple algorithm to join two subtrees: when the right subtree is empty, the result of the join is the left subtree as-is, otherwise when the right subtree is <em>not</em> empty, delete its left-most node and use that node as the joining root.
+                In 1962, Hibbard{{ template "reference" "1961_hibbard" }} proposed a simple algorithm to join two subtrees: when the right subtree is empty, the result of the join is the left subtree as-is, otherwise when the right subtree is <em>not</em> empty, delete its left-most node and use that node as the joining root.
                 This algorithm therefore always produces the joining root from the right subtree if possible.
                 Hibbard’s paper was remarkable in that it contained one of the first formal theorems about algorithms and still features frequently in lectures and textbooks.
             </p>
@@ -1320,7 +1320,7 @@
                 However, most implementations are recursive, many use parent pointers, and attempts to implement them often result in frustration.
             </p>
             <p>
-                In 2013, Haeupler, Sen & Tarjan{{ template "reference" "2013_rank_balanced_trees" }} introduced <em>rank-balanced trees</em>, which unify many height-based balanced trees under a single framework.
+                In 2009, Haeupler, Sen & Tarjan{{ template "reference" "2013_rank_balanced_trees" }} introduced <em>rank-balanced trees</em>, which unify many height-based balanced trees under a single framework.
                 Rank-balanced trees store in each node an integer rank and use various rank-based rules to define AVL trees, red-black trees, and others in a consistent way.
             </p>
             <p>
@@ -1329,7 +1329,7 @@
                 Concurrency is well-supported in weak AVL trees because both insertion and deletion can be implemented purely top-down.
             </p>
             <p>
-                In 2018, Sen, Tarjan & Kim{{ template "reference" "2018_ravl" }} introduced <em>relaxed rank-balanced trees</em> which only balance after insertion, not deletion.
+                In 2016, Sen, Tarjan & Kim{{ template "reference" "2018_ravl" }} introduced <em>relaxed rank-balanced trees</em> which only balance after insertion, not deletion.
                 The balance of relaxed rank-balanced trees generally improve as nodes are inserted, and degrade slowly as nodes are deleted.
                 A subtle property of relaxed rank-balanced trees is that their height bound is proportional to the number of insertions, rather than the size of the tree.
             </p>
@@ -1445,12 +1445,12 @@
                 The feasible parameter space is therefore expanded by separating the two independent variables coupled linearly in <span class="math">α</span>.
             </p>
             <p>
-                Hirai and Yamamoto include a short section on logarithmic weight-balance, stating that "for mathematical reliability, logarithmic weight-balanced trees are simpler".
+                Hirai and Yamamoto include a short section on logarithmic weight-balance, stating that "for mathematical reliability, Logarithmic BST is simpler".
                 They benchmarked the original bottom-up implementation against other bottom-up weight-balanced trees and found their performance to be about the same.
             </p>
             <p>
                 Barth and Wagner{{ template "reference" "2019_barth_wagner" }} evaluated top-down weight-balanced trees in 2019, but only mention logarithmic weight-balance in the introduction, without further evaluation.
-                They contribute detailed benchmarks across a range of {{ inline "docs/katex/math/inline/delta_gamma_parameter_pair.katex.html" }}, but acknowledge that "it is unclear what the feasible polytope looks like".
+                They contribute detailed benchmarks across a range of {{ inline "docs/katex/math/inline/delta_gamma_parameter_pair.katex.html" }}, but acknowledge that "it is unclear how the feasible polytope looks like".
                 They conclude with a suggestion for further study, that "in the future, it would be interesting to determine the space of feasible balancing parameters for top-down weight-balanced trees similar to how Hirai and Yamamoto have done for bottom-up weight-balanced trees."
             </p>
             <p>
@@ -1813,7 +1813,7 @@
         <section id="self-adjusting-trees">
             <h3>Self-adjusting trees</h3>
             <p>
-                In 1985, Sleator and Tarjan introduced <em>self-adjusting binary search trees</em>, also known as <em>splay trees</em>.
+                In 1985, Sleator and Tarjan{{ template "reference" "1985_sleator_tarjan" }} introduced <em>self-adjusting binary search trees</em>, also known as <em>splay trees</em>.
                 This strategy is not exactly self-balancing, because splay trees do not define balance in any way.
                 Instead, they adjust to the access pattern by moving frequently accessed nodes closer to the root.
             </p>
