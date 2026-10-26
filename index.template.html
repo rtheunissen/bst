@@ -145,7 +145,6 @@
                         <strong>Figure {{ $figure.Index }}</strong>: An array with a size of 7 and a capacity of 8.
                     </p>
                 </figure>
-                </figure>
                 <p>
                     To illustrate this, we can use a sheet of grid paper to represent an allocated array where every square is a cell in which a single character could be stored.
                     The sheet of grid paper models the array and the grid squares that have characters written in them form the information as a sequence.
@@ -322,9 +321,8 @@
                     We now have a binary tree data structure with nodes pointing to other nodes, but it is not yet clear how to search for a node by position.
                     Searching through a linked list is simple because we traverse and count exactly one node at a time.
                     The information obtained by counting is the position of every node along the way, where the <em>relative</em> position of every node is exactly 1.
-                <p>
-
                 </p>
+                <p>
                     When we follow a branch in a binary search tree, we effectively skip all the nodes of the <em>other</em> branch.
                     From the root of the tree, the first branch skips about half the nodes, then the second branch skips about half again, then half again until we find the node at the position we are searching for.
                 </p>
@@ -791,7 +789,7 @@
             </figure>
 
 <pre>
-<strong>rotateR</strong> (p *Node) *Node
+<strong>rotateR</strong> (p *Node) *Node {
    l = p.l
    p.l = l.r
    l.r = p
@@ -799,7 +797,7 @@
    return l
 }
 
-<strong>rotateL</strong> (p *Node) *Node
+<strong>rotateL</strong> (p *Node) *Node {
    r = p.r
    p.r = r.l
    r.l = p
@@ -970,6 +968,7 @@
                 The problem to solve is to determine whether a node is already height-balanced.
                 Muusse{{ template "reference" "2017_muusse" }} solves this by using a strict definition of height-balance where both the minimum and maximum path lengths of two subtrees differ by no more than 1.
                 Then, by pretending that both subtrees are already strictly height-balanced, we can compare their minimum and maximum heights.
+            </p>
             <p>
                 A binary tree is <em>perfect</em> if every node has either two subtrees or two empty subtrees.
                 The height of a perfect binary tree is {{ inline "docs/katex/math/inline/log2(s_plus_1)_minus_1.katex.html" }}, which is intuitive since every level of the tree has twice the number of nodes as the one above it and the number of branches to follow from the root to the bottom of the tree is the number of times that the size can be divided by 2 before reaching 1.
@@ -1088,6 +1087,7 @@
             <p>
                 There is one other design candidate that does not follow the same pattern.
                 In 2000, Cho and Sahni{{ template "reference" "2000_cho_sahni" }} introduced the idea of <em>cost-optimized search trees</em>, which are trees where the average path length can not be reduced by a rotation anywhere in the tree.
+            </p>
             <p>
                 Even though their definition considers rotations, we can apply this concept to partition-based balancing without the need to consider rotations at all.
                 In this context, the only determination to make is whether a node is balanced or not.
@@ -1165,6 +1165,7 @@
                 <p>
                     The average path length of each resulting tree measures how well-balanced they are, where lower is better.
                     Dividing this average by the log of the size of the tree at each increment gives the results as a factor of the binary log.
+                </p>
                 <figure>
                 {{ inline "docs/benchmarks/svg/balancers/All/AveragePathLength__sbezier.svg" }}
                 </figure>
@@ -1665,7 +1666,7 @@
    n := Node{}
    l = &n
    r = &n
-   while p ≠ null {
+   while p ≠ nil {
       if i ≤ p.s {
          p.s = p.s - i
          r.l = p
@@ -1911,7 +1912,7 @@
         <figure>
             {{ inline "docs/benchmarks/svg/operations/Persistent/InsertDeletePersistent/Duration__mcsplines.svg" }}
             <p class="caption">
-                This plot shows <strong>persistent</strong> insertion and deletion</strong>, averaged across all access patterns.
+                This plot shows <strong>persistent</strong> insertion and deletion, averaged across all access patterns.
                 The results suggest that bottom-up logarithmic weight-balanced trees and relaxed balance generally do well in persistent contexts.
                 Splay trees and conc-tree lists appear to be the slowest, followed by bottom-up red-black trees.
             </p>
