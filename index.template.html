@@ -340,7 +340,7 @@
                 <p>
                     This is known as <em>binary search</em>, which is a well-known algorithm independent of linked nodes and tree structures.
                     For example, ask someone to think of a number between 1 and some large number <span class="math">n</span>.
-                    How many guesses would we need to guess it correctly, if after every guess were are hinted to go lower or higher?
+                    How many guesses would we need to guess it correctly, if after every guess we are hinted to go lower or higher?
                 </p>
                 <p>
                     The answer is no more than {{ inline "docs/katex/math/inline/floor_log2n_plus_1.katex.html" }} by using binary search.
@@ -520,9 +520,9 @@
                 For example,
 
                 in the well-known <em>Introduction to Algorithms</em>, Cormen, Leiserson, Rivest, and Stein{{ template "reference" "2022_clrs_delete" }} teach Knuth's algorithm,
-                as well as Drozdek{{ template "reference" "2013_drozdek_delete" }} who attributes the algorithm to both Hibbard and Knuth.
+                as does Drozdek{{ template "reference" "2013_drozdek_delete" }}, who attributes the algorithm to both Hibbard and Knuth.
                 Sedgewick and Wayne{{ template "reference" "2011_sedgewick_wayne_delete" }} teach Hibbard's algorithm, but their code appears to implement Knuth's algorithm.
-                Goodrich, Tamassia and Goldwasser{{ template "reference" "2013_goodrich_tamassia_goldwasser_delete" }} teach Hibbard's algorithm but flips it to always prefer the left subtree instead.
+                Goodrich, Tamassia and Goldwasser{{ template "reference" "2013_goodrich_tamassia_goldwasser_delete" }} teach Hibbard's algorithm but flip it to always prefer the left subtree instead.
                 Skiena,{{ template "reference" "2008_skiena_delete" }}
                 Weiss,{{ template "reference" "2014_weiss_delete" }}
                 and Manber{{ template "reference" "1989_manber" }} all teach Hibbard's algorithm.
@@ -762,7 +762,7 @@
         <section id="rotations">
             <h3>Rotations</h3>
             <p>
-                A tree <em>rotation</em> is a local structure adjustment that rearranged links between nodes without changing their order.
+                A tree <em>rotation</em> is a local structure adjustment that rearranges links between nodes without changing their order.
                 The effect of a rotation can be observed by focusing on the root of the rotation and the change in the composition of its subtrees.
             </p>
             <p>
@@ -828,7 +828,7 @@
             <p>
                 A related algorithm is <em>partition</em>, which rearranges the tree to make the node at a given position the root while preserving the order of all nodes.
                 To partition a tree, start from the root and follow the standard search algorithm.
-                Along the search path, when branching to the left, the current node wil end up to the right of the partitioned root, and all further nodes along the search path will end up to the left of the current node.
+                Along the search path, when branching to the left, the current node will end up to the right of the partitioned root, and all further nodes along the search path will end up to the left of the current node.
                 This applies symmetrically when branching to the right.
             </p>
 
@@ -926,7 +926,7 @@
                 (i) it is general for any definition of balance based on subtree size,
                 (ii) it operates top-down, and each partition uses constant space,
                 (iii) it is particularly efficient when the tree is already somewhat-balanced,
-                (iv) subtree balancing is independent so could be done parallel, and
+                (iv) subtree balancing is independent so could be done in parallel, and
                 (v) the balancing process could be stopped or paused partway through without invalidating the structure.
             </p>
 
@@ -1016,7 +1016,7 @@
             </div>
 
             <p>
-                The general category of weight-balanced trees require some definition of a bound between the number of leaves in the left and right subtrees.
+                The general category of weight-balanced trees requires some definition of a bound between the number of leaves in the left and right subtrees.
                 A median-balanced node is perfectly weight-balanced because there is an ideal distribution in the number of nodes between its left and right subtrees.
                 A simple definition of weight-balance is to choose 2 as a constant factor, so that a node is balanced if the weight of the smaller subtree is at least half the weight of the larger subtree.
             </p>
@@ -1284,8 +1284,8 @@
             <h3>Rank-balanced trees</h3>
             <p>
                 The original self-balancing binary search tree was published in 1962 as <em>an algorithm for the organization of information</em> by <strong>A</strong>delson-<strong>V</strong>elsky and <strong>L</strong>andis.{{ template "reference" "1962_avl" }}
-                AVL trees store the height of every node as part of the node structure, then uses rotations along the search path to maintain height-balance.
-                The most common approach to implement an AVL is tree to use recursive algorithms, where all operations start from the root, traverse along a search path, then backtrack to the root along the search path.
+                AVL trees store the height of every node as part of the node structure, then use rotations along the search path to maintain height-balance.
+                The most common approach to implementing an AVL tree is to use recursive algorithms, where all operations start from the root, traverse along a search path, then backtrack to the root along the search path.
             </p>
             <p>
                 Knuth{{ template "reference" "1973_knuth_taocp_vol_3_section_6" }} describes how balancing in an AVL tree is only necessary at the topmost node affected by balancing, commonly referred to as the <span><em>safe node</em></span>.{{ template "reference" "2013_rank_balanced_trees" }}
@@ -1330,13 +1330,13 @@
                 Rank-balanced trees store in each node an integer rank and use various rank-based rules to define AVL trees, red-black trees, and others in a consistent way.
             </p>
             <p>
-                A new strategy emerged from this framework: the <em>weak</em> AVL tree, which effectively combines the insertion of AVL trees with the deletion of red-black trees such that the height bound degrades gracefully from that of an AVL tree as the number of deletions increase, and is never worse than that of a red-black tree.
+                A new strategy emerged from this framework: the <em>weak</em> AVL tree, which effectively combines the insertion of AVL trees with the deletion of red-black trees such that the height bound degrades gracefully from that of an AVL tree as the number of deletions increases, and is never worse than that of a red-black tree.
                 Insertion and deletion in a weak AVL tree require at most two rotations, which for deletion is fewer than both AVL trees and red-black trees.
                 Concurrency is well-supported in weak AVL trees because both insertion and deletion can be implemented purely top-down, though top-down rebalancing may require more rotations.
             </p>
             <p>
                 In 2016, Sen, Tarjan & Kim{{ template "reference" "2018_ravl" }} introduced <em>relaxed rank-balanced trees</em> which only balance after insertion, not deletion.
-                The balance of relaxed rank-balanced trees generally improve as nodes are inserted, and degrade slowly as nodes are deleted.
+                The balance of relaxed rank-balanced trees generally improves as nodes are inserted, and degrade slowly as nodes are deleted.
                 A subtle property of relaxed rank-balanced trees is that their height bound is logarithmic in the number of insertions, rather than in the size of the tree.
             </p>
             <p>
@@ -1363,7 +1363,7 @@
             <figure>
                 {{ inline "docs/benchmarks/svg/operations/AVLWeakRedBlack/InsertDelete/AveragePathLength__sbezier.svg" }}
                 <p class="caption">
-                    The balance of weak AVL trees deteriorates as the number of deletions increase, eventually matching the balance of red-black trees.
+                    The balance of weak AVL trees deteriorates as the number of deletions increases, eventually matching the balance of red-black trees.
                     Here, the average path length of the top-down variant appears to be worse than the bottom-up variant, which is the opposite of the same observation in red-black trees.
                 </p>
             </figure>
@@ -1388,14 +1388,14 @@
                 {{ inline "docs/benchmarks/svg/operations/AVLRelaxed/InsertDelete/Duration__mcsplines.svg" }}
                 <p class="caption">
                     This plot shows that relaxed AVL trees are much faster than the other AVL variants.
-                    Notice that relative difference in performance remains constant even though balance deteriorates over time.
+                    Notice that the relative difference in performance remains constant even though balance deteriorates over time.
                     The performance of the bottom-up and top-down variants of relaxed AVL trees appears to be equivalent.
                 </p>
             </figure>
             <figure>
                 {{ inline "docs/benchmarks/svg/operations/RedBlackRelaxed/InsertDelete/AveragePathLength__sbezier.svg" }}
                 <p class="caption">
-                    This plot shows how the balance of relaxed red-black trees continue to deteriorate over time, much like relaxed AVL trees.
+                    This plot shows how the balance of relaxed red-black trees continues to deteriorate over time, much like relaxed AVL trees.
                     The balance of top-down relaxed red-black trees is better than the bottom-up variant, which correlates with standard red-black trees since they use the exact same insertion algorithm.
                 </p>
             </figure>
@@ -1496,8 +1496,8 @@
             <figure>
                 {{ inline "docs/benchmarks/svg/operations/WeightBalanced/InsertDelete/Duration__mcsplines.svg" }}
                 <p class="caption">
-                    The original bottom-up logarithmic weight-balanced tree is generally better than the other weight-balanced variants, likely due to their lower average path length.
-                    The top-down variants appear to start out faster but become slower over, even though balance does not deteriorate. Why is that?
+                    The original bottom-up logarithmic weight-balanced tree is generally better than the other weight-balanced variants, likely due to its lower average path length.
+                    The top-down variants appear to start out faster but become slower over time, even though balance does not deteriorate. Why is that?
                     Perhaps further optimization of the top-down algorithms and repeated benchmarks could shed some light.
                 </p>
             </figure>
@@ -1624,12 +1624,12 @@
         <section id="randomly-balanced-trees">
             <h3>Randomly-balanced trees</h3>
             <p>
-                All the strategies explored so far always results in the same structure for the same access pattern.
+                All the strategies explored so far always result in the same structure for the same access pattern.
                 As a result, they are consistent and predictable.
                 This is not always a benefit, however.
                 For example, an adversary could exploit predictability to gain information about the system.
                 Some predictable strategies are also history-dependent, where information about previous operations can be derived from the current structure.
-                While these concerns are uncommon in practice, unpredictability and history-independence is an essential feature in some applications.
+                While these concerns are uncommon in practice, unpredictability and history-independence are essential features in some applications.
             </p>
             <p>
                 Probabilistic balancing is effective regardless, and some of the most common data structures in practice use randomness in some way.
@@ -1749,16 +1749,16 @@
                 The geometric rank distribution used by zip trees is the same as in skip lists, which is equivalent to the number of times a coin-flip lands on heads before landing on tails.
                 Every additional coin-flip that lands on heads halves the probability of the streak.
                 This aligns with binary search trees where approximately half the nodes are in the lowest level, a quarter of the nodes are one level up, all the way to the root level with only one node.
-                The root node therefore has the highest-equal rank, corresponding to the longest streak of successive coin-flips landing on heads so far.
+                The root node therefore has the highest rank, corresponding to the longest streak of successive coin-flips landing on heads so far.
             </p>
             <p>
-                In 1988, Tarjan and van Wyk{{ template "reference" "1988_tarjan_van_wyk" }} discussed a <em>homogenous finger search tree</em>, where the pointers along the left-most and right-most paths of the tree, referred to as the spines, are reversed such that the left pointers of nodes along the left spine and the right pointers of nodes along the right spine point up to their parent instead.
+                In 1988, Tarjan and van Wyk{{ template "reference" "1988_tarjan_van_wyk" }} discussed a <em>homogeneous finger search tree</em>, where the pointers along the left-most and right-most paths of the tree, referred to as the spines, are reversed such that the left pointers of nodes along the left spine and the right pointers of nodes along the right spine point up to their parent instead.
                 Access to the tree is then through the <em>head</em> and the <em>tail</em> nodes, rather than the root.
                 This provides access from the start and the end of the sequence searching towards the middle, rather than starting in the middle searching outward.
                 This results in a longer average path length, but access close to the start or the end of the sequence is more efficient.
             </p>
             <p>
-                Searching for a node in a homogenous finger search tree starts at either the head or the tail of the tree and proceeds upward towards the root, until the search is about to ascend too far, at which point it descends inward.
+                Searching for a node in a homogeneous finger search tree starts at either the head or the tail of the tree and proceeds upward towards the root, until the search is about to ascend too far, at which point it descends inward.
                 This inward branch is the same branch that would be taken by a conventional top-down search for the same node.
                 Balancing is maintained as usual in the interior tree at the branching point, which has the usual pointer convention, then rotated up along the spine as far as needed until balance is known to be restored.
             </p>
@@ -1784,7 +1784,7 @@
                 {{ inline $figure.URL }}
                 <p class="caption">
                     <strong>Figure {{ $figure.Index }}</strong>:
-                    A variant of a homogenous finger search tree with access from either the head or the tail.
+                    A variant of a homogeneous finger search tree with access from either the head or the tail.
                     None of the nodes reachable from the head or the tail are reachable from the other.
                     The root stores the size of the left subtree, and the links of the root can be used as the pointers to the head and the tail.
                 </p>
@@ -1792,7 +1792,7 @@
             <figure>
                 {{ inline "docs/benchmarks/svg/operations/Probabilistic/InsertDelete/AveragePathLength__sbezier.svg" }}
                 <p class="caption">
-                    The average path length of treaps and randomized trees are equivalent, and better than both zip trees and finger treaps.
+                    The average path length of treaps and randomized trees is equivalent, and better than both zip trees and finger treaps.
                     The balance of zip trees is slightly worse because there is an inherent bias due to their tie-breaking rule, which the inventors chose to provide an isomorphism between zip trees and skip lists.
                     As expected, finger treaps have longer paths on average since most of the nodes are reached through the top of the inverted spine.
                 </p>
@@ -1906,7 +1906,7 @@
         </p>
         <p>
             Conc-trees are simple to implement and do not use rotations or explicit copying.
-            Instead, they make use of functional composition and smart constructors, where rather than copying and modifying an existing node, they allocate and composes a new node by combining properties of other nodes.
+            Instead, they make use of functional composition and smart constructors, where rather than copying and modifying an existing node, they allocate and compose a new node by combining properties of other nodes.
             Intuitively, they always construct a new path and make no attempt to modify an existing one.
         </p>
         <!--            <pre>-->
@@ -1932,7 +1932,7 @@
         <p>
             <strong>Logarithmic weight-balance is excellent.</strong>
             There are three simple implementations that each offer useful properties in practice.
-            The bottom-up variant generally has a low average path length, great performance, and is a safe choice a persistent implementation.
+            The bottom-up variant generally has a low average path length, great performance, and is a safe choice for a persistent implementation.
             The top-down variant does not use recursion, and is therefore a good candidate for a concurrent implementation.
             The relaxed variant also has good support for concurrency and persistence, but further study is required to explore the extent of its potential.
         </p>
