@@ -55,7 +55,9 @@ func (reference Reference) Verify() {
 }
 
 func (reference Reference) Clone() List {
-   return &reference
+   clone := make(Reference, len(reference))
+   copy(clone, reference)
+   return &clone
 }
 
 func (reference Reference) Len() uint64 {

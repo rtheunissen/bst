@@ -68,6 +68,20 @@ func (tree Tree) shared(p *Node) bool {
 	return (*p).refs > 0
 }
 
+// Shares the subtrees of a node that is being removed from the tree.
+//
+// The subtrees of a removed node are linked back into the tree. When the removed
+// node is still referenced by another tree, its subtrees are now referenced by
+// both trees and must therefore be shared. Otherwise the removed node is simply
+// discarded and its subtrees are transferred to this tree without being shared,
+// so that a tree that never shares its nodes never needs to copy them.
+func (tree Tree) shareSubtrees(p *Node) {
+	if tree.shared(p) {
+		tree.share(p.l)
+		tree.share(p.r)
+	}
+}
+
 // Replaces the given node with a copy only if the node shared with other trees.
 //
 // Note: the old node's reference count is not decremented here. Reference counts

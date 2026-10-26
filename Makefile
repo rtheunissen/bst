@@ -50,11 +50,13 @@ measurements-off:
 persistence-on:
 	${GO} run main/replace/replace.go -dir "./trees" -find "// tree.persist("       -replace "tree.persist("
 	${GO} run main/replace/replace.go -dir "./trees" -find "// tree.share("         -replace "tree.share("
+	${GO} run main/replace/replace.go -dir "./trees" -find "// tree.shareSubtrees(" -replace "tree.shareSubtrees("
 	${GO} run main/replace/replace.go -dir "./trees" -find "// defer tree.release(" -replace "defer tree.release("
 
 persistence-off:
 	${GO} run main/replace/replace.go -dir "./trees" -find "  tree.persist("       -replace "  // tree.persist("
 	${GO} run main/replace/replace.go -dir "./trees" -find "  tree.share("         -replace "  // tree.share("
+	${GO} run main/replace/replace.go -dir "./trees" -find "  tree.shareSubtrees(" -replace "  // tree.shareSubtrees("
 	${GO} run main/replace/replace.go -dir "./trees" -find "  defer tree.release(" -replace "  // defer tree.release("
 
 sandbox:

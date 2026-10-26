@@ -7,19 +7,19 @@ import (
 
 type Randomized struct {
    Tree
-   random.Source // compare performance vs making this directly xoshiro
+   random.Xoshiro256
 }
 
 func (Randomized) New() list.List {
    return &Randomized{
-      Source: random.New(random.Uint64()),
+      Xoshiro256: random.NewXoshiro256(random.Uint64()),
    }
 }
 
 func (tree *Randomized) Clone() list.List {
    return &Randomized{
-      Tree:   tree.Tree.Clone(),
-      Source: tree.Source,
+      Tree:       tree.Tree.Clone(),
+      Xoshiro256: tree.Xoshiro256,
    }
 }
 
@@ -30,8 +30,9 @@ func (tree *Randomized) Insert(i list.Position, x list.Data) {
 }
 
 func (tree *Randomized) insert(p **Node, s list.Size, i list.Position, x list.Data) {
+   assert(tree.Xoshiro256 != random.Xoshiro256{}) // The generator must be seeded.
    for {
-      if random.LessThan(s + 1, tree.Source) == s {
+      if random.LessThan(s + 1, &tree.Xoshiro256) == s {
          l, r := tree.split(*p, i)
          *p = tree.allocate(Node{x: x, s: i, l: l, r: r})
          return
@@ -49,12 +50,12 @@ func (tree *Randomized) insert(p **Node, s list.Size, i list.Position, x list.Da
    }
 }
 
-func (tree Randomized) delete(p **Node, s list.Size, i list.Position, x *list.Data) {
+// The join draws random values, so this must not operate on a copy of the tree.
+func (tree *Randomized) delete(p **Node, s list.Size, i list.Position, x *list.Data) {
    for {
       if i == (*p).s {
          defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
+         tree.shareSubtrees(*p)
          *x = (*p).x
          *p = tree.join((*p).l, (*p).r, (*p).s, s - (*p).s - 1)
          return
@@ -80,12 +81,13 @@ func (tree *Randomized) Delete(i list.Position) (x list.Data) {
 }
 
 func (tree *Randomized) join(l *Node, r *Node, sl, sr Size) (root *Node) {
+   assert(tree.Xoshiro256 != random.Xoshiro256{}) // The generator must be seeded.
    p := &root
    for {
       if l == nil { *p = r; return }
       if r == nil { *p = l; return }
 
-      if random.LessThan(sl + sr, tree.Source) < sl {
+      if random.LessThan(sl + sr, &tree.Xoshiro256) < sl {
           tree.persist(&l)
           sl = sl - l.s - 1
           *p = l
@@ -115,8 +117,8 @@ func (tree *Randomized) Update(i Size, x Data) {
 
 func (tree *Randomized) Split(i list.Position) (list.List, list.List) {
    l, r := tree.Tree.Split(i)
-   return &Randomized{l, tree.Source},
-          &Randomized{r, tree.Source}
+   return &Randomized{l, tree.Xoshiro256},
+          &Randomized{r, tree.Xoshiro256.Fork()}
 }
 
 func (tree *Randomized) Join(that list.List) list.List {
@@ -124,14 +126,19 @@ func (tree *Randomized) Join(that list.List) list.List {
    r := that.(*Randomized)
    tree.share(l.root)
    tree.share(r.root)
-   return &Randomized{
-      Tree{
+   //
+   // The join draws from the generator of the joined tree, not of this tree,
+   // so that joining does not modify either of the trees being joined.
+   //
+   joined := &Randomized{
+      Tree: Tree{
          pool: tree.pool,
-         root: l.join(l.root, r.root, l.size, r.size),
          size: l.size + r.size,
       },
-      tree.Source,
+      Xoshiro256: tree.Xoshiro256.Fork(),
    }
+   joined.root = joined.join(l.root, r.root, l.size, r.size)
+   return joined
 }
 
 func (tree *Randomized) Verify() {

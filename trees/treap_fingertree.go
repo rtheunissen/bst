@@ -7,19 +7,19 @@ import (
 
 type TreapFingerTree struct {
    Tree
-   random.Source
+   random.Xoshiro256
 }
 
 func (TreapFingerTree) New() list.List {
    return &TreapFingerTree{
-      Source: random.New(random.Uint64()),
+      Xoshiro256: random.NewXoshiro256(random.Uint64()),
    }
 }
 
 func (tree *TreapFingerTree) Clone() list.List {
    return &TreapFingerTree{
-      Tree:   tree.Tree.Clone(),
-      Source: tree.Source,
+      Tree:       tree.Tree.Clone(),
+      Xoshiro256: tree.Xoshiro256,
    }
 }
 
@@ -54,6 +54,7 @@ func (tree *TreapFingerTree) reverseR(p *Node, g *Node) *Node {
 }
 
 func (tree *TreapFingerTree) randomRank() uint64 {
+   assert(tree.Xoshiro256 != random.Xoshiro256{}) // The generator must be seeded.
    return tree.Uint64()
 }
 
@@ -385,8 +386,8 @@ func (tree TreapFingerTree) split(i list.Position) (Tree, Tree) {
 func (tree TreapFingerTree) Split(i list.Position) (list.List, list.List) {
    assert(i <= tree.size)
    l, r := tree.split(i)
-   return &TreapFingerTree{Tree: l, Source: tree.Source},
-      &TreapFingerTree{Tree: r, Source: tree.Source}
+   return &TreapFingerTree{Tree: l, Xoshiro256: tree.Xoshiro256},
+      &TreapFingerTree{Tree: r, Xoshiro256: tree.Xoshiro256.Fork()}
 }
 
 func (tree TreapFingerTree) splitFromHead(i list.Position) (Tree, Tree) {
@@ -528,7 +529,7 @@ func (tree *TreapFingerTree) deleteFirst(x *list.Data) {
    defer tree.release(tree.root.l)
    *x = tree.root.l.x
    tree.persist(&tree.root)
-   tree.share(tree.root.l.r)
+   tree.shareSubtrees(tree.root.l)
    tree.root.l = tree.reverseL(tree.root.l.r, tree.root.l.l, tree.root.l.s)
    tree.root.s--
 }
@@ -537,7 +538,7 @@ func (tree *TreapFingerTree) deleteLast(x *list.Data) {
    defer tree.release(tree.root.r)
    *x = tree.root.r.x
    tree.persist(&tree.root)
-   tree.share(tree.root.r.l)
+   tree.shareSubtrees(tree.root.r)
    tree.root.r = tree.reverseR(tree.root.r.l, tree.root.r.r)
 }
 
@@ -545,8 +546,7 @@ func (tree TreapFingerTree) delete(p **Node, i list.Position, x *list.Data) {
    for {
       if i == (*p).s {
          defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
+         tree.shareSubtrees(*p)
          *x = (*p).x
          *p = tree.join((*p).l, (*p).r, (*p).s)
          return
@@ -580,8 +580,7 @@ func (tree *TreapFingerTree) deleteFromHead(i list.Position, x *list.Data) {
    }
    g := p.l
    defer tree.release(g)
-   tree.share(p.r)
-   tree.share(g.r)
+   tree.shareSubtrees(g)
    *x = g.x
    p.r = tree.join(p.r, g.r, p.s)
    p.l = g.l
@@ -638,8 +637,7 @@ func (tree *TreapFingerTree) deleteFromTail(i list.Position, x *list.Data) {
    }
    g := p.r
    defer tree.release(g)
-   tree.share(g.l)
-   tree.share(p.l)
+   tree.shareSubtrees(g)
    *x = g.x
    p.l = tree.join(g.l, p.l, g.s)
    p.r = g.r
@@ -712,7 +710,10 @@ func (tree *TreapFingerTree) joinUp(o *TreapFingerTree) *Node {
          o.root.r = l
          o.root.s = s
 
-         tree.appendR(&tree.root.r, tree.rotateUpR(o.root))
+         // The root of the right tree joins the right spine of the left tree.
+         if q := tree.rotateUpR(o.root); q != nil {
+            tree.appendR(&tree.root.r, q)
+         }
          return tree.root
       }
       if l == nil {
@@ -722,8 +723,14 @@ func (tree *TreapFingerTree) joinUp(o *TreapFingerTree) *Node {
          tree.root.r = p
          tree.root.s = s
 
-         tree.appendL(&o.root.l, tree.rotateUpL(tree.root))
-         return o.root
+         // The root of the left tree joins the left spine of the right tree,
+         // so the root of the right tree is the root that it rotates up to.
+         q := tree.root
+         tree.root = o.root
+         if q = tree.rotateUpL(q); q != nil {
+            tree.appendL(&tree.root.l, q)
+         }
+         return tree.root
       }
       if l.y < r.y { // TODO: how does <= affect things? Should we prefer larger size?
          tree.persist(&l)
@@ -760,7 +767,7 @@ func (tree *TreapFingerTree) Join(that list.List) list.List {
          root: l.joinUp(r),
          size: l.size + r.size,
       },
-      Source: tree.Source,
+      Xoshiro256: tree.Xoshiro256.Fork(),
    }
 }
 
@@ -804,12 +811,20 @@ func (tree TreapFingerTree) verifyRanks() {
    for ; l != nil; l = l.l {
       TreapTopDown{}.verifyMaxRankHeap(l.r)
       invariant(tree.rank(l) >= tree.rank(l.r))
-      invariant(tree.rank(l) <= tree.rank(l.l) || l.l == nil)
+      if l.l == nil {
+         invariant(tree.rank(l) <= tree.rank(tree.root)) // top of the spine
+      } else {
+         invariant(tree.rank(l) <= tree.rank(l.l))
+      }
    }
    for ; r != nil; r = r.r {
       TreapTopDown{}.verifyMaxRankHeap(r.l)
       invariant(tree.rank(r) >= tree.rank(r.l))
-      invariant(tree.rank(r) <= tree.rank(r.r) || r.r == nil)
+      if r.r == nil {
+         invariant(tree.rank(r) <= tree.rank(tree.root)) // top of the spine
+      } else {
+         invariant(tree.rank(r) <= tree.rank(r.r))
+      }
    }
 }
 

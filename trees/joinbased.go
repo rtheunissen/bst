@@ -37,8 +37,7 @@ func (tree JoinBased) delete(p *Node, i list.Position, s Size, x *Data) *Node {
    if i == p.s {
       *x = p.x
       defer tree.release(p)
-      tree.share(p.l)
-      tree.share(p.r)
+      tree.shareSubtrees(p)
       return tree.Tree.join(p.l, p.r, sl, sr)
    }
    tree.persist(&p)

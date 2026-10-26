@@ -32,8 +32,7 @@ func (tree AVLWeakBottomUp) delete(p *Node, s list.Size, i list.Position, x *lis
    if i == p.s {
       *x = p.x
       defer tree.release(p)
-      tree.share(p.l)
-      tree.share(p.r)
+      tree.shareSubtrees(p)
       return tree.join(p.l, p.r, sl, sr)
    }
    tree.persist(&p)
@@ -67,6 +66,7 @@ func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
          tree.demote(p)
 
       } else if tree.isTwoTwo(p.l) {
+         tree.persist(&p.l)
          tree.demote(p.l)
          tree.demote(p)
 
@@ -98,6 +98,7 @@ func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
          tree.demote(p)
 
       } else if tree.isTwoTwo(p.r) {
+         tree.persist(&p.r)
          tree.demote(p.r)
          tree.demote(p)
 

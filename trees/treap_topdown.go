@@ -7,19 +7,19 @@ import (
 
 type TreapTopDown struct {
    Tree
-   random.Source
+   random.Xoshiro256
 }
 
 func (TreapTopDown) New() list.List {
    return &TreapTopDown{
-      Source: random.New(random.Uint64()),
+      Xoshiro256: random.NewXoshiro256(random.Uint64()),
    }
 }
 
 func (tree *TreapTopDown) Clone() list.List {
    return &TreapTopDown{
-      Tree:   tree.Tree.Clone(),
-      Source: tree.Source,
+      Tree:       tree.Tree.Clone(),
+      Xoshiro256: tree.Xoshiro256,
    }
 }
 
@@ -102,8 +102,7 @@ func (tree TreapTopDown) delete(p **Node, i list.Position, x *list.Data) {
    for {
       if i == (*p).s {
          defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
+         tree.shareSubtrees(*p)
          *x = (*p).x
          *p = tree.join((*p).l, (*p).r, (*p).s)
          return
@@ -120,7 +119,8 @@ func (tree TreapTopDown) delete(p **Node, i list.Position, x *list.Data) {
 }
 
 func (tree *TreapTopDown) insert(p **Node, i list.Position, x list.Data) {
-   y := tree.Source.Uint64()
+   assert(tree.Xoshiro256 != random.Xoshiro256{}) // The generator must be seeded.
+   y := tree.Uint64()
    for {
       if tree.rank(*p) <= y {
          l, r := tree.split(*p, i)
@@ -152,8 +152,8 @@ func (tree *TreapTopDown) Delete(i list.Position) (x list.Data) {
 func (tree TreapTopDown) Split(i list.Position) (list.List, list.List) {
    assert(i <= tree.size)
    l, r := tree.Tree.Split(i)
-   return &TreapTopDown{Tree: l, Source: tree.Source},
-          &TreapTopDown{Tree: r, Source: tree.Source}
+   return &TreapTopDown{Tree: l, Xoshiro256: tree.Xoshiro256},
+          &TreapTopDown{Tree: r, Xoshiro256: tree.Xoshiro256.Fork()}
 }
 
 func (tree *TreapTopDown) Select(i list.Size) list.Data {
@@ -176,7 +176,7 @@ func (tree TreapTopDown) Join(that list.List) list.List {
          root: tree.join(tree.root, that.(*TreapTopDown).root, tree.size),
          size: tree.size + that.(*TreapTopDown).size,
       },
-      tree.Source,
+      tree.Xoshiro256.Fork(),
    }
 }
 
