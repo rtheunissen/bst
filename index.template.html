@@ -553,13 +553,16 @@
 <!--                Another downside of randomization is the cost of generating random numbers, which Eppinger avoids by using a simple alternating bit, but is unavoidable when generating a bounded random number.-->
             </p>
             <p>
-                To compare the resulting average path length of each strategy, a random tree of <span class="numeric">1,000</span> nodes was constructed and measured across <span class="numeric">1,000,000,000</span> random insertions and deletions.
+                To compare the resulting average path length of each strategy, <span class="numeric">100</span> random trees of <span class="numeric">1,000</span> nodes were each measured across <span class="numeric">1,000,000,000</span> random insertions and deletions.
                 The results show that always preferring the larger subtree results in the lowest average path length.
-                All the evaluated algorithms appear to stabilize with an average path length that is logarithmic in the size of the tree.
+                The average path length of every strategy remains stable throughout, between <span class="numeric">1.02</span> and <span class="numeric">1.16</span> times the binary log of the size of the tree.
             </p>
             <figure>
                 {{ $figure := figure "delete" }}
                 {{ inline $figure.URL }}
+                <p class="caption">
+                    <strong>Figure {{ $figure.Index }}</strong>: The average path length of each deletion strategy as a factor of the binary log of the size of the tree, fitted linearly across all of the measurements.
+                </p>
             </figure>
 
         </section>
@@ -646,6 +649,9 @@
                 <figure>
                     {{ $figure := figure "mlogm" }}
                     {{ inline $figure.URL }}
+                    <p class="caption">
+                        <strong>Figure {{ $figure.Index }}</strong>: The estimated number of values to copy, {{ inline "docs/katex/math/inline/mlog_b(n).katex.html" }}, as the size of the tree increases.
+                    </p>
                 </figure>
 
             </section>
@@ -1108,7 +1114,7 @@
             <h3>Balancer analysis</h3>
             <p>
                 Measurements were made in size increments of <span class="numeric">1,000</span> up to <span class="numeric">10,000,000</span>.
-                Many random trees were grown consistently at each size increment and balanced by each strategy.
+                A random tree was grown consistently at each size increment and balanced by each strategy.
                 The results were generated on an Intel i5 13600K with 32GB of DDR5 RAM.
             </p>
 
@@ -1170,13 +1176,13 @@
                 {{ inline "docs/benchmarks/svg/balancers/All/AveragePathLength__sbezier.svg" }}
                 </figure>
                 <p>
-                    The average path length of all strategies appears to approach {{ inline "docs/katex/math/inline/log_2n.katex.html" }}, which for the final tree of size 10,000,000 translates to an average path length of <span class="numeric">∼23</span>.
+                    The average path length of all strategies appears to slowly approach {{ inline "docs/katex/math/inline/log_2n.katex.html" }} from below, which is <span class="numeric">∼23</span> for the final tree of size 10,000,000.
                     The results show that median-balance, height-balance and DSW all result in optimal balance, and cost-optimized balance only slightly suboptimal.
                     Using linear weight-balance results in a slightly lower average path length than logarithmic weight-balance, but only by <span class="numeric">∼2%</span>.
                 </p>
                 <p>
                     Notice that the relative difference between all strategies is very small.
-                    The average path length at the final increment ranges between <span class="numeric">17.9</span> and <span class="numeric">18.6</span>, making the percentage difference between the least and most-balanced trees only <span class="numeric">∼4%</span>.
+                    The average path length at the final increment ranges between <span class="numeric">21.3</span> and <span class="numeric">22.2</span>, making the percentage difference between the least and most-balanced trees only <span class="numeric">∼4%</span>.
                 </p>
             </section>
 
@@ -1219,7 +1225,7 @@
                     Looking at duration cumulatively, it appears that the total duration is practically identical between median-balance, height-balance and cost-optimized balance.
                 </p>
                 <p>
-                    The two weight-balance strategies are both <span class="numeric">∼25%</span> faster than median-balance and height-balance and <span class="numeric">∼30%</span> faster than DSW, with logarithmic weight-balance having a slight edge.
+                    The two weight-balance strategies are both <span class="numeric">∼20%</span> faster than median-balance and height-balance and <span class="numeric">∼30%</span> faster than DSW, with logarithmic weight-balance having a slight edge.
                     This suggests that linear weight-balance is a good choice because it takes about the same amount of time as logarithmic weight-balance but achieves better balance.
                     However, logarithmic weight-balance partitions fewer nodes and visits fewer nodes overall, which might offer some additional benefit on other machines.
                 </p>
