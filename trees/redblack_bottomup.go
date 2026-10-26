@@ -36,8 +36,7 @@ func (tree *RedBlackBottomUp) delete(p *Node, s list.Size, i list.Position, x *l
 
    if i == sl {
       defer tree.release(p)
-      tree.share(p.l)
-      tree.share(p.r)
+      tree.shareSubtrees(p)
       *x = p.x
       return tree.join(p.l, p.r, sl, sr)
    }

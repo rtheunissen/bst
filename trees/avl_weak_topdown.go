@@ -22,8 +22,7 @@ func (tree *AVLWeakTopDown) Clone() list.List {
 
 func (tree *AVLWeakTopDown) dissolve(p **Node, x *list.Data) {
    defer tree.release(*p)
-   tree.share((*p).l)
-   tree.share((*p).r)
+   tree.shareSubtrees(*p)
    *x = (*p).x
    *p = tree.join((*p).l, (*p).r, (*p).s, (*p).s)
 }

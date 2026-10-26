@@ -174,9 +174,7 @@ func (tree *WBSTTopDown) delete(p **Node, s list.Size, i list.Position, x **Node
       assert(tree.isBalanced(sr, sl))
 
       if i == (*p).s {
-         defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
+         tree.shareSubtrees(*p)
          *x = *p
          *p = tree.join((*p).l, (*p).r, sl, sr)
          return
@@ -282,6 +280,7 @@ func (tree *WBSTTopDown) Delete(i list.Position) (x list.Data) {
    assert(i < tree.size)
    var deleted *Node
    tree.delete(&tree.root, tree.size, i, &deleted)
+   defer tree.release(deleted)
    tree.size--
    return deleted.x
 }
@@ -301,15 +300,17 @@ func (tree *WBSTTopDown) Join(that list.List) list.List {
    }
 }
 
+// Removes the first node, which is then reused by `build`. The node is not
+// released, so `build` copies it if it is still referenced by another tree.
 func (tree *WBSTTopDown) deleteMin(p **Node, s list.Size) (min *Node) {
    tree.delete(p, s, 0, &min)
-   tree.share(min)
    return
 }
 
+// Removes the last node, which is then reused by `build`. The node is not
+// released, so `build` copies it if it is still referenced by another tree.
 func (tree *WBSTTopDown) deleteMax(p **Node, s list.Size) (max *Node) {
    tree.delete(p, s, s - 1, &max)
-   tree.share(max)
    return
 }
 

@@ -102,8 +102,7 @@ func (tree TreapTopDown) delete(p **Node, i list.Position, x *list.Data) {
    for {
       if i == (*p).s {
          defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
+         tree.shareSubtrees(*p)
          *x = (*p).x
          *p = tree.join((*p).l, (*p).r, (*p).s)
          return

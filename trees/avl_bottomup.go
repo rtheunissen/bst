@@ -245,8 +245,7 @@ func (tree *AVLBottomUp) delete(p *Node, s list.Size, i list.Position, x *list.D
    if i == sl {
       *x = p.x
       defer tree.release(p)
-      tree.share(p.l)
-      tree.share(p.r)
+      tree.shareSubtrees(p)
       return tree.join(p.l, p.r, sl, sr)
    }
    tree.persist(&p)

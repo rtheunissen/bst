@@ -32,8 +32,7 @@ func (tree AVLWeakBottomUp) delete(p *Node, s list.Size, i list.Position, x *lis
    if i == p.s {
       *x = p.x
       defer tree.release(p)
-      tree.share(p.l)
-      tree.share(p.r)
+      tree.shareSubtrees(p)
       return tree.join(p.l, p.r, sl, sr)
    }
    tree.persist(&p)

@@ -53,8 +53,7 @@ func (tree Randomized) delete(p **Node, s list.Size, i list.Position, x *list.Da
    for {
       if i == (*p).s {
          defer tree.release(*p)
-         tree.share((*p).l)
-         tree.share((*p).r)
+         tree.shareSubtrees(*p)
          *x = (*p).x
          *p = tree.join((*p).l, (*p).r, (*p).s, s - (*p).s - 1)
          return
