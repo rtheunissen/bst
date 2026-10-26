@@ -7,19 +7,19 @@ import (
 
 type TreapFingerTree struct {
    Tree
-   random.Source
+   random.Xoshiro256
 }
 
 func (TreapFingerTree) New() list.List {
    return &TreapFingerTree{
-      Source: random.New(random.Uint64()),
+      Xoshiro256: random.NewXoshiro256(random.Uint64()),
    }
 }
 
 func (tree *TreapFingerTree) Clone() list.List {
    return &TreapFingerTree{
-      Tree:   tree.Tree.Clone(),
-      Source: tree.Source,
+      Tree:       tree.Tree.Clone(),
+      Xoshiro256: tree.Xoshiro256,
    }
 }
 
@@ -54,6 +54,7 @@ func (tree *TreapFingerTree) reverseR(p *Node, g *Node) *Node {
 }
 
 func (tree *TreapFingerTree) randomRank() uint64 {
+   assert(tree.Xoshiro256 != random.Xoshiro256{}) // The generator must be seeded.
    return tree.Uint64()
 }
 
@@ -385,8 +386,8 @@ func (tree TreapFingerTree) split(i list.Position) (Tree, Tree) {
 func (tree TreapFingerTree) Split(i list.Position) (list.List, list.List) {
    assert(i <= tree.size)
    l, r := tree.split(i)
-   return &TreapFingerTree{Tree: l, Source: tree.Source},
-      &TreapFingerTree{Tree: r, Source: tree.Source}
+   return &TreapFingerTree{Tree: l, Xoshiro256: tree.Xoshiro256},
+      &TreapFingerTree{Tree: r, Xoshiro256: tree.Xoshiro256.Fork()}
 }
 
 func (tree TreapFingerTree) splitFromHead(i list.Position) (Tree, Tree) {
@@ -766,7 +767,7 @@ func (tree *TreapFingerTree) Join(that list.List) list.List {
          root: l.joinUp(r),
          size: l.size + r.size,
       },
-      Source: tree.Source,
+      Xoshiro256: tree.Xoshiro256.Fork(),
    }
 }
 

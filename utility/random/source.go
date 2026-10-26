@@ -1,15 +1,32 @@
 package random
 
 import (
+   "sync"
+
    "golang.org/x/exp/rand"
 )
 
 type Source = rand.Source
 
-var common = xoshiro256{}
+// The common generator is shared by every caller that does not use a generator
+// of its own, so access to it is synchronized to be safe for concurrent use.
+var common = synchronized{source: NewXoshiro256(1)}
 
-func init() {
-   common.Seed(1)
+type synchronized struct {
+   mutex  sync.Mutex
+   source Xoshiro256
+}
+
+func (s *synchronized) Uint64() uint64 {
+   s.mutex.Lock()
+   defer s.mutex.Unlock()
+   return s.source.Uint64()
+}
+
+func (s *synchronized) Seed(seed uint64) {
+   s.mutex.Lock()
+   defer s.mutex.Unlock()
+   s.source.Seed(seed)
 }
 
 func Seed(seed uint64) {
@@ -25,7 +42,6 @@ func Uniform() Source {
 }
 
 func New(seed uint64) Source {
-   source := xoshiro256{}
-   source.Seed(seed)
+   source := NewXoshiro256(seed)
    return &source
 }

@@ -7,19 +7,19 @@ import (
 
 type TreapBottomUp struct {
    Tree
-   random.Source
+   random.Xoshiro256
 }
 
 func (TreapBottomUp) New() list.List {
    return &TreapBottomUp{
-      Source: random.New(random.Uint64()),
+      Xoshiro256: random.NewXoshiro256(random.Uint64()),
    }
 }
 
 func (tree *TreapBottomUp) Clone() list.List {
    return &TreapBottomUp{
-      Tree:   tree.Tree.Clone(),
-      Source: tree.Source,
+      Tree:       tree.Tree.Clone(),
+      Xoshiro256: tree.Xoshiro256,
    }
 }
 
@@ -33,7 +33,8 @@ func (tree *TreapBottomUp) rank(p *Node) uint64 {
 
 func (tree *TreapBottomUp) insert(p *Node, i list.Position, x list.Data) *Node {
    if p == nil {
-      return tree.allocate(Node{x: x, y: tree.Source.Uint64()})
+      assert(tree.Xoshiro256 != random.Xoshiro256{}) // The generator must be seeded.
+      return tree.allocate(Node{x: x, y: tree.Uint64()})
    }
    tree.persist(&p)
    if i <= p.s {
@@ -117,8 +118,8 @@ func (tree *TreapBottomUp) Update(i list.Size, x list.Data) {
 func (tree TreapBottomUp) Split(i list.Position) (list.List, list.List) {
    assert(i <= tree.size)
    l, r := tree.Tree.Split(i)
-   return &TreapBottomUp{Tree: l, Source: tree.Source},
-          &TreapBottomUp{Tree: r, Source: tree.Source}
+   return &TreapBottomUp{Tree: l, Xoshiro256: tree.Xoshiro256},
+          &TreapBottomUp{Tree: r, Xoshiro256: tree.Xoshiro256.Fork()}
 }
 
 func (tree TreapBottomUp) Join(that list.List) list.List {
@@ -130,7 +131,7 @@ func (tree TreapBottomUp) Join(that list.List) list.List {
          root: tree.join(tree.root, that.(*TreapBottomUp).root, tree.size),
          size: tree.size + that.(*TreapBottomUp).size,
       },
-      tree.Source,
+      tree.Xoshiro256.Fork(),
    }
 }
 

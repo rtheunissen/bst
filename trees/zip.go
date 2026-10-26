@@ -8,23 +8,24 @@ import (
 
 type Zip struct {
    Tree
-   random.Source
+   random.Xoshiro256
 }
 
 func (Zip) New() list.List {
    return &Zip{
-      Source: random.New(random.Uint64()),
+      Xoshiro256: random.NewXoshiro256(random.Uint64()),
    }
 }
 
 func (tree *Zip) Clone() list.List {
    return &Zip{
-      Tree:   tree.Tree.Clone(),
-      Source: tree.Source,
+      Tree:       tree.Tree.Clone(),
+      Xoshiro256: tree.Xoshiro256,
    }
 }
 
 func (tree *Zip) randomRank() uint64 {
+   assert(tree.Xoshiro256 != random.Xoshiro256{}) // The generator must be seeded.
    return uint64(bits.LeadingZeros64(tree.Uint64()))
 }
 
@@ -164,8 +165,8 @@ func (tree Zip) split(i list.Size) (Tree, Tree) {
 func (tree *Zip) Split(i list.Position) (list.List, list.List) {
    l, r := tree.split(i)
 
-   return &Zip{l, tree.Source},
-      &Zip{r, tree.Source}
+   return &Zip{l, tree.Xoshiro256},
+      &Zip{r, tree.Xoshiro256.Fork()}
 }
 
 func (tree *Zip) Select(i list.Size) list.Data {
@@ -186,7 +187,7 @@ func (tree *Zip) Join(that list.List) list.List {
    root := tree.zip(tree.root, that.(*Zip).root, tree.size)
    size := tree.size + that.(*Zip).size
 
-   return &Zip{Tree{pool: tree.pool, root: root, size: size}, tree.Source}
+   return &Zip{Tree{pool: tree.pool, root: root, size: size}, tree.Xoshiro256.Fork()}
 }
 
 func (tree *Zip) verifyRanks(p *Node) {
