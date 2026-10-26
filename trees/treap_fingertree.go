@@ -709,7 +709,10 @@ func (tree *TreapFingerTree) joinUp(o *TreapFingerTree) *Node {
          o.root.r = l
          o.root.s = s
 
-         tree.appendR(&tree.root.r, tree.rotateUpR(o.root))
+         // The root of the right tree joins the right spine of the left tree.
+         if q := tree.rotateUpR(o.root); q != nil {
+            tree.appendR(&tree.root.r, q)
+         }
          return tree.root
       }
       if l == nil {
@@ -719,8 +722,14 @@ func (tree *TreapFingerTree) joinUp(o *TreapFingerTree) *Node {
          tree.root.r = p
          tree.root.s = s
 
-         tree.appendL(&o.root.l, tree.rotateUpL(tree.root))
-         return o.root
+         // The root of the left tree joins the left spine of the right tree,
+         // so the root of the right tree is the root that it rotates up to.
+         q := tree.root
+         tree.root = o.root
+         if q = tree.rotateUpL(q); q != nil {
+            tree.appendL(&tree.root.l, q)
+         }
+         return tree.root
       }
       if l.y < r.y { // TODO: how does <= affect things? Should we prefer larger size?
          tree.persist(&l)
@@ -801,12 +810,20 @@ func (tree TreapFingerTree) verifyRanks() {
    for ; l != nil; l = l.l {
       TreapTopDown{}.verifyMaxRankHeap(l.r)
       invariant(tree.rank(l) >= tree.rank(l.r))
-      invariant(tree.rank(l) <= tree.rank(l.l) || l.l == nil)
+      if l.l == nil {
+         invariant(tree.rank(l) <= tree.rank(tree.root)) // top of the spine
+      } else {
+         invariant(tree.rank(l) <= tree.rank(l.l))
+      }
    }
    for ; r != nil; r = r.r {
       TreapTopDown{}.verifyMaxRankHeap(r.l)
       invariant(tree.rank(r) >= tree.rank(r.l))
-      invariant(tree.rank(r) <= tree.rank(r.r) || r.r == nil)
+      if r.r == nil {
+         invariant(tree.rank(r) <= tree.rank(tree.root)) // top of the spine
+      } else {
+         invariant(tree.rank(r) <= tree.rank(r.r))
+      }
    }
 }
 

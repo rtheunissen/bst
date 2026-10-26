@@ -66,6 +66,7 @@ func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
          tree.demote(p)
 
       } else if tree.isTwoTwo(p.l) {
+         tree.persist(&p.l)
          tree.demote(p.l)
          tree.demote(p)
 
@@ -97,6 +98,7 @@ func (tree AVLWeakBottomUp) rebalanceOnDelete(p *Node) *Node {
          tree.demote(p)
 
       } else if tree.isTwoTwo(p.r) {
+         tree.persist(&p.r)
          tree.demote(p.r)
          tree.demote(p)
 

@@ -79,21 +79,43 @@ func (tree *WBSTRelaxed) Insert(i list.Position, x list.Data) {
    tree.size = tree.size + 1
 }
 
-func (tree *WBSTRelaxed) balance(p *Node, s list.Size) *Node {
+// Restores balance to the subtree rooted at p of size s, returning its root.
+//
+// Nodes are only copied when they change. A node that changes must also be
+// copied when it is below a shared node, even if it is not shared itself,
+// because other trees can reach it through that shared node.
+func (tree *WBSTRelaxed) balance(p *Node, s list.Size, shared bool) *Node {
    if s < 4 {
       return p
    }
+   shared = shared || tree.shared(p)
+
    if !tree.isBalanced(p.sizeL(), p.sizeR(s)) ||
       !tree.isBalanced(p.sizeR(s), p.sizeL()) {
+      //
+      // Partition copies every node along its path when the first is shared.
+      //
+      if shared {
+         tree.share(p)
+      }
       p = tree.partition(p, s >> 1)
+      shared = false
    }
-   p.l = tree.balance(p.l, p.sizeL())
-   p.r = tree.balance(p.r, p.sizeR(s))
+   l := tree.balance(p.l, p.sizeL(), shared)
+   r := tree.balance(p.r, p.sizeR(s), shared)
+   if l != p.l || r != p.r {
+      if shared {
+         tree.share(p)
+      }
+      tree.persist(&p)
+      p.l = l
+      p.r = r
+   }
    return p
 }
 
 func (tree *WBSTRelaxed) rebuild(p **Node, s list.Size) {
-   *p = tree.balance(*p, s)
+   *p = tree.balance(*p, s, false)
 }
 
 func (tree *WBSTRelaxed) Split(i list.Size) (list.List, list.List) {
