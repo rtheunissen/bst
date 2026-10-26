@@ -88,7 +88,7 @@ func (tree *WBSTRelaxed) balance(p *Node, s list.Size, shared bool) *Node {
    if s < 4 {
       return p
    }
-   shared = shared || tree.shared(p)
+   shared = persistent && (shared || tree.shared(p))
 
    if !tree.isBalanced(p.sizeL(), p.sizeR(s)) ||
       !tree.isBalanced(p.sizeR(s), p.sizeL()) {

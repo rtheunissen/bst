@@ -52,12 +52,14 @@ persistence-on:
 	${GO} run main/replace/replace.go -dir "./trees" -find "// tree.share("         -replace "tree.share("
 	${GO} run main/replace/replace.go -dir "./trees" -find "// tree.shareSubtrees(" -replace "tree.shareSubtrees("
 	${GO} run main/replace/replace.go -dir "./trees" -find "// defer tree.release(" -replace "defer tree.release("
+	${GO} run main/replace/replace.go -dir "./trees" -find "const persistent = false" -replace "const persistent = true"
 
 persistence-off:
 	${GO} run main/replace/replace.go -dir "./trees" -find "  tree.persist("       -replace "  // tree.persist("
 	${GO} run main/replace/replace.go -dir "./trees" -find "  tree.share("         -replace "  // tree.share("
 	${GO} run main/replace/replace.go -dir "./trees" -find "  tree.shareSubtrees(" -replace "  // tree.shareSubtrees("
 	${GO} run main/replace/replace.go -dir "./trees" -find "  defer tree.release(" -replace "  // defer tree.release("
+	${GO} run main/replace/replace.go -dir "./trees" -find "const persistent = true" -replace "const persistent = false"
 
 sandbox:
 	@${GO} run main/sandbox/sandbox.go
@@ -77,10 +79,10 @@ BALANCERS := \
 balancer-measurements-%:
 	${GO} run docs/benchmarks/main/balancers/measurements.go -strategy $*
 
-balancer-measurements: assertions-off measurements-on
+balancer-measurements: assertions-off persistence-off measurements-on
 	$(MAKE) -j $(foreach balancer,$(BALANCERS),balancer-measurements-$(balancer))
 
-balancer-benchmarks: assertions-off measurements-off
+balancer-benchmarks: assertions-off persistence-off measurements-off
 	${GO} run docs/benchmarks/main/balancers/benchmarks.go
 
 

@@ -43,9 +43,11 @@ func (tree RedBlackRelaxedTopDown) join(l, r *Node, sl, sr list.Size) (p *Node) 
    if l == nil { return r }
    if r == nil { return l }
    if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
-      return tree.build(l, tree.RedBlackTopDown.Tree.deleteMin(&r), r, sl)
+      p = tree.RedBlackTopDown.Tree.deleteMin(&r)
+      return tree.build(l, p, r, sl)
    } else {
-      return tree.build(l, tree.RedBlackTopDown.Tree.deleteMax(&l), r, sl-1)
+      p = tree.RedBlackTopDown.Tree.deleteMax(&l)
+      return tree.build(l, p, r, sl-1)
    }
 }
 

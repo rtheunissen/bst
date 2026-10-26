@@ -618,7 +618,8 @@ func (tree *AVLBottomUp) build(l, p, r *Node, sl list.Size) *Node {
 //
 func (tree *AVLBottomUp) joinL(l, r *Node, sl list.Size) (p *Node) {
    if tree.rankDifference(r, l) <= 1 {
-      return tree.build(l, p, tree.deleteMin(r, &p), sl)
+      r = tree.deleteMin(r, &p)
+      return tree.build(l, p, r, sl)
    }
    tree.persist(&r)
    r.s = r.sizeL() + sl
@@ -628,7 +629,8 @@ func (tree *AVLBottomUp) joinL(l, r *Node, sl list.Size) (p *Node) {
 
 func (tree *AVLBottomUp) joinR(l, r *Node, sl list.Size) (p *Node) {
    if tree.rankDifference(l, r) <= 1 {
-      return tree.build(tree.deleteMax(l, &p), p, r, sl - 1)
+      l = tree.deleteMax(l, &p)
+      return tree.build(l, p, r, sl - 1)
    }
    tree.persist(&l)
    l.r = tree.joinR(l.r, r, l.sizeR(sl))

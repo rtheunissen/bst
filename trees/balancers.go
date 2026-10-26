@@ -4,9 +4,11 @@ import (
    "github.com/rtheunissen/bst/types/list"
    "github.com/rtheunissen/bst/utility"
    "github.com/rtheunissen/bst/utility/number"
-   "math"
 )
 
+// A balancer restores balance to a tree in-place. A tree that shares its nodes
+// with other trees first copies the nodes that other trees can reach, so that
+// restoring balance does not modify the other trees.
 type Balancer interface {
    Restore(Tree) Tree
    Verify(Tree)
@@ -56,6 +58,7 @@ func (balancer Median) balance(p *Node, s list.Size) *Node {
 }
 
 func (balancer Median) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -97,6 +100,7 @@ func (balancer Height) balance(p *Node, s list.Size) *Node {
 }
 
 func (balancer Height) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -150,6 +154,7 @@ func (balancer Log) balanced(p *Node, s list.Size) bool {
 }
 
 func (balancer Log) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -196,6 +201,7 @@ func (balancer Weight) isBalanced(x, y list.Size) bool {
 }
 
 func (balancer Weight) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -225,6 +231,7 @@ func (balancer Weight) verify(p *Node, s list.Size) {
 type Cost struct{}
 
 func (balancer Cost) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.balance(tree.root, tree.size)
    return tree
 }
@@ -268,19 +275,38 @@ func (balancer Cost) verify(p *Node, s list.Size) (height int) {
 
    height = 1 + max(heightL, heightR)
 
-   invariant(height <= int(1.44 * math.Log2(float64(s + 2)) - 0.328)) // Knuth?
+   invariant(fibonacciTreeSize(height) <= s)
 
    return height
+}
+
+// Returns the size of the smallest tree of the given height in which, at every
+// node, the smaller subtree is no smaller than either subtree of the larger
+// subtree. One subtree of such a tree has a height one less than the tree, and
+// one of its subtrees has a height two less than the tree, which the other
+// subtree of the tree is no smaller than. The smallest such tree is therefore a
+// Fibonacci tree, which is also the smallest AVL tree of the same height.
+func fibonacciTreeSize(height int) list.Size {
+   a, b := list.Size(0), list.Size(1) // The sizes for heights 0 and 1.
+   for ; height > 0; height-- {
+      a, b = b, a + b + 1
+   }
+   return a
 }
 
 type DSW struct {
 }
 
 func (balancer DSW) Verify(tree Tree) {
+   if tree.size == 0 {
+      invariant(tree.root == nil)
+      return
+   }
    invariant(tree.root.height() == int(utility.Log2(tree.size)))
 }
 
 func (balancer DSW) Restore(tree Tree) Tree {
+   tree.unshare()
    tree.root = balancer.toTree(balancer.toVine(tree.root), tree.size)
    return tree
 }

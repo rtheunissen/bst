@@ -68,6 +68,35 @@ func (tree Tree) shared(p *Node) bool {
 	return (*p).refs > 0
 }
 
+// Whether persistence is enabled, toggled by `make persistence-on` and `make
+// persistence-off` along with the persistence calls that they comment out.
+// Code that supports persistence but is not a call that can be commented out
+// checks this constant instead, so that it compiles away when it is false.
+const persistent = true
+
+// Copies every node of the tree that is shared, or that is below a shared node,
+// so that the tree can be modified in-place without modifying other trees.
+// Copying a node shares its subtrees, so their nodes are copied in turn.
+func (tree *Tree) unshare() {
+	if !persistent || tree.root == nil {
+		return
+	}
+	tree.persist(&tree.root)
+	stack := []*Node{tree.root}
+	for len(stack) > 0 {
+		p := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if p.l != nil {
+			tree.persist(&p.l)
+			stack = append(stack, p.l)
+		}
+		if p.r != nil {
+			tree.persist(&p.r)
+			stack = append(stack, p.r)
+		}
+	}
+}
+
 // Shares the subtrees of a node that is being removed from the tree.
 //
 // The subtrees of a removed node are linked back into the tree. When the removed

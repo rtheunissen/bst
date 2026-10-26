@@ -20,7 +20,11 @@ type fingerprint []struct {
    y       Rank
 }
 
-func fingerprintOf(instance list.List) (f fingerprint) {
+func fingerprintOf(instance list.List) fingerprint {
+   return fingerprintOfRoot(instance.(interface{ Root() *Node }).Root())
+}
+
+func fingerprintOfRoot(root *Node) (f fingerprint) {
    var visit func(p *Node)
    visit = func(p *Node) {
       if p == nil {
@@ -35,7 +39,7 @@ func fingerprintOf(instance list.List) (f fingerprint) {
       visit(p.l)
       visit(p.r)
    }
-   visit(instance.(interface{ Root() *Node }).Root())
+   visit(root)
    return
 }
 

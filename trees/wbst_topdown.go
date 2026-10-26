@@ -318,9 +318,11 @@ func (tree *WBSTTopDown) join(l *Node, r *Node, sl, sr list.Size) *Node {
    if l == nil { return r }
    if r == nil { return l }
    if sl <= sr {
-      return tree.build(l, tree.deleteMin(&r, sr), r, sl, sr-1)
+      p := tree.deleteMin(&r, sr)
+      return tree.build(l, p, r, sl, sr-1)
    } else {
-      return tree.build(l, tree.deleteMax(&l, sl), r, sl-1, sr)
+      p := tree.deleteMax(&l, sl)
+      return tree.build(l, p, r, sl-1, sr)
    }
 }
 

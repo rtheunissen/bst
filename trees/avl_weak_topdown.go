@@ -269,9 +269,11 @@ func (tree AVLWeakTopDown) join(l, r *Node, sl, sr list.Size) (p *Node) {
    if l == nil { return r }
    if r == nil { return l }
    if tree.rank(l) < tree.rank(r) || (tree.rank(l) == tree.rank(r) && sl <= sr) {
-      return tree.build(l, tree.deleteMin(&r), r, sl)
+      p = tree.deleteMin(&r)
+      return tree.build(l, p, r, sl)
    } else {
-      return tree.build(l, tree.deleteMax(&l, sl), r, sl-1)
+      p = tree.deleteMax(&l, sl)
+      return tree.build(l, p, r, sl-1)
    }
 }
 
