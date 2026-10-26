@@ -1,1 +1,1 @@
-\lfloor\log_{(1/\alpha)}\rfloor+1
+\lfloor\log_{1/\alpha}(n)\rfloor+1
