@@ -21,10 +21,11 @@ var references []Reference
 
 var References = map[string]Reference{
    "1973_knuth_taocp_vol_3_section_6": {
-      Authors: "Donald E. Knuth",
-      Title:   "The Art of Computer Programming, Vol. 3: Sorting and Searching",
-      Year:    1972,
-      URL:     "docs/references/1973_knuth_taocp_vol_3_section_6.pdf",
+      Authors:   "Donald E. Knuth",
+      Title:     "The Art of Computer Programming, Vol. 3: Sorting and Searching",
+      Specifics: "Second Edition, Section 6.2",
+      Year:      1998,
+      URL:       "docs/references/1973_knuth_taocp_vol_3_section_6.pdf",
    },
    "1972_clark_allan_crane": {
       Authors: "Clark A. Crane",
@@ -47,7 +48,7 @@ var References = map[string]Reference{
    "1961_hibbard": {
       Authors: "Thomas N. Hibbard",
       Title:   "Some combinatorial properties of certain trees with applications to searching and sorting",
-      Year:    1961,
+      Year:    1962,
       URL:     "docs/references/1961_hibbard.pdf",
    },
    "1983_eppinger": {
@@ -85,7 +86,7 @@ var References = map[string]Reference{
    "2002_chan": {
       Authors: "Timothy M. Chan",
       Title:   "Closest-point problems simplified on the RAM",
-      Year:    2001,
+      Year:    2002,
       URL:     "docs/references/2002_chan.pdf",
    },
    "2013_warren_hackers_delight": {
@@ -93,7 +94,7 @@ var References = map[string]Reference{
       Title:     "Hacker's Delight",
       Specifics: "Second Edition, Ch. 5, page 106",
       Year:      2013,
-      URL:       "docs/references/2012_warren_hackers_delight.pdf",
+      URL:       "docs/references/2013_warren_hackers_delight.pdf",
    },
    "2000_cho_sahni": {
       Authors: "Seonghun Cho, Sartaj Sahni",
@@ -116,13 +117,13 @@ var References = map[string]Reference{
    "2013_rank_balanced_trees": {
       Authors: "Bernhard Haeupler, Siddhartha Sen, Robert E. Tarjan",
       Title:   "Rank-balanced trees",
-      Year:    2013,
+      Year:    2015,
       URL:     "docs/references/2013_rank_balanced_trees.pdf",
    },
    "2018_ravl": {
       Authors: "Siddhartha Sen, Robert E. Tarjan, David Hong Kyun Kim",
       Title:   "Deletion without rebalancing in binary search trees",
-      Year:    2018,
+      Year:    2016,
       URL:     "docs/references/2018_ravl.pdf",
    },
    "2015_conc": {
@@ -266,7 +267,7 @@ var References = map[string]Reference{
    "1997_martinez_roura": {
       Authors: "Conrado Martínez, Salvador Roura",
       Title:   "Randomized Binary Search Trees",
-      Year:    1997,
+      Year:    1998,
       URL:     "docs/references/1997_martinez_roura.pdf",
    },
    "2022_clrs_delete": {
@@ -285,7 +286,7 @@ var References = map[string]Reference{
       Authors: "Robert Sedgewick, Kevin Wayne",
       Title:   "Algorithms",
       Specifics: "4th Edition, Chapter 3, Page 410",
-      Year:    2013,
+      Year:    2011,
       URL:     "docs/references/2011_sedgewick_wayne_delete.pdf",
    },
    "2013_drozdek_delete": {
@@ -352,6 +353,12 @@ var References = map[string]Reference{
       Authors: "Andrea Arcangeli, Linus Torvalds",
       URL: "https://github.com/torvalds/linux/blob/4815a36009044ba69a9b8d781943ec6505c451a2/include/linux/rbtree.h",
    },
+   "1985_sleator_tarjan": {
+      Year: 1985,
+      Title: "Self-adjusting binary search trees",
+      Authors: "Daniel D. Sleator, Robert E. Tarjan",
+      URL: "https://doi.org/10.1145/3828.3835",
+   },
    "1994_splay_with_size": {
       Year: 1994,
       Title: "An implementation of top-down splaying with sizes",
@@ -366,7 +373,8 @@ var References = map[string]Reference{
    },
    "2011_rocksdb": {
       Year: 2011,
-      Title: "RocksDB",
+      Title: "RocksDB, memtable/skiplist.h",
+      Specifics: "from LevelDB",
       Authors: "Jeffrey Dean, Sanjay Ghemawat",
       URL: "https://github.com/facebook/rocksdb/blob/c3c84b3397a0eaa6450340ecea3b267c0e6c1f3c/memtable/skiplist.h#L46",
    },

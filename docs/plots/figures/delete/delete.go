@@ -7,7 +7,7 @@ import (
    "os"
 )
 
-// @${GO} run docs/plots/dissolve/dissolve.go
+// @${GO} run docs/plots/figures/delete/delete.go
 //
 // This requires that you change what Tree.dissolve calls,
 // and also to use GC rather than Arena because the many insert/delete
@@ -21,7 +21,7 @@ func main()  {
 
    samples := 1_000
 
-   iterations := 1
+   iterations := 100
 
    fmt.Println("Step", "Steps", "Size", "AveragePathLength")
 
