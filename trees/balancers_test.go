@@ -1,6 +1,7 @@
 package trees
 
 import (
+   "fmt"
    "testing"
 
    "github.com/rtheunissen/bst/types/list"
@@ -102,6 +103,37 @@ func TestBalancersWorstCase(t *testing.T) {
          }
       })
    }
+}
+
+// A Fibonacci tree is the smallest tree of its height that is balanced by the
+// cost-optimized rule, so the height of every such tree is within its bound.
+func TestCostFibonacciTrees(t *testing.T) {
+   for height := 1; height <= 25; height++ {
+      t.Run(fmt.Sprint(height), func(t *testing.T) {
+         tree := Tree{}
+         tree.root, tree.size = fibonacciTree(&tree, height)
+
+         if tree.size != fibonacciTreeSize(height) || tree.root.height() + 1 != height {
+            t.Fatalf("not a Fibonacci tree of height %d", height)
+         }
+         Cost{}.Verify(tree)
+
+         original := fingerprintOfRoot(tree.root)
+         if !original.equal(fingerprintOfRoot(Cost{}.Restore(tree).root)) {
+            t.Fatalf("restoring balance to a balanced Fibonacci tree modified it")
+         }
+         tree.Free()
+      })
+   }
+}
+
+func fibonacciTree(tree *Tree, height int) (p *Node, s list.Size) {
+   if height <= 0 {
+      return nil, 0
+   }
+   l, sl := fibonacciTree(tree, height - 1)
+   r, sr := fibonacciTree(tree, height - 2)
+   return tree.allocate(Node{l: l, r: r, s: sl, x: sl}), sl + sr + 1
 }
 
 func verifyBalancer(balancer Balancer, tree Tree, reference list.Reference) {

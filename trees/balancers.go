@@ -4,7 +4,6 @@ import (
    "github.com/rtheunissen/bst/types/list"
    "github.com/rtheunissen/bst/utility"
    "github.com/rtheunissen/bst/utility/number"
-   "math"
 )
 
 // A balancer restores balance to a tree in-place. A tree that shares its nodes
@@ -276,9 +275,23 @@ func (balancer Cost) verify(p *Node, s list.Size) (height int) {
 
    height = 1 + max(heightL, heightR)
 
-   invariant(height <= int(1.44 * math.Log2(float64(s + 2)) - 0.328)) // Knuth?
+   invariant(fibonacciTreeSize(height) <= s)
 
    return height
+}
+
+// Returns the size of the smallest tree of the given height in which, at every
+// node, the smaller subtree is no smaller than either subtree of the larger
+// subtree. One subtree of such a tree has a height one less than the tree, and
+// one of its subtrees has a height two less than the tree, which the other
+// subtree of the tree is no smaller than. The smallest such tree is therefore a
+// Fibonacci tree, which is also the smallest AVL tree of the same height.
+func fibonacciTreeSize(height int) list.Size {
+   a, b := list.Size(0), list.Size(1) // The sizes for heights 0 and 1.
+   for ; height > 0; height-- {
+      a, b = b, a + b + 1
+   }
+   return a
 }
 
 type DSW struct {
